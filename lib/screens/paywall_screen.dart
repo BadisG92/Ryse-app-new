@@ -1140,6 +1140,7 @@ class _PaywallScreenState extends State<PaywallScreen>
       case PaywallContext.exerciseAnalysis:
         return [const Color(0xFFFFD700), const Color(0xFFFFAA00)]; // Gold to Orange
 
+      case PaywallContext.coachChat:
       case PaywallContext.genericUpgrade:
         return [const Color(0xFFFFD700), const Color(0xFFDAA520)]; // Gold to Goldenrod (default)
 

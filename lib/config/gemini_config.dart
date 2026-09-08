@@ -1,3 +1,4 @@
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'env_config.dart';
 
 class GeminiConfig {
@@ -60,4 +61,16 @@ class GeminiConfig {
       'category': entry.key,
       'threshold': entry.value,
     }).toList();
+
+  /// Les mêmes réglages, pour les services qui passent par le SDK.
+  ///
+  /// [safetySettings] existait depuis le début et n'était transmis à aucun
+  /// modèle : ni au chat, ni aux analyses, ni au corps de requête du
+  /// planificateur. Tout partait donc avec les seuils par défaut de l'API.
+  static List<SafetySetting> get sdkSafetySettings => [
+    SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.high),
+    SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.high),
+    SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.high),
+    SafetySetting(HarmCategory.harassment, HarmBlockThreshold.high),
+  ];
 }

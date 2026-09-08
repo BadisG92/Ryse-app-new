@@ -354,27 +354,14 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
   }
 
   /// Get day of week in user's language
+  ///
+  /// La liste ne connaissait que le français et l'anglais : le prompt d'un
+  /// utilisateur allemand annonçait « Monday » juste avant de lui demander de
+  /// répondre en allemand.
   String _getDayOfWeek(int weekday, String lang) {
-    final days = lang == 'fr'
-        ? ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-        : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    return days[weekday - 1];
-  }
-
-  /// Calculate age from date of birth
-  int? _calculateAge(String? dateOfBirth) {
-    if (dateOfBirth == null) return null;
-    try {
-      final dob = DateTime.parse(dateOfBirth);
-      final now = DateTime.now();
-      int age = now.year - dob.year;
-      if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
-        age--;
-      }
-      return age;
-    } catch (e) {
-      return null;
-    }
+    // 2024-01-01 est un lundi : la date sert seulement à nommer le jour.
+    final day = DateTime(2024, 1, weekday);
+    return DateFormat('EEEE', _intlLocale(lang)).format(day);
   }
 
   /// Get user profile from Supabase
@@ -625,9 +612,10 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       final lang = LocalizationService.instance.currentLanguageCode;
 
       final buffer = StringBuffer();
-      final dayNames = lang == 'fr'
-          ? ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-          : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      // Les jours viennent de la locale : ce bloc n'avait que le français et
+      // l'anglais, donc un utilisateur allemand lisait un planning en anglais
+      // dans un prompt qui lui demande de répondre en allemand.
+      final dayFormat = DateFormat('EEEE', _intlLocale(lang));
 
       // Use weekStart from weekData
       final weekStart = weekData.weekStart;
@@ -644,16 +632,21 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
 
         final workouts = dayPlan.workouts;
         final cardioActivities = dayPlan.cardios;
+        // Les repas planifiés manquaient : le prompt demande au coach de
+        // proposer des idées cohérentes avec le plan, et cette boucle ne lisait
+        // que le sport. Un jour qui n'a que des repas était sauté entièrement.
+        final meals = dayPlan.meals;
 
         // Skip days without any planned activities
-        if (workouts.isEmpty && cardioActivities.isEmpty) continue;
+        if (workouts.isEmpty && cardioActivities.isEmpty && meals.isEmpty) continue;
 
         // Day header
+        final dayName = dayFormat.format(day);
         final dayLabel = isToday
-            ? (lang == 'fr' ? '📍 AUJOURD\'HUI (${dayNames[day.weekday - 1]})' : '📍 TODAY (${dayNames[day.weekday - 1]})')
+            ? '📍 ${_plannerWord('today', lang).toUpperCase()} ($dayName)'
             : isPast
-                ? '${dayNames[day.weekday - 1]} ${day.day}/${day.month} (passé)'
-                : '${dayNames[day.weekday - 1]} ${day.day}/${day.month}';
+                ? '$dayName ${day.day}/${day.month} (${_plannerWord('past', lang)})'
+                : '$dayName ${day.day}/${day.month}';
 
         buffer.writeln(dayLabel);
 
@@ -661,10 +654,10 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
         for (final workout in workouts) {
           final statusEmoji = workout.status == PlannedStatus.completed ? '✅' : workout.status == PlannedStatus.missed ? '❌' : '🏋️';
           final statusLabel = workout.status == PlannedStatus.completed
-              ? (lang == 'fr' ? 'fait' : 'done')
+              ? _plannerWord('done', lang)
               : workout.status == PlannedStatus.missed
-                  ? (lang == 'fr' ? 'manqué' : 'missed')
-                  : (lang == 'fr' ? 'prévu' : 'planned');
+                  ? _plannerWord('missed', lang)
+                  : _plannerWord('planned', lang);
           buffer.writeln('  $statusEmoji ${workout.workoutName} (${workout.durationMinutes ?? 45} min) - $statusLabel');
         }
 
@@ -673,10 +666,10 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
           final cardioData = cardio.cardioData;
           final statusEmoji = cardio.status == PlannedStatus.completed ? '✅' : cardio.status == PlannedStatus.missed ? '❌' : '🏃';
           final statusLabel = cardio.status == PlannedStatus.completed
-              ? (lang == 'fr' ? 'fait' : 'done')
+              ? _plannerWord('done', lang)
               : cardio.status == PlannedStatus.missed
-                  ? (lang == 'fr' ? 'manqué' : 'missed')
-                  : (lang == 'fr' ? 'prévu' : 'planned');
+                  ? _plannerWord('missed', lang)
+                  : _plannerWord('planned', lang);
 
           final activityName = cardioData?.activityName ?? 'Cardio';
           final durationInfo = cardioData?.targetMinutes != null
@@ -688,36 +681,77 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
           buffer.writeln('  $statusEmoji $activityName${durationInfo.isNotEmpty ? ' ($durationInfo)' : ''} - $statusLabel');
         }
 
+        // Repas planifiés
+        for (final meal in meals) {
+          final mealData = meal.mealData;
+          if (mealData == null) continue;
+          final statusEmoji = meal.status == PlannedStatus.completed ? '✅' : meal.status == PlannedStatus.missed ? '❌' : '🍽️';
+          final statusLabel = meal.status == PlannedStatus.completed
+              ? _plannerWord('eaten', lang)
+              : meal.status == PlannedStatus.missed
+                  ? _plannerWord('missed', lang)
+                  : _plannerWord('planned', lang);
+          final slot = _mealSlotLabel(meal.activityType, lang);
+          final kcal = mealData.calories != null ? ' (${mealData.calories} kcal)' : '';
+          buffer.writeln('  $statusEmoji $slot: ${mealData.displayName}$kcal - $statusLabel');
+        }
+
         buffer.writeln();
       }
 
       final result = buffer.toString().trim();
       if (result.isEmpty) {
-        return lang == 'fr' ? 'Aucune séance planifiée cette semaine' : 'No sessions planned this week';
+        return _plannerWord('empty', lang);
       }
 
       return result;
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CoachContextBuilder: Error getting weekly planning: $e');
-      return 'Planning non disponible';
+      return _plannerWord('unavailable', LocalizationService.instance.currentLanguageCode);
     }
   }
 
-  /// Build a compact context summary for token efficiency
-  /// Used when we need a shorter context (e.g., for preference extraction)
-  Future<String> buildCompactContext() async {
-    final globalState = GlobalStateManager.instance;
-    final now = DateTime.now();
+  /// La locale `intl` correspondant à la langue de l'application.
+  static String _intlLocale(String lang) =>
+      lang == 'fr' ? 'fr_FR' : lang == 'de' ? 'de_DE' : 'en_US';
 
-    return '''
-Utilisateur: ${globalState.userName}
-Date: ${DateFormat('dd/MM/yyyy HH:mm').format(now)}
-Calories: ${globalState.currentCalories.toInt()}/${globalState.calorieGoal.toInt()} kcal
-Macros: P${globalState.currentProteins.toInt()}g C${globalState.currentCarbs.toInt()}g F${globalState.currentFats.toInt()}g
-Eau: ${globalState.currentWaterL.toStringAsFixed(1)}/${globalState.waterGoalL.toStringAsFixed(1)}L
-Repas: ${globalState.mealsCount}
-Sport: ${globalState.sportSessions} séances, ${globalState.sportCaloriesBurned} kcal brûlées
-Streak: ${globalState.currentStreak} jours
-''';
+  /// Les quelques mots du bloc planning, dans les trois langues.
+  ///
+  /// Ils partent dans le prompt et non à l'écran, donc ils ne passent pas par
+  /// `translations.dart` ; ils doivent quand même exister en allemand, ce qui
+  /// n'était le cas d'aucun d'entre eux.
+  static String _plannerWord(String key, String lang) {
+    const words = {
+      'today': {'fr': "aujourd'hui", 'en': 'today', 'de': 'heute'},
+      'past': {'fr': 'passé', 'en': 'past', 'de': 'vergangen'},
+      'done': {'fr': 'fait', 'en': 'done', 'de': 'erledigt'},
+      'missed': {'fr': 'manqué', 'en': 'missed', 'de': 'verpasst'},
+      'planned': {'fr': 'prévu', 'en': 'planned', 'de': 'geplant'},
+      'eaten': {'fr': 'mangé', 'en': 'eaten', 'de': 'gegessen'},
+      'empty': {
+        'fr': 'Rien de planifié cette semaine',
+        'en': 'Nothing planned this week',
+        'de': 'Diese Woche ist nichts geplant',
+      },
+      'unavailable': {
+        'fr': 'Planning non disponible',
+        'en': 'Planning unavailable',
+        'de': 'Planung nicht verfügbar',
+      },
+    };
+    final entry = words[key];
+    return entry?[lang] ?? entry?['en'] ?? key;
+  }
+
+  /// Le nom du moment du repas, pour le bloc planning.
+  static String _mealSlotLabel(PlannedActivityType type, String lang) {
+    const slots = {
+      PlannedActivityType.breakfast: {'fr': 'Petit-déjeuner', 'en': 'Breakfast', 'de': 'Frühstück'},
+      PlannedActivityType.lunch: {'fr': 'Déjeuner', 'en': 'Lunch', 'de': 'Mittagessen'},
+      PlannedActivityType.dinner: {'fr': 'Dîner', 'en': 'Dinner', 'de': 'Abendessen'},
+      PlannedActivityType.snack: {'fr': 'Collation', 'en': 'Snack', 'de': 'Snack'},
+    };
+    final entry = slots[type];
+    return entry?[lang] ?? entry?['en'] ?? '';
   }
 }

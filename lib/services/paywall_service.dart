@@ -10,6 +10,7 @@ enum PaywallContext {
   // Contextes features Coach Ryze (principales)
   scanner,              // Scanner automatique (photo)
   barcodeScanner,       // Scanner de codes-barres
+  coachChat,            // La conversation avec Coach Ryze (pilule centrale)
   chatInput,            // Déclarer repas au Coach Ryze (texte/voix)
   workoutGenerator,     // Coach Ryze - Générateur de workouts
   nutritionAnalysis,    // Bilan du Coach Ryze (quotidien)
@@ -119,6 +120,8 @@ class PaywallService {
       case PaywallContext.planner:
         return CoachRyzeAvatarType.workout; // Avatar sport pour le planificateur
 
+      // La conversation couvre les deux domaines : elle prend l'avatar neutre.
+      case PaywallContext.coachChat:
       case PaywallContext.genericUpgrade:
         return CoachRyzeAvatarType.workout; // Avatar sans tenue spéciale
 
@@ -144,6 +147,7 @@ class PaywallService {
         return 'paywall_title_exercise_analysis';
       case PaywallContext.planner:
         return 'paywall_title_planner';
+      case PaywallContext.coachChat:
       case PaywallContext.genericUpgrade:
         return 'paywall_title_generic';
       case PaywallContext.onboarding:
@@ -638,6 +642,7 @@ class PaywallService {
         return 'paywall_bubble_exercise_analysis';
       case PaywallContext.planner:
         return 'paywall_bubble_planner';
+      case PaywallContext.coachChat:
       case PaywallContext.genericUpgrade:
         return 'paywall_bubble_generic';
       case PaywallContext.onboarding:
@@ -760,6 +765,7 @@ class PaywallService {
                   : 'The AI planner is reserved for Premium members.\n\n✨ Plan meals + workouts with AI\n📅 Your entire week in 30 seconds\n🎯 Automatically tailored to your goals',
         };
 
+      case PaywallContext.coachChat:
       case PaywallContext.genericUpgrade:
         return {
           'title': isGerman

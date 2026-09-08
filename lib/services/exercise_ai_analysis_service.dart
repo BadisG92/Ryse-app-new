@@ -19,6 +19,7 @@ class ExerciseAiAnalysisService {
     _model = GenerativeModel(
       model: GeminiConfig.modelName,
       apiKey: GeminiConfig.geminiApiKey,
+      safetySettings: GeminiConfig.sdkSafetySettings,
       generationConfig: GenerationConfig(
         temperature: 0.8, // Plus créatif pour des analyses variées
         topK: 40,

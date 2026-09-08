@@ -21,6 +21,7 @@ class CoachRyzeNutritionService {
     _model = GenerativeModel(
       model: GeminiConfig.modelName,
       apiKey: GeminiConfig.geminiApiKey,
+      safetySettings: GeminiConfig.sdkSafetySettings,
       generationConfig: GenerationConfig(
         temperature: 0.8,
         topK: 40,

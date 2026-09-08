@@ -874,6 +874,11 @@ class _PaywallPreviewStandaloneV3State extends State<PaywallPreviewStandaloneV3>
       case PaywallContext.exerciseAnalysis:
         return [const Color(0xFFFFD700), const Color(0xFFFFAA00)]; // Gold to Orange
 
+      case PaywallContext.planner:
+      case PaywallContext.onboarding:
+        return [const Color(0xFFFFD700), const Color(0xFFFFA500)]; // Gold to Orange
+
+      case PaywallContext.coachChat:
       case PaywallContext.genericUpgrade:
         return [const Color(0xFFFFD700), const Color(0xFFDAA520)]; // Gold to Goldenrod (default)
     }

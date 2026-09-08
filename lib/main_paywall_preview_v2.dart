@@ -212,6 +212,11 @@ class _PaywallComparisonScreenState extends State<PaywallComparisonScreen> {
         return isFrench ? '📊 Bilan nutritionnel' : isGerman ? '📊 Ernährungsanalyse' : '📊 Nutrition Analysis';
       case PaywallContext.exerciseAnalysis:
         return isFrench ? '💪 Analyse exercices' : isGerman ? '💪 Übungsanalyse' : '💪 Exercise Analysis';
+      case PaywallContext.planner:
+        return isFrench ? '📅 Planificateur' : isGerman ? '📅 Planer' : '📅 Planner';
+      case PaywallContext.onboarding:
+        return isFrench ? '🚀 Fin de la démo' : isGerman ? '🚀 Ende der Demo' : '🚀 End of demo';
+      case PaywallContext.coachChat:
       case PaywallContext.genericUpgrade:
         return isFrench ? '💎 Upgrade générique' : isGerman ? '💎 Allgemeines Upgrade' : '💎 Generic Upgrade';
     }

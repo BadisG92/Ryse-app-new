@@ -83,7 +83,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   List<PendingSession>? _pendingSessions;
   PageController? _sessionsPageController;
   int _currentSessionIndex = 0;
-  SessionPlanningState? _planningState; // Pour le flow de questions
 
   // Confirmation mode (pour actions destructrices)
   Map<String, dynamic>? _pendingConfirmation;
@@ -407,32 +406,16 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     _scrollChatToBottom();
 
     try {
-      PlannerActionResult result;
+      // Le modèle pose ses questions en texte, comme le reste de la
+      // conversation. Le flux de questions structuré qui vivait ici était une
+      // boucle fermée depuis que son point d'entrée avait disparu : rien ne
+      // pouvait plus l'amorcer.
+      final result = await PlannerAIService.processRequestWithTools(
+        text,
+        mode: widget.initialMode,
+      );
 
-      // NOUVEAU: Si on a un état de planning en cours, c'est une réponse à une question
-      if (_planningState != null) {
-        final langCode = LocalizationService.instance.currentLanguageCode;
-        result = await PlannerAIService.continueSessionPlanning(
-          _planningState!,
-          text,
-          langCode,
-        );
-      } else {
-        result = await PlannerAIService.processRequestWithTools(
-          text,
-          mode: widget.initialMode,
-        );
-      }
-
-      // NOUVEAU: Gérer le type de résultat avec le nouvel enum
-      if (result.isQuestion) {
-        // Question à poser: afficher et stocker l'état
-        _addBotMessage(result.message);
-        PlannerAIService.addToHistory('assistant', result.message);
-        setState(() {
-          _planningState = result.planningState;
-        });
-      } else if (result.isSessionPreview && result.pendingSessions != null) {
+      if (result.isSessionPreview && result.pendingSessions != null) {
         // NOUVEAU: Preview de sessions paginé
         debugPrint('✅ Got ${result.pendingSessions!.length} pending sessions for preview');
         _addBotMessage(result.message);
@@ -442,7 +425,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           _currentSessionIndex = 0;
           _sessionsPageController?.dispose();
           _sessionsPageController = PageController(initialPage: 0);
-          _planningState = null; // Fin du flow de questions
         });
       } else if (result.isPaywallRequired) {
         _addBotMessage(result.message);
@@ -1972,7 +1954,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       _currentSessionIndex = 0;
       _sessionsPageController?.dispose();
       _sessionsPageController = null;
-      _planningState = null;
     });
 
     final langCode = LocalizationService.instance.currentLanguageCode;

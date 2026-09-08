@@ -6,6 +6,7 @@ import '../bottom_sheets/exercise_info_bottom_sheet.dart';
 import '../design/design.dart';
 import '../models/sport_models.dart';
 import '../services/ai_workout_generation_service.dart';
+import '../services/coach_preference_extractor.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../sport/session/session_screen.dart';
@@ -86,8 +87,14 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
 
     try {
       final request = _prompt.text.trim().isNotEmpty ? _prompt.text.trim() : _chipKeys[_chip!].tr(lang);
+      // Les blessures que le coach a retenues comptent aussi ici : l'écran
+      // générait des séances sans jamais les regarder.
+      final prefs = await CoachPreferenceExtractor.instance.getUserPreferences();
+      final constraints = prefs?.fitnessConstraints ?? const <String>[];
+
       final result = await AIWorkoutGenerationService.generateWorkout(
         userRequest: request,
+        constraints: constraints.isEmpty ? null : constraints,
         durationMinutes: _durations[_duration],
         intensity: _intensityValues[_intensity],
         focus: _focusValues[_focus],

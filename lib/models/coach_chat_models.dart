@@ -1,5 +1,6 @@
-/// Models for Coach Chat feature
-/// Supports multi-conversation chat with AI Coach Ryze
+// Models for Coach Chat feature
+// Une seule conversation par utilisateur : la table pourrait en porter
+// plusieurs, le service lit toujours la dernière.
 
 /// Message role enum
 enum MessageRole {
@@ -355,19 +356,47 @@ class UserCoachPreferences {
     );
   }
 
+  /// Le document `preferences` tel qu'il part en base.
+  ///
+  /// `onboarding_insights` en fait partie : c'est ce que l'utilisateur a raconté
+  /// pendant l'inscription, écrit par [OnboardingRepository.saveCoachInsights].
+  /// Il vivait dans la même colonne mais était absent d'ici, si bien que la
+  /// première extraction de mémoire réécrivait le document sans lui et
+  /// l'effaçait pour de bon.
+  Map<String, dynamic> toPreferencesJson() {
+    return {
+      'allergies': allergies,
+      'dietary_restrictions': dietaryRestrictions,
+      'food_preferences': foodPreferences,
+      'fitness_constraints': fitnessConstraints,
+      'preferred_workout_times': preferredWorkoutTimes,
+      'custom_notes': customNotes,
+      if (onboardingInsights != null) 'onboarding_insights': onboardingInsights,
+    };
+  }
+
+  /// Fusionne un document `preferences` existant avec une mise à jour, sans
+  /// jamais perdre une clé que le code ne connaît pas.
+  ///
+  /// C'est la seule façon d'écrire cette colonne : le document en base peut
+  /// porter des clés écrites ailleurs (l'onboarding aujourd'hui, autre chose
+  /// demain), et un `upsert` qui reconstruit le document de zéro les supprime
+  /// en silence.
+  static Map<String, dynamic> mergePreferencesJson(
+    Map<String, dynamic>? existing,
+    Map<String, dynamic> update,
+  ) {
+    final merged = <String, dynamic>{...?existing};
+    update.forEach((key, value) => merged[key] = value);
+    return merged;
+  }
+
   /// Convert to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'user_id': userId,
-      'preferences': {
-        'allergies': allergies,
-        'dietary_restrictions': dietaryRestrictions,
-        'food_preferences': foodPreferences,
-        'fitness_constraints': fitnessConstraints,
-        'preferred_workout_times': preferredWorkoutTimes,
-        'custom_notes': customNotes,
-      },
+      'preferences': toPreferencesJson(),
       'last_extraction_at': lastExtractionAt?.toIso8601String(),
       'extraction_count': extractionCount,
       'created_at': createdAt.toIso8601String(),
@@ -394,6 +423,7 @@ class UserCoachPreferences {
     List<String>? fitnessConstraints,
     List<String>? preferredWorkoutTimes,
     List<String>? customNotes,
+    String? onboardingInsights,
     DateTime? lastExtractionAt,
     int? extractionCount,
     DateTime? createdAt,
@@ -408,6 +438,7 @@ class UserCoachPreferences {
       fitnessConstraints: fitnessConstraints ?? this.fitnessConstraints,
       preferredWorkoutTimes: preferredWorkoutTimes ?? this.preferredWorkoutTimes,
       customNotes: customNotes ?? this.customNotes,
+      onboardingInsights: onboardingInsights ?? this.onboardingInsights,
       lastExtractionAt: lastExtractionAt ?? this.lastExtractionAt,
       extractionCount: extractionCount ?? this.extractionCount,
       createdAt: createdAt ?? this.createdAt,

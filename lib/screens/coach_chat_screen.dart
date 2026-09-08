@@ -34,7 +34,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   List<CoachMessage> _messages = [];
   bool _isLoading = false;
   bool _isSending = false;
-  CoachRateLimitStatus? _rateLimitStatus;
   bool _showBilanBanner = false;
 
   // Speech to text
@@ -132,12 +131,10 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
     try {
       await CoachChatService.instance.loadConversation(widget.conversation.id);
-      final rateLimitStatus = await CoachChatService.instance.getRateLimitStatus();
 
       if (mounted) {
         setState(() {
           _messages = List.from(CoachChatService.instance.currentMessages);
-          _rateLimitStatus = rateLimitStatus;
           _isLoading = false;
         });
         _scrollToBottom();
@@ -165,12 +162,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty || _isSending) return;
-
-    // Check rate limit
-    if (_rateLimitStatus != null && !_rateLimitStatus!.canSendMessage) {
-      _showUpgradeDialog();
-      return;
-    }
 
     setState(() {
       _isSending = true;
@@ -232,13 +223,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         }
       }
 
-      // Update rate limit status without reloading messages
-      final rateLimitStatus = await CoachChatService.instance.getRateLimitStatus();
-      if (mounted) {
-        setState(() {
-          _rateLimitStatus = rateLimitStatus;
-        });
-      }
     } catch (e) {
       if (mounted) {
         RyzeUndo.failed(context, message: 'error_generic'.tr(LocalizationService.instance.currentLanguageCode));
@@ -262,7 +246,8 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     }
 
     final locService = Provider.of<LocalizationService>(context, listen: false);
-    final localeId = locService.currentLanguageCode == 'fr' ? 'fr_FR' : 'en_US';
+    final lang = locService.currentLanguageCode;
+    final localeId = lang == 'fr' ? 'fr_FR' : lang == 'de' ? 'de_DE' : 'en_US';
 
     setState(() => _isListening = true);
 
@@ -285,22 +270,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     setState(() => _isListening = false);
   }
 
-  /// La limite d'echanges, si le service la renvoie un jour : une feuille et
-  /// non un dialogue, et pas un mot sur des essais qui n'existent plus.
-  void _showUpgradeDialog() {
-    final lang = LocalizationService.instance.currentLanguageCode;
-    showRyzeSheet<void>(
-      context,
-      title: 'coach_limit_title'.tr(lang),
-      builder: (sheet) => Text(
-        'coach_limit_body'.tr(lang),
-        style: RyzeText.body(sheet, 3.6, height: 1.5, color: RyzeColors.mute),
-      ),
-      actions: [OnbButton(label: 'ok'.tr(lang), onPressed: () => Navigator.pop(context))],
-    );
-  }
-
-  @override
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LocalizationService>().currentLanguageCode;
@@ -461,9 +430,9 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     final messageDay = DateTime(date.year, date.month, date.day);
 
     if (messageDay == today) {
-      return lang == 'fr' ? "Aujourd'hui" : lang == 'de' ? 'Heute' : 'Today';
+      return 'today'.tr(lang);
     } else if (messageDay == yesterday) {
-      return lang == 'fr' ? 'Hier' : lang == 'de' ? 'Gestern' : 'Yesterday';
+      return 'yesterday'.tr(lang);
     } else {
       // Format: "Lundi 6 jan" or "Monday, Jan 6"
       try {
@@ -517,8 +486,12 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       itemBuilder: (context, index) {
         final at = _messages.length - 1 - index;
         final message = _messages[at];
+        // La date annonce le jour, donc elle passe avant sa première bulle.
+        // Posée après, elle s'intercalait entre ce message et le suivant : la
+        // liste est inversée, mais chaque élément se lit toujours de haut en bas.
         return Column(
           children: [
+            if (_needsDaySeparator(at)) _buildDaySeparator(message.createdAt, lang),
             RyzeBubble(
               text: message.content,
               mine: message.isUser,
@@ -526,7 +499,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
               copyLabel: 'chat_copied'.tr(lang),
               avatar: message.isUser ? null : coachFaceOfDay(message.createdAt),
             ),
-            if (_needsDaySeparator(at)) _buildDaySeparator(message.createdAt, lang),
           ],
         );
       },

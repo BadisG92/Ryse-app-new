@@ -21,6 +21,7 @@ class CoachPreferenceExtractor {
     _model = GenerativeModel(
       model: GeminiConfig.modelName,
       apiKey: GeminiConfig.geminiApiKey,
+      safetySettings: GeminiConfig.sdkSafetySettings,
       generationConfig: GenerationConfig(
         temperature: 0.3, // Low temperature for accurate extraction
         topK: 40,
@@ -177,12 +178,6 @@ IMPORTANT:
     UserCoachPreferences? existing,
     Map<String, List<String>> extracted,
   ) {
-    // Helper to merge lists without duplicates
-    List<String> mergeList(List<String>? existing, List<String>? newItems) {
-      final set = <String>{...(existing ?? []), ...(newItems ?? [])};
-      return set.toList();
-    }
-
     final user = _supabase.auth.currentUser;
 
     return UserCoachPreferences(
@@ -194,6 +189,7 @@ IMPORTANT:
       fitnessConstraints: mergeList(existing?.fitnessConstraints, extracted['fitness_constraints']),
       preferredWorkoutTimes: mergeList(existing?.preferredWorkoutTimes, extracted['preferred_workout_times']),
       customNotes: mergeList(existing?.customNotes, extracted['custom_notes']),
+      onboardingInsights: existing?.onboardingInsights,
       lastExtractionAt: DateTime.now(),
       extractionCount: (existing?.extractionCount ?? 0) + 1,
       createdAt: existing?.createdAt ?? DateTime.now(),
@@ -201,69 +197,43 @@ IMPORTANT:
     );
   }
 
-  /// Extract and save preferences from a conversation
-  Future<void> extractAndSave(String conversationId) async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
-
-      // Get conversation messages
-      final messagesResponse = await _supabase
-          .from('coach_messages')
-          .select()
-          .eq('conversation_id', conversationId)
-          .order('created_at', ascending: true);
-
-      final messages = (messagesResponse as List)
-          .map((json) => CoachMessage.fromJson(json))
-          .toList();
-
-      if (messages.length < 4) {
-        // Not enough messages to extract meaningful preferences
-        return;
-      }
-
-      // Get existing preferences
-      UserCoachPreferences? existing;
-      final existingResponse = await _supabase
-          .from('user_coach_preferences')
-          .select()
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-      if (existingResponse != null) {
-        existing = UserCoachPreferences.fromJson(existingResponse);
-      }
-
-      // Extract new preferences
-      final newPrefs = await extractFromMessages(messages, existing);
-
-      if (newPrefs == null || newPrefs.isEmpty) {
-        return;
-      }
-
-      // Save to database
-      await _supabase.from('user_coach_preferences').upsert({
-        'user_id': user.id,
-        'preferences': {
-          'allergies': newPrefs.allergies,
-          'dietary_restrictions': newPrefs.dietaryRestrictions,
-          'food_preferences': newPrefs.foodPreferences,
-          'fitness_constraints': newPrefs.fitnessConstraints,
-          'preferred_workout_times': newPrefs.preferredWorkoutTimes,
-          'custom_notes': newPrefs.customNotes,
-        },
-        'last_extraction_at': DateTime.now().toIso8601String(),
-        'extraction_count': newPrefs.extractionCount,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-
-      if (kDebugMode) {
-        debugPrint('✅ Preferences saved to database');
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ Error in extractAndSave: $e');
+  /// Réunit l'ancienne liste et la nouvelle sans doublon.
+  ///
+  /// La comparaison se fait sur une forme normalisée (minuscules, sans accents
+  /// ni ponctuation) : le modèle réécrit rarement deux fois la même contrainte
+  /// de la même façon, et une union de chaînes brutes laissait cohabiter
+  /// « sans gluten » et « Sans gluten, ». La première écriture d'un fait garde
+  /// sa formulation.
+  static List<String> mergeList(List<String>? existing, List<String>? newItems) {
+    final out = <String>[];
+    final seen = <String>{};
+    for (final item in [...?existing, ...?newItems]) {
+      final text = item.trim();
+      if (text.isEmpty) continue;
+      final key = normalizeFact(text);
+      if (key.isEmpty || !seen.add(key)) continue;
+      out.add(text);
     }
+    return out;
+  }
+
+  /// La forme comparable d'un fait retenu.
+  static String normalizeFact(String value) {
+    const accents = 'àáâãäåçèéêëìíîïñòóôõöùúûüýÿœæ';
+    const plain = 'aaaaaaceeeeiiiinooooouuuuyyoa';
+    final lower = value.toLowerCase();
+    final buffer = StringBuffer();
+    for (final rune in lower.runes) {
+      final char = String.fromCharCode(rune);
+      final index = accents.indexOf(char);
+      final mapped = index >= 0 ? plain[index] : char;
+      if (RegExp(r'[a-z0-9]').hasMatch(mapped)) {
+        buffer.write(mapped);
+      } else if (buffer.isNotEmpty && !buffer.toString().endsWith(' ')) {
+        buffer.write(' ');
+      }
+    }
+    return buffer.toString().trim();
   }
 
   /// Get user preferences from database

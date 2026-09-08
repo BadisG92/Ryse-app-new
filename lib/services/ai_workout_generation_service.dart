@@ -25,6 +25,7 @@ class AIWorkoutGenerationService {
   /// Générer une séance d'entraînement personnalisée avec Gemini
   static Future<AIWorkoutResult> generateWorkout({
     required String userRequest,
+    List<String>? constraints,
     int? durationMinutes,
     double? intensity, // 0.0 à 1.0
     String? focus, // 'Force', 'Hypertrophie', 'Endurance'
@@ -66,6 +67,7 @@ class AIWorkoutGenerationService {
       // Construire le prompt pour Gemini
       final prompt = _buildGeminiPrompt(
         userRequest: userRequest,
+        constraints: constraints,
         exercisesList: exercisesList,
         userContext: userContext,
         userLanguage: userLanguage,
@@ -392,6 +394,7 @@ class AIWorkoutGenerationService {
     required String exercisesList,
     required String userContext,
     required String userLanguage,
+    List<String>? constraints,
     int? durationMinutes,
     double? intensity,
     String? focus,
@@ -405,6 +408,16 @@ class AIWorkoutGenerationService {
     final equipmentText = equipment != null && equipment.isNotEmpty
         ? equipment.join(', ')
         : 'All available equipment';
+    // Les blessures dites au coach : elles étaient stockées et n'arrivaient
+    // jamais jusqu'ici, si bien qu'un genou douloureux n'empêchait pas une
+    // séance de squats.
+    final constraintsText = constraints != null && constraints.isNotEmpty
+        ? '''
+
+⚠️ PHYSICAL CONSTRAINTS: ${constraints.join(', ')}
+AVOID exercises that load these areas. Pick alternatives from the list that work the same muscle group without stressing them.
+'''
+        : '';
 
     return '''
 You are an expert personal trainer with access to a database of exercises and the user's training history.
@@ -416,7 +429,7 @@ PARAMETERS:
 - Intensity: $intensityText
 - Focus: $focusText
 - Equipment: $equipmentText
-
+$constraintsText
 $userContext
 
 $exercisesList

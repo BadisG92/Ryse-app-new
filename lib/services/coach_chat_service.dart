@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/gemini_config.dart';
 import '../models/coach_chat_models.dart';
@@ -11,7 +10,7 @@ import 'coach_preference_extractor.dart';
 import 'coach_personality_service.dart';
 import 'global_state_manager.dart';
 import 'localization_service.dart';
-import 'subscription_service.dart';
+import 'translations.dart';
 import 'weekly_bilan_service.dart';
 
 /// Main service for Coach Ryze chat functionality
@@ -32,7 +31,6 @@ class CoachChatService {
   // Configuration
   static const int maxMessagesContext = 30; // Last 30 messages sent to AI
   static const int maxMessagesHistory = 200; // Max messages loaded for display
-  static const int freeTotalLimit = 10; // 10 messages total (not per day) for free users
 
   // Current conversation state
   CoachConversation? _currentConversation;
@@ -52,11 +50,16 @@ class CoachChatService {
     _model = GenerativeModel(
       model: GeminiConfig.modelName,
       apiKey: GeminiConfig.geminiApiKey,
+      safetySettings: GeminiConfig.sdkSafetySettings,
       generationConfig: GenerationConfig(
         temperature: 0.8, // More creative for conversational tone
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 400, // Short responses for conversational coach
+        // Le prompt demande une recette complète — nom, macros, ingrédients,
+        // étapes — et la consigne de longueur tient le coach court. 400 tokens
+        // coupaient cette recette au milieu, surtout en français et en
+        // allemand, qui tokenisent plus lourd que l'anglais.
+        maxOutputTokens: 1024,
       ),
     );
 
@@ -335,123 +338,26 @@ class CoachChatService {
     }
   }
 
-  /// Send a message and get a response
-  Future<CoachMessage?> sendMessage(String userMessage) async {
-    if (_currentConversation == null) {
-      await getOrCreateConversation();
-    }
-
-    if (_currentConversation == null || _currentChatSession == null) {
-      if (kDebugMode) debugPrint('❌ CoachChatService: No conversation or chat session');
-      return null;
-    }
-
-    final user = _supabase.auth.currentUser;
-    if (user == null) return null;
-
-    try {
-      // Check rate limit
-      final canSend = await canSendMessage();
-      if (!canSend) {
-        if (kDebugMode) debugPrint('⚠️ CoachChatService: Rate limit reached');
-        return null;
-      }
-
-      // Save user message to database
-      final userMsgResponse = await _supabase
-          .from('coach_messages')
-          .insert({
-            'conversation_id': _currentConversation!.id,
-            'user_id': user.id,
-            'role': 'user',
-            'content': userMessage,
-          })
-          .select()
-          .single();
-
-      final userMsgModel = CoachMessage.fromJson(userMsgResponse);
-      _currentMessages.add(userMsgModel);
-
-      // Increment usage
-      await _incrementUsage();
-
-      if (kDebugMode) {
-        debugPrint('');
-        debugPrint('💬 ========== COACH CHAT REQUEST ==========');
-        debugPrint('📝 User message: $userMessage');
-        debugPrint('📊 Messages in context: ${_currentMessages.length}');
-        debugPrint('');
-      }
-
-      // Get response from Gemini
-      final response = await _currentChatSession!.sendMessage(
-        Content.text(userMessage),
-      );
-
-      final responseText = response.text ?? '';
-
-      if (kDebugMode) {
-        debugPrint('');
-        debugPrint('🤖 ========== COACH CHAT RESPONSE ==========');
-        debugPrint('📝 Coach response (${responseText.length} chars):');
-        debugPrint('─' * 50);
-        debugPrint(responseText);
-        debugPrint('─' * 50);
-        debugPrint('');
-      }
-
-      if (responseText.isEmpty) {
-        if (kDebugMode) debugPrint('❌ Empty response from Gemini');
-        return null;
-      }
-
-      // Estimate tokens used (rough estimate: 1 token ~ 4 chars)
-      final tokensUsed = (userMessage.length + responseText.length) ~/ 4;
-
-      // Save assistant message to database
-      final assistantMsgResponse = await _supabase
-          .from('coach_messages')
-          .insert({
-            'conversation_id': _currentConversation!.id,
-            'user_id': user.id,
-            'role': 'assistant',
-            'content': responseText,
-            'tokens_used': tokensUsed,
-          })
-          .select()
-          .single();
-
-      final assistantMsgModel = CoachMessage.fromJson(assistantMsgResponse);
-      _currentMessages.add(assistantMsgModel);
-
-      return assistantMsgModel;
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ CoachChatService: Error sending message: $e');
-      return null;
-    }
-  }
-
   /// Send a message with streaming response
+  ///
+  /// Les messages d'erreur passent par le dictionnaire : ils s'affichent dans
+  /// la bulle comme une réponse du coach, et huit phrases françaises en dur y
+  /// arrivaient jusqu'ici quelle que soit la langue.
   Stream<String> streamMessage(String userMessage, {int retryCount = 0}) async* {
+    final lang = LocalizationService.instance.currentLanguageCode;
+
     if (_currentConversation == null) {
       await getOrCreateConversation();
     }
 
     if (_currentConversation == null || _currentChatSession == null) {
-      yield '[Erreur: Impossible de démarrer la conversation]';
+      yield 'coach_error_start'.tr(lang);
       return;
     }
 
     final user = _supabase.auth.currentUser;
     if (user == null) {
-      yield '[Erreur: Utilisateur non connecté]';
-      return;
-    }
-
-    // Check rate limit
-    final canSend = await canSendMessage();
-    if (!canSend) {
-      yield '[Limite atteinte: Tu as utilisé tes 5 messages gratuits du jour. Passe à Premium pour des conversations illimitées !]';
+      yield 'error_user_not_authenticated'.tr(lang);
       return;
     }
 
@@ -472,12 +378,9 @@ class CoachChatService {
 
         userMsgModel = CoachMessage.fromJson(userMsgResponse);
         _currentMessages.add(userMsgModel);
-
-        // Increment usage
-        await _incrementUsage();
       } catch (e) {
         if (kDebugMode) debugPrint('❌ CoachChatService: Error saving user message: $e');
-        yield '[Erreur: Impossible d\'envoyer le message]';
+        yield 'coach_error_send'.tr(lang);
         return;
       }
     }
@@ -529,9 +432,11 @@ class CoachChatService {
       if (e.toString().contains('Unhandled format for Content') && retryCount < 2) {
         if (kDebugMode) debugPrint('🔄 CoachChatService: Retrying after SDK error (attempt ${retryCount + 1})');
 
-        // Reset chat session and retry
+        // La session est reconstruite, pas seulement mise à nul : `initialize()`
+        // ne fabrique que le modèle, si bien que la tentative suivante retombait
+        // sur le garde-fou plus haut et rendait une erreur au lieu de réessayer.
         _currentChatSession = null;
-        await initialize();
+        await _startChatSession();
 
         // Small delay before retry
         await Future.delayed(const Duration(milliseconds: 500));
@@ -541,7 +446,7 @@ class CoachChatService {
           yield chunk;
         }
       } else {
-        yield '[Erreur: Une erreur est survenue. Réessaie dans quelques instants.]';
+        yield 'coach_error_generic'.tr(lang);
       }
     }
   }
@@ -554,13 +459,13 @@ class CoachChatService {
     }
 
     if (_currentConversation == null || _currentChatSession == null) {
-      yield '[Erreur: Impossible de démarrer la conversation]';
+      yield 'coach_error_start'.tr(lang);
       return;
     }
 
     final user = _supabase.auth.currentUser;
     if (user == null) {
-      yield '[Erreur: Utilisateur non connecté]';
+      yield 'error_user_not_authenticated'.tr(lang);
       return;
     }
 
@@ -656,7 +561,7 @@ IMPORTANT:
 
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CoachChatService: Error streaming bilan: $e');
-      yield '[Erreur: ${e.toString()}]';
+      yield 'coach_error_generic'.tr(lang);
     }
   }
 
@@ -683,99 +588,34 @@ IMPORTANT:
   }
 
   // ==========================================
-  // RATE LIMITING
-  // ==========================================
-
-  /// Check if user can send a message
-  Future<bool> canSendMessage() async {
-    // Premium users have unlimited messages
-    if (SubscriptionService.instance.isPremium) {
-      return true;
-    }
-
-    final usage = await getTotalUsage();
-    return usage < freeTotalLimit;
-  }
-
-  /// Get total usage (not daily - total lifetime for free users)
-  Future<int> getTotalUsage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final user = _supabase.auth.currentUser;
-      if (user == null) return 0;
-
-      final key = 'coach_chat_total_usage_${user.id}';
-      return prefs.getInt(key) ?? 0;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  /// Increment total usage
-  Future<void> _incrementUsage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
-
-      final key = 'coach_chat_total_usage_${user.id}';
-      final current = prefs.getInt(key) ?? 0;
-      await prefs.setInt(key, current + 1);
-
-      if (kDebugMode) {
-        debugPrint('📊 Coach chat usage: ${current + 1}/$freeTotalLimit total');
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ Error incrementing usage: $e');
-    }
-  }
-
-  /// Get remaining messages (total, not daily)
-  Future<int> getRemainingMessages() async {
-    if (SubscriptionService.instance.isPremium) {
-      return -1; // Unlimited
-    }
-
-    final usage = await getTotalUsage();
-    return (freeTotalLimit - usage).clamp(0, freeTotalLimit);
-  }
-
-  /// Get rate limit status
-  Future<CoachRateLimitStatus> getRateLimitStatus() async {
-    if (SubscriptionService.instance.isPremium) {
-      return CoachRateLimitStatus.premium();
-    }
-
-    final usage = await getTotalUsage();
-    return CoachRateLimitStatus.free(
-      messagesUsed: usage,
-      messagesLimit: freeTotalLimit,
-    );
-  }
-
-  // ==========================================
   // PREFERENCES
   // ==========================================
 
   /// Update user preferences
+  ///
+  /// L'écriture relit le document en base et fusionne, au lieu de le
+  /// reconstruire : `preferences` porte aussi ce que l'onboarding y a écrit, et
+  /// un upsert qui repart des six listes l'effaçait à la première extraction.
   Future<void> updatePreferences(UserCoachPreferences preferences) async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
+
+      final existing = await _supabase
+          .from('user_coach_preferences')
+          .select('preferences')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
       await _supabase
           .from('user_coach_preferences')
           .upsert(
             {
               'user_id': user.id,
-              'preferences': {
-                'allergies': preferences.allergies,
-                'dietary_restrictions': preferences.dietaryRestrictions,
-                'food_preferences': preferences.foodPreferences,
-                'fitness_constraints': preferences.fitnessConstraints,
-                'preferred_workout_times': preferences.preferredWorkoutTimes,
-                'custom_notes': preferences.customNotes,
-              },
+              'preferences': UserCoachPreferences.mergePreferencesJson(
+                existing?['preferences'] as Map<String, dynamic>?,
+                preferences.toPreferencesJson(),
+              ),
               'last_extraction_at': DateTime.now().toIso8601String(),
               'updated_at': DateTime.now().toIso8601String(),
             },

@@ -151,6 +151,10 @@ class _CoachBodyState extends State<_CoachBody> {
               _type,
               customText: _type == CoachPersonalityType.custom ? _custom.text.trim() : null,
             );
+            // Le ton est écrit dans le profil, mais la conversation ouverte
+            // garde le prompt construit à son ouverture : sans ça, le nouveau
+            // ton n'arrivait qu'au prochain redémarrage de la session.
+            await CoachPersonalityService.instance.applyPersonalityToChat();
             await WeeklyBilanService.instance.setBilanDay(_day);
             await WeeklyBilanService.instance.setBilanHour(_hour);
             RyzeFeedback.confirm();

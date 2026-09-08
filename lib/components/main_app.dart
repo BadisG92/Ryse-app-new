@@ -7,6 +7,7 @@ import '../sport/sport_page.dart';
 import '../progress/progress_page.dart';
 import '../screens/coach_chat_screen.dart';
 import '../services/coach_chat_service.dart';
+import '../services/paywall_service.dart';
 import '../services/weekly_bilan_service.dart';
 import '../design/design.dart';
 import '../services/ryze_dates.dart';
@@ -137,6 +138,15 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   }
 
   void _onCoachTap() async {
+    // La conversation est une fonctionnalité payante comme les autres : elle
+    // s'ouvrait sans rien demander et comptait dix messages « gratuits » sur
+    // l'appareil, c'est-à-dire remis à zéro par une réinstallation.
+    final canUse = await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.coachChat,
+    );
+    if (!canUse || !mounted) return;
+
     // Get or create the single conversation
     await CoachChatService.instance.initialize();
     final conversation = await CoachChatService.instance.getOrCreateConversation();

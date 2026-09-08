@@ -8415,15 +8415,22 @@ class AppTranslations {
       'en': 'Start',
       'de': 'Starten',
     },
-    'coach_limit_title': {
-      'fr': 'Pause dans la conversation',
-      'en': 'Conversation paused',
-      'de': 'Unterhaltung pausiert',
+    // Les erreurs du chat s'affichent dans la bulle, à la place de la réponse
+    // de Ryze : elles se lisent donc dans la langue de l'utilisateur.
+    'coach_error_start': {
+      'fr': "La conversation n'a pas pu démarrer. Réessaie dans un instant.",
+      'en': "The conversation couldn't start. Try again in a moment.",
+      'de': 'Die Unterhaltung konnte nicht starten. Versuch es gleich noch einmal.',
     },
-    'coach_limit_body': {
-      'fr': "Ryze a atteint sa limite d'échanges pour aujourd'hui. Elle se remet à zéro demain.",
-      'en': 'Ryze has reached its message limit for today. It resets tomorrow.',
-      'de': 'Ryze hat sein Nachrichtenlimit für heute erreicht. Es wird morgen zurückgesetzt.',
+    'coach_error_send': {
+      'fr': "Ton message n'est pas parti. Vérifie ta connexion et réessaie.",
+      'en': "Your message didn't go through. Check your connection and try again.",
+      'de': 'Deine Nachricht wurde nicht gesendet. Prüf deine Verbindung und versuch es erneut.',
+    },
+    'coach_error_generic': {
+      'fr': 'Une erreur est survenue. Réessaie dans quelques instants.',
+      'en': 'Something went wrong. Try again in a few moments.',
+      'de': 'Etwas ist schiefgelaufen. Versuch es in ein paar Momenten erneut.',
     },
     'coach_ryze': {
       'fr': 'Coach Ryze',
@@ -8482,29 +8489,6 @@ class AppTranslations {
       'fr': 'En train d\'écrire...',
       'en': 'Typing...',
       'de': 'Schreibt...',
-    },
-    'coach_chat_messages': {
-      'fr': 'messages',
-      'en': 'messages',
-      'de': 'Nachrichten',
-    },
-    'coach_chat_remaining': {
-      'fr': 'restants',
-      'en': 'remaining',
-      'de': 'übrig',
-    },
-    'coach_chat_limit_reached': {
-      'fr': 'Limite atteinte',
-      'en': 'Limit reached',
-      'de': 'Limit erreicht',
-    },
-    'coach_chat_limit_reached_message': {
-      'fr':
-          'Tu as utilisé tes 10 messages gratuits. Passe à Premium pour des conversations illimitées avec Coach Ryze !',
-      'en':
-          'You\'ve used your 10 free messages. Upgrade to Premium for unlimited conversations with Coach Ryze!',
-      'de':
-          'Du hast deine 10 kostenlosen Nachrichten verwendet. Upgrade auf Premium für unbegrenzte Gespräche mit Coach Ryze!',
     },
     'coach_chat_upgrade_to_premium': {
       'fr': 'Passer à Premium',

@@ -3,13 +3,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import '../config/gemini_config.dart';
 import '../models/weekly_planner_models.dart';
-import '../models/sport_models.dart';
 import 'weekly_planner_service.dart';
 import 'planned_cardio_service.dart';
-import 'gemini_analysis_service_v2.dart';
 import 'ai_workout_generation_service.dart';
 import 'food_entries_service.dart';
 import 'localization_service.dart';
@@ -269,8 +266,24 @@ class PlannerActionResult {
 
 /// Service d'IA pour le planificateur hebdomadaire
 class PlannerAIService {
+  /// La part de la journée qui revient à chaque repas.
+  ///
+  /// Une seule source : le tableau de macros injecté dans le prompt et la
+  /// phrase qui le précède s'en servent tous les deux. Ils annonçaient des
+  /// chiffres différents dans la même requête, juste au-dessus de la consigne
+  /// « n'invente pas tes propres valeurs ».
+  static const Map<String, double> mealSplit = {
+    'breakfast': 0.25,
+    'lunch': 0.35,
+    'dinner': 0.30,
+    'snack': 0.10,
+  };
+
+  static String _mealSplitPercent(String meal) =>
+      (mealSplit[meal]! * 100).round().toString();
+
   // =====================================================
-  // FREE TIER LIMITS - 5 planifications IA à vie (sport + repas combinés)
+  // ACCÈS : premium, ou mode démo de l'onboarding
   // =====================================================
 
   static bool _demoMode = false;
@@ -319,19 +332,7 @@ class PlannerAIService {
   /// Vérifier si l'utilisateur est premium
   static bool get isPremium => UnifiedSubscriptionService().isPremium;
 
-  // =====================================================
-  // SESSION TRACKING - Pour éviter de compter plusieurs fois par session
-  // =====================================================
 
-  /// Reset quand on ouvre un nouveau chat ou qu'on clear l'historique
-  static bool _sessionAlreadyCounted = false;
-
-
-  /// Reset le flag de session (appelé quand on ouvre un nouveau chat)
-  static void resetSessionCounter() {
-    _sessionAlreadyCounted = false;
-    debugPrint('📊 AI Planner: Session counter reset');
-  }
 
   // =====================================================
   // CONVERSATION CONTEXT
@@ -359,7 +360,6 @@ class PlannerAIService {
     _conversationHistory.clear();
     _pendingAction = null;
     _pendingFollowUpActions = null;
-    _sessionAlreadyCounted = false; // Reset le compteur de session
     debugPrint('🗑️ Conversation history cleared');
   }
 
@@ -381,283 +381,26 @@ class PlannerAIService {
     return buffer.toString();
   }
 
-  /// Analyser l'intention de l'utilisateur
-  /// [mode] peut être 'meals' ou 'workouts' pour spécialiser l'IA
-  static Future<IntentAnalysis> analyzeIntent(
-    String userMessage, {
-    String? conversationId,
-    String? mode, // 'meals' ou 'workouts'
-  }) async {
-    final langCode = LocalizationService.instance.currentLanguageCode;
 
-    try {
-      if (!GeminiConfig.isConfigured) {
-        return IntentAnalysis(
-          intent: PlannerIntent.unknown,
-          extractedInfo: {},
-          followUpQuestion: _getErrorMessage(langCode, 'api_error'),
-        );
-      }
 
-      // Construire le prompt d'analyse d'intention (async pour récupérer le contexte)
-      // Utiliser le prompt spécialisé selon le mode
-      final prompt = mode == 'meals'
-          ? await _buildMealsIntentPrompt(userMessage, langCode)
-          : mode == 'workouts'
-              ? await _buildWorkoutsIntentPrompt(userMessage, langCode)
-              : await _buildIntentPrompt(userMessage, langCode);
-
-      // Appeler Gemini
-      debugPrint('🤖 PlannerAI: Sending request to Gemini (mode: $mode)');
-      debugPrint('📝 User message: $userMessage');
-
-      final response = await _callGeminiAPI(prompt);
-
-      if (response == null) {
-        debugPrint('❌ PlannerAI: Gemini API returned null after all retries');
-        // Retourner un message d'erreur clair pour l'utilisateur
-        final errorMsg = langCode == 'fr'
-            ? "Désolé, je n'ai pas pu traiter ta demande. Le service IA est temporairement indisponible. Réessaie dans quelques secondes ! 🔄"
-            : langCode == 'de'
-                ? "Entschuldigung, ich konnte deine Anfrage nicht verarbeiten. Der KI-Service ist vorübergehend nicht verfügbar. Versuche es in ein paar Sekunden erneut! 🔄"
-                : "Sorry, I couldn't process your request. The AI service is temporarily unavailable. Try again in a few seconds! 🔄";
-        return IntentAnalysis(
-          intent: PlannerIntent.unknown,
-          extractedInfo: {},
-          followUpQuestion: errorMsg,
-        );
-      }
-
-      debugPrint('✅ PlannerAI: Got response from Gemini');
-      debugPrint('📊 Response keys: ${response.keys.toList()}');
-
-      // Parser la réponse (inclut maintenant response_message)
-      return _parseIntentResponse(response, langCode);
-    } catch (e) {
-      debugPrint('❌ PlannerAIService.analyzeIntent error: $e');
-      return IntentAnalysis(
-        intent: PlannerIntent.unknown,
-        extractedInfo: {},
-        followUpQuestion: _getErrorMessage(langCode, 'api_error'),
-      );
-    }
-  }
-
-  /// Traiter une demande complète de planification
-  /// [mode] peut être 'meals' ou 'workouts' pour spécialiser l'IA
-  static Future<PlannerActionResult> processRequest(
-    String userMessage, {
-    Map<String, dynamic>? additionalContext,
-    String? mode, // 'meals' ou 'workouts'
-  }) async {
-    final langCode = LocalizationService.instance.currentLanguageCode;
-
-    try {
-      // Vérifier si l'utilisateur peut utiliser l'IA
-      final canUse = await canUseAI();
-      if (!canUse) {
-        return PlannerActionResult.paywall(
-          _getPaywallMessage(langCode),
-        );
-      }
-
-      // Analyser l'intention avec le mode spécialisé
-      final intent = await analyzeIntent(userMessage, mode: mode);
-
-      if (!intent.isComplete) {
-        // Besoin de plus d'infos - ne pas compter comme utilisation
-        return PlannerActionResult(
-          success: true,
-          message: intent.followUpQuestion ?? _getFollowUpQuestion(langCode),
-        );
-      }
-
-      // Vérifier que l'intent correspond au mode
-      if (mode != null) {
-        if (mode == 'meals' && intent.intent != PlannerIntent.meal) {
-          return PlannerActionResult(
-            success: true,
-            message: _getModeErrorMessage(langCode, 'meals'),
-          );
-        }
-        // Workout mode accepte: workout, cardio, useTemplate, moveWorkout, deleteWorkout, modifyWorkout
-        final workoutIntents = [
-          PlannerIntent.workout,
-          PlannerIntent.cardio,
-          PlannerIntent.useTemplate,
-          PlannerIntent.moveWorkout,
-          PlannerIntent.deleteWorkout,
-          PlannerIntent.modifyWorkout,
-        ];
-        if (mode == 'workouts' && !workoutIntents.contains(intent.intent)) {
-          return PlannerActionResult(
-            success: true,
-            message: _getModeErrorMessage(langCode, 'workouts'),
-          );
-        }
-      }
-
-      // Exécuter l'action appropriée
-      PlannerActionResult result;
-      switch (intent.intent) {
-        case PlannerIntent.workout:
-          result = await _handleWorkoutRequest(intent.extractedInfo, langCode);
-          break;
-        case PlannerIntent.cardio:
-          result = await _handleCardioRequest(intent.extractedInfo, langCode);
-          break;
-        case PlannerIntent.meal:
-          result = await _handleMealRequest(intent.extractedInfo, langCode);
-          break;
-        case PlannerIntent.useTemplate:
-          result = await _handleUseTemplateRequest(intent.extractedInfo, langCode);
-          break;
-        case PlannerIntent.moveWorkout:
-          result = await _handleMoveWorkoutRequest(intent.extractedInfo, langCode);
-          break;
-        case PlannerIntent.deleteWorkout:
-          result = await _handleDeleteWorkoutRequest(intent.extractedInfo, langCode);
-          break;
-        case PlannerIntent.modifyWorkout:
-          // Pour modify, on redirige vers workout avec les infos de modification
-          result = await _handleModifyWorkoutRequest(intent.extractedInfo, langCode);
-          break;
-        default:
-          return PlannerActionResult.error(
-            _getErrorMessage(langCode, 'unknown_intent'),
-          );
-      }
-
-      // NOTE: Ne PAS incrémenter ici (move, delete ne comptent pas comme utilisation)
-      // L'incrément se fait UNIQUEMENT dans confirmWorkouts/confirmSessions/confirmMeals
-      // quand l'utilisateur VALIDE une CRÉATION
-
-      return result;
-    } catch (e) {
-      debugPrint('❌ PlannerAIService.processRequest error: $e');
-      return PlannerActionResult.error(
-        _getErrorMessage(langCode, 'api_error'),
-      );
-    }
-  }
-
-  /// Message d'erreur quand l'utilisateur demande quelque chose hors du mode
-  static String _getModeErrorMessage(String langCode, String mode) {
-    if (mode == 'meals') {
-      switch (langCode) {
-        case 'fr':
-          return "Je suis ton coach nutrition ici ! 🍽️\n\nDis-moi plutôt quel repas tu veux planifier : petit-déjeuner, déjeuner, dîner ou collation ?";
-        case 'de':
-          return "Ich bin hier dein Ernährungscoach! 🍽️\n\nSag mir lieber, welche Mahlzeit du planen möchtest: Frühstück, Mittagessen, Abendessen oder Snack?";
-        default:
-          return "I'm your nutrition coach here! 🍽️\n\nTell me which meal you want to plan: breakfast, lunch, dinner or snack?";
-      }
-    } else {
-      switch (langCode) {
-        case 'fr':
-          return "Je suis ton coach fitness ici ! 💪\n\nDis-moi plutôt quel type de séance tu veux : musculation, cardio, HIIT ?";
-        case 'de':
-          return "Ich bin hier dein Fitnesscoach! 💪\n\nSag mir lieber, welche Art von Training du möchtest: Krafttraining, Cardio, HIIT?";
-        default:
-          return "I'm your fitness coach here! 💪\n\nTell me what type of session you want: weight training, cardio, HIIT?";
-      }
-    }
-  }
 
   /// Message pour le paywall
+  /// Le message quand la porte est fermée.
+  ///
+  /// Il parlait de « 3 planifications gratuites cette semaine », un compte qui
+  /// n'existe plus depuis le paywall dur : `canUseAI` regarde l'abonnement, un
+  /// point c'est tout.
   static String _getPaywallMessage(String langCode) {
     switch (langCode) {
       case 'fr':
-        return "Tu as utilisé tes 3 planifications gratuites cette semaine ! 🎯\n\nPasse à Premium pour des planifications illimitées avec Ryze.";
+        return "La planification avec Ryze fait partie de Premium. 🎯\n\nPasse à Premium pour planifier ta semaine.";
       case 'de':
-        return "Du hast deine 3 kostenlosen Planungen diese Woche aufgebraucht! 🎯\n\nWerde Premium für unbegrenzte Planungen mit Ryze.";
+        return "Planen mit Ryze gehört zu Premium. 🎯\n\nWerde Premium, um deine Woche zu planen.";
       default:
-        return "You've used your 3 free plannings this week! 🎯\n\nUpgrade to Premium for unlimited planning with Ryze.";
+        return "Planning with Ryze is part of Premium. 🎯\n\nUpgrade to Premium to plan your week.";
     }
   }
 
-  /// Gérer une demande de workout (nouveau format intelligent avec preview)
-  static Future<PlannerActionResult> _handleWorkoutRequest(
-    Map<String, dynamic> info,
-    String langCode,
-  ) async {
-    try {
-      // Vérifier si on doit d'abord supprimer toutes les séances de la semaine
-      final clearWeekFirst = info['clear_week_first'] as bool? ?? false;
-      if (clearWeekFirst) {
-        debugPrint('🗑️ Clearing all workouts for this week first...');
-        await WeeklyPlannerService.deleteAllWorkoutsThisWeek();
-      }
-
-      // Nouveau format: liste de workouts personnalisés par Gemini
-      final workouts = info['workouts'] as List?;
-      final responseMessage = info['response_message'] as String?;
-
-      if (workouts == null || workouts.isEmpty) {
-        // Fallback vers l'ancien format si pas de workouts détaillés
-        return await _handleLegacyWorkoutRequest(info, langCode);
-      }
-
-      final pendingWorkouts = <PendingWorkout>[];
-
-      for (final workoutData in workouts) {
-        final dayStr = workoutData['day'] as String? ?? '';
-        final workoutType = workoutData['workout_type'] as String? ?? 'Full Body';
-        final workoutPrompt = workoutData['workout_prompt'] as String? ?? workoutType;
-        final durationMinutes = workoutData['duration_minutes'] as int? ?? 45;
-
-        // Parser le jour
-        final day = _parseSingleDay(dayStr);
-        if (day == null) {
-          debugPrint('⚠️ Invalid day: $dayStr');
-          continue;
-        }
-
-        // Vérifier si un workout existe déjà ce jour
-        final hasWorkout = await WeeklyPlannerService.hasWorkoutForDate(day);
-        if (hasWorkout) {
-          debugPrint('⚠️ Workout already exists for ${day.toIso8601String()}');
-          continue;
-        }
-
-        // Générer le workout avec l'IA (preview, sans sauvegarder)
-        final result = await AIWorkoutGenerationService.generateWorkout(
-          userRequest: workoutPrompt,
-          durationMinutes: durationMinutes,
-        );
-
-        if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
-          pendingWorkouts.add(PendingWorkout(
-            plannedDate: day,
-            workoutName: '$workoutType - ${durationMinutes}min',
-            workoutType: workoutType,
-            durationMinutes: durationMinutes,
-            workoutPrompt: workoutPrompt,
-            exercises: result.exercises,
-          ));
-        }
-      }
-
-      if (pendingWorkouts.isEmpty) {
-        return PlannerActionResult.error(
-          _getMessage(langCode, 'workout_generation_failed'),
-        );
-      }
-
-      // Retourner un preview avec les workouts générés (non sauvegardés)
-      final previewMessage = responseMessage ?? _getPreviewMessage(langCode, pendingWorkouts);
-
-      return PlannerActionResult.preview(
-        message: previewMessage,
-        workouts: pendingWorkouts,
-      );
-    } catch (e) {
-      debugPrint('❌ _handleWorkoutRequest error: $e');
-      return PlannerActionResult.error(
-        _getErrorMessage(langCode, 'workout_error'),
-      );
-    }
-  }
 
   /// Confirmer et sauvegarder les workouts après validation de l'utilisateur
   static Future<PlannerActionResult> confirmWorkouts(List<PendingWorkout> workouts) async {
@@ -704,34 +447,6 @@ class PlannerAIService {
     }
   }
 
-  /// Message de preview
-  static String _getPreviewMessage(String langCode, List<PendingWorkout> workouts) {
-    final header = {
-      'fr': 'Voici ton programme ! Vérifie et valide 👇\n\n',
-      'en': 'Here\'s your program! Review and confirm 👇\n\n',
-      'de': 'Hier ist dein Programm! Überprüfe und bestätige 👇\n\n',
-    };
-
-    final exercisesLabel = {
-      'fr': 'exercices',
-      'en': 'exercises',
-      'de': 'Übungen',
-    };
-
-    final workoutsList = workouts.map((w) {
-      final dayName = _formatDayName(w.plannedDate, langCode);
-      final exerciseCount = w.exercises?.length ?? 0;
-      return '• $dayName: ${w.workoutType} (${w.durationMinutes}min, $exerciseCount ${exercisesLabel[langCode] ?? 'exercises'})';
-    }).join('\n');
-
-    final footer = {
-      'fr': '\n\n💡 Les poids sont adaptés à ton historique. Clique sur une séance pour voir les exercices.',
-      'en': '\n\n💡 Weights are adapted to your history. Tap a session to see exercises.',
-      'de': '\n\n💡 Die Gewichte sind an deinen Verlauf angepasst. Tippe auf eine Einheit, um die Übungen zu sehen.',
-    };
-
-    return '${header[langCode] ?? header['en']}$workoutsList${footer[langCode] ?? footer['en']}';
-  }
 
   /// Message de preview pour les sessions unifiées (workouts + cardios)
   static String _getSessionsPreviewMessage(String langCode, List<PendingSession> sessions) {
@@ -781,63 +496,6 @@ class PlannerAIService {
     return '${header[langCode] ?? header['en']}$workoutsList';
   }
 
-  /// Fallback vers l'ancien format de workout
-  static Future<PlannerActionResult> _handleLegacyWorkoutRequest(
-    Map<String, dynamic> info,
-    String langCode,
-  ) async {
-    final sessionCount = info['session_count'] as int? ?? 3;
-    final splitTypeStr = info['split_type'] as String? ?? 'full_body';
-    final durationMinutes = info['duration_minutes'] as int? ?? 45;
-
-    final splitType = WorkoutSplitExtension.fromString(splitTypeStr);
-    final targetDays = _getAvailableDays(sessionCount);
-
-    if (targetDays.isEmpty) {
-      return PlannerActionResult.error(
-        _getMessage(langCode, 'no_available_days'),
-      );
-    }
-
-    final workoutTypes = splitType.getWorkoutTypes(targetDays.length);
-    final createdWorkouts = <String>[];
-
-    for (int i = 0; i < targetDays.length; i++) {
-      final day = targetDays[i];
-      final workoutType = workoutTypes[i];
-
-      final hasWorkout = await WeeklyPlannerService.hasWorkoutForDate(day);
-      if (hasWorkout) continue;
-
-      final prompt = _buildWorkoutPrompt(workoutType, durationMinutes);
-      final result = await AIWorkoutGenerationService.generateWorkout(
-        userRequest: prompt,
-        durationMinutes: durationMinutes,
-      );
-
-      if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
-        final workoutName = _getWorkoutTypeName(workoutType, langCode);
-        await WeeklyPlannerService.addPlannedWorkout(
-          plannedDate: day,
-          workoutName: '$workoutName - ${durationMinutes}min',
-          exercises: result.exercises!,
-          durationMinutes: durationMinutes,
-          userPrompt: prompt,
-          isAiGenerated: true,
-        );
-        createdWorkouts.add('${_formatDayName(day, langCode)}: $workoutName');
-      }
-    }
-
-    if (createdWorkouts.isEmpty) {
-      return PlannerActionResult.error(_getMessage(langCode, 'workout_generation_failed'));
-    }
-
-    return PlannerActionResult.success(
-      _getDefaultWorkoutMessage(langCode, createdWorkouts),
-      items: createdWorkouts,
-    );
-  }
 
   /// Parser un jour unique
   static DateTime? _parseSingleDay(String dayStr) {
@@ -884,291 +542,12 @@ class PlannerAIService {
     }
   }
 
-  /// Construire le prompt pour générer un workout selon le type
-  static String _buildWorkoutPrompt(String workoutType, int durationMinutes) {
-    final prompts = {
-      'Full Body': 'Full body workout targeting all major muscle groups, $durationMinutes minutes',
-      'Push': 'Push workout focusing on chest, shoulders, and triceps, $durationMinutes minutes',
-      'Pull': 'Pull workout focusing on back and biceps, $durationMinutes minutes',
-      'Legs': 'Leg workout focusing on quads, hamstrings, glutes and calves, $durationMinutes minutes',
-      'Upper Body': 'Upper body workout for chest, back, shoulders and arms, $durationMinutes minutes',
-      'Lower Body': 'Lower body workout for legs and glutes, $durationMinutes minutes',
-    };
 
-    return prompts[workoutType] ?? prompts['Full Body']!;
-  }
 
-  /// Obtenir le nom localisé d'un type de workout
-  static String _getWorkoutTypeName(String workoutType, String langCode) {
-    final names = {
-      'Full Body': {'fr': 'Full Body', 'en': 'Full Body', 'de': 'Ganzkörper'},
-      'Push': {'fr': 'Push (Poussée)', 'en': 'Push', 'de': 'Push (Drücken)'},
-      'Pull': {'fr': 'Pull (Tirage)', 'en': 'Pull', 'de': 'Pull (Ziehen)'},
-      'Legs': {'fr': 'Legs (Jambes)', 'en': 'Legs', 'de': 'Beine'},
-      'Upper Body': {'fr': 'Haut du corps', 'en': 'Upper Body', 'de': 'Oberkörper'},
-      'Lower Body': {'fr': 'Bas du corps', 'en': 'Lower Body', 'de': 'Unterkörper'},
-    };
 
-    return names[workoutType]?[langCode] ?? names[workoutType]?['en'] ?? workoutType;
-  }
 
-  /// Message par défaut pour la confirmation
-  static String _getDefaultWorkoutMessage(String langCode, List<String> createdWorkouts) {
-    final header = {
-      'fr': 'Parfait ! J\'ai créé ton programme personnalisé 💪\n\n',
-      'en': 'Perfect! I created your personalized program 💪\n\n',
-      'de': 'Perfekt! Ich habe dein personalisiertes Programm erstellt 💪\n\n',
-    };
 
-    final workoutsList = createdWorkouts.map((w) => '• $w').join('\n');
-    return '${header[langCode] ?? header['en']}$workoutsList';
-  }
 
-  /// Gérer une demande de cardio
-  static Future<PlannerActionResult> _handleCardioRequest(
-    Map<String, dynamic> info,
-    String langCode,
-  ) async {
-    try {
-      final activityName = info['activity_name'] as String? ?? 'Course';
-      final activityKey = _getActivityKey(activityName);
-      final targetMinutes = info['target_minutes'] as int?;
-      final targetKm = info['target_km'] as double?;
-      final days = info['days'] as List<DateTime>?;
-
-      final targetDays = days ?? [DateTime.now()];
-      final createdItems = <String>[];
-
-      for (final day in targetDays) {
-        // Vérifier si la date est valide
-        if (!isDateEditable(day) || !isInCurrentWeek(day)) {
-          continue;
-        }
-
-        final cardioData = PlannedCardioData(
-          activityName: activityName,
-          activityKey: activityKey,
-          targetMinutes: targetMinutes,
-          targetKm: targetKm,
-        );
-
-        final activity = await WeeklyPlannerService.addPlannedActivity(
-          plannedDate: day,
-          activityType: PlannedActivityType.cardio,
-          activityData: cardioData.toJson(),
-          isAiGenerated: true,
-        );
-
-        if (activity != null) {
-          createdItems.add(_formatDayName(day, langCode));
-        }
-      }
-
-      if (createdItems.isEmpty) {
-        return PlannerActionResult.error(
-          _getMessage(langCode, 'cardio_creation_failed'),
-        );
-      }
-
-      return PlannerActionResult.success(
-        _getMessage(langCode, 'cardio_created')
-            .replaceAll('{activity}', activityName)
-            .replaceAll('{days}', createdItems.join(', ')),
-        items: createdItems,
-      );
-    } catch (e) {
-      debugPrint('❌ _handleCardioRequest error: $e');
-      return PlannerActionResult.error(
-        _getErrorMessage(langCode, 'cardio_error'),
-      );
-    }
-  }
-
-  /// Gérer une demande de repas - Nouveau flow avec preview
-  static Future<PlannerActionResult> _handleMealRequest(
-    Map<String, dynamic> info,
-    String langCode,
-  ) async {
-    try {
-      final meals = info['meals'] as List?;
-      final responseMessage = info['response_message'] as String?;
-
-      // Nouveau format: tableau de repas générés par l'IA
-      if (meals != null && meals.isNotEmpty) {
-        final pendingMeals = <PendingMeal>[];
-        final weekStart = planningWindowStart;
-
-        for (final mealData in meals) {
-          final dayStr = mealData['day'] as String? ?? 'monday';
-          final mealTypeStr = mealData['meal_type'] as String? ?? 'breakfast';
-          final dishName = mealData['dish_name'] as String? ?? 'Repas';
-          final dishDescription = mealData['dish_description'] as String? ?? '';
-          final proteins = (mealData['proteins'] as num?)?.toDouble() ?? 0.0;
-          final carbs = (mealData['carbs'] as num?)?.toDouble() ?? 0.0;
-          final fats = (mealData['fats'] as num?)?.toDouble() ?? 0.0;
-          final quantityG = (mealData['quantity_g'] as num?)?.toDouble() ?? 200.0;
-          final reasoning = mealData['reasoning'] as String?;
-          // IMPORTANT: Calculer les calories avec la formule au lieu de prendre la valeur IA
-          // Formule standard: protéines × 4 + glucides × 4 + lipides × 9
-          final calories = ((proteins * 4) + (carbs * 4) + (fats * 9)).round();
-
-          // Convertir le jour en DateTime
-          final plannedDate = dateForDayName(dayStr) ?? weekStart.add(Duration(days: _dayStringToIndex(dayStr)));
-
-          // Vérifier que la date n'est pas passée
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
-          if (plannedDate.isBefore(today)) continue;
-
-          // Convertir le type de repas
-          final mealType = _getMealActivityType(mealTypeStr);
-
-          pendingMeals.add(PendingMeal(
-            plannedDate: plannedDate,
-            mealType: mealType,
-            dishName: dishName,
-            dishDescription: dishDescription,
-            calories: calories,
-            proteins: proteins,
-            carbs: carbs,
-            fats: fats,
-            estimatedQuantityG: quantityG,
-            aiReasoning: reasoning,
-          ));
-        }
-
-        if (pendingMeals.isEmpty) {
-          return PlannerActionResult.error(
-            _getMessage(langCode, 'no_valid_meals'),
-          );
-        }
-
-        // Retourner le preview pour confirmation
-        return PlannerActionResult.mealPreview(
-          message: responseMessage ?? _buildMealPreviewMessage(pendingMeals, langCode),
-          meals: pendingMeals,
-        );
-      }
-
-      // Ancien format: description simple (backward compatibility)
-      final foodDescription = info['food_description'] as String?;
-      final mealType = info['meal_type'] as String? ?? 'breakfast';
-      final days = info['days'] as List<DateTime>?;
-
-      if (foodDescription == null || foodDescription.isEmpty) {
-        return PlannerActionResult.error(
-          _getMessage(langCode, 'meal_description_required'),
-        );
-      }
-
-      final targetDays = days ?? [DateTime.now()];
-      final pendingMeals = <PendingMeal>[];
-      final activityType = _getMealActivityType(mealType);
-
-      // Analyser le repas avec Gemini pour estimer les macros
-      final analysisResult = await GeminiAnalysisServiceV2.analyzeTextDescription(
-        foodDescription,
-      );
-
-      int totalCalories = 300; // Default
-      double totalProteins = 20.0;
-      double totalCarbs = 30.0;
-      double totalFats = 15.0;
-
-      if (analysisResult.success && analysisResult.detectedFoods.isNotEmpty) {
-        totalCalories = 0;
-        totalProteins = 0;
-        totalCarbs = 0;
-        totalFats = 0;
-
-        for (final food in analysisResult.detectedFoods) {
-          totalCalories += food.calories;
-          totalProteins += food.nutrition.proteins;
-          totalCarbs += food.nutrition.carbs;
-          totalFats += food.nutrition.fats;
-        }
-      }
-
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-
-      for (final day in targetDays) {
-        if (!isInCurrentWeek(day)) continue;
-        final normalizedDay = DateTime(day.year, day.month, day.day);
-        if (normalizedDay.isBefore(today)) continue;
-
-        pendingMeals.add(PendingMeal(
-          plannedDate: normalizedDay,
-          mealType: activityType,
-          dishName: foodDescription,
-          dishDescription: '',
-          calories: totalCalories,
-          proteins: totalProteins,
-          carbs: totalCarbs,
-          fats: totalFats,
-          estimatedQuantityG: 200.0,
-        ));
-      }
-
-      if (pendingMeals.isEmpty) {
-        return PlannerActionResult.error(
-          _getMessage(langCode, 'no_valid_meals'),
-        );
-      }
-
-      return PlannerActionResult.mealPreview(
-        message: responseMessage ?? _buildMealPreviewMessage(pendingMeals, langCode),
-        meals: pendingMeals,
-      );
-    } catch (e) {
-      debugPrint('❌ _handleMealRequest error: $e');
-      return PlannerActionResult.error(
-        _getErrorMessage(langCode, 'meal_error'),
-      );
-    }
-  }
-
-  /// Convertir un jour string en index (0 = lundi)
-  static int _dayStringToIndex(String day) {
-    switch (day.toLowerCase()) {
-      case 'monday': return 0;
-      case 'tuesday': return 1;
-      case 'wednesday': return 2;
-      case 'thursday': return 3;
-      case 'friday': return 4;
-      case 'saturday': return 5;
-      case 'sunday': return 6;
-      default: return 0;
-    }
-  }
-
-  /// Construire un message de preview pour les repas
-  static String _buildMealPreviewMessage(List<PendingMeal> meals, String langCode) {
-    final buffer = StringBuffer();
-
-    if (langCode == 'fr') {
-      buffer.writeln('Voici les repas que je te propose :');
-    } else {
-      buffer.writeln('Here are the meals I suggest:');
-    }
-
-    // Grouper par jour
-    final mealsByDay = <String, List<PendingMeal>>{};
-    for (final meal in meals) {
-      final dayName = meal.dayName;
-      mealsByDay.putIfAbsent(dayName, () => []).add(meal);
-    }
-
-    for (final entry in mealsByDay.entries) {
-      buffer.writeln('\n📅 ${entry.key}:');
-      for (final meal in entry.value) {
-        buffer.writeln('  • ${meal.mealTypeName}: ${meal.dishName}');
-        buffer.writeln('    ${meal.calories} kcal - ${meal.proteins.toStringAsFixed(0)}g P / ${meal.carbs.toStringAsFixed(0)}g C / ${meal.fats.toStringAsFixed(0)}g L');
-      }
-    }
-
-    return buffer.toString();
-  }
 
   /// Confirmer et sauvegarder les repas dans le planner
   static Future<PlannerActionResult> confirmMeals(List<PendingMeal> meals) async {
@@ -1221,434 +600,15 @@ class PlannerAIService {
     }
   }
 
-  /// Gérer une demande d'utilisation de template sauvegardé
-  static Future<PlannerActionResult> _handleUseTemplateRequest(
-    Map<String, dynamic> info,
-    String langCode,
-  ) async {
-    try {
-      final templateId = info['template_id'] as String?;
-      // templateName is used for display if we can't find by ID
-      final targetDayStr = info['target_day'] as String?;
 
-      if (templateId == null || templateId.isEmpty) {
-        return PlannerActionResult(
-          success: true,
-          message: _getTemplateErrorMessage(langCode, 'template_not_found'),
-        );
-      }
 
-      if (targetDayStr == null || targetDayStr.isEmpty) {
-        return PlannerActionResult(
-          success: true,
-          message: _getTemplateErrorMessage(langCode, 'day_required'),
-        );
-      }
 
-      final targetDay = _parseSingleDay(targetDayStr);
-      if (targetDay == null) {
-        return PlannerActionResult(
-          success: true,
-          message: _getTemplateErrorMessage(langCode, 'invalid_day'),
-        );
-      }
 
-      // Vérifier si un workout existe déjà ce jour
-      final hasWorkout = await WeeklyPlannerService.hasWorkoutForDate(targetDay);
-      if (hasWorkout) {
-        return PlannerActionResult(
-          success: true,
-          message: _getTemplateErrorMessage(langCode, 'day_occupied'),
-        );
-      }
 
-      // Récupérer le template depuis la BDD
-      final client = Supabase.instance.client;
 
-      // D'abord récupérer le template de base
-      final templateData = await client
-          .from('user_workout_templates')
-          .select('id, name, estimated_duration_minutes')
-          .eq('id', templateId)
-          .maybeSingle();
 
-      if (templateData == null) {
-        return PlannerActionResult(
-          success: true,
-          message: _getTemplateErrorMessage(langCode, 'template_not_found'),
-        );
-      }
 
-      // Ensuite récupérer les exercices du template séparément
-      final templateExercisesData = await client
-          .from('user_workout_template_exercises')
-          .select('order_index, suggested_sets, suggested_reps_min, suggested_reps_max, exercise_id, custom_exercise_id')
-          .eq('template_id', templateId)
-          .order('order_index', ascending: true);
 
-      final exercises = <WorkoutExercise>[];
-
-      for (final templateEx in (templateExercisesData as List)) {
-        final exerciseId = templateEx['exercise_id'] as String?;
-        final customExerciseId = templateEx['custom_exercise_id'] as String?;
-
-        Map<String, dynamic>? exerciseData;
-
-        // Récupérer les détails de l'exercice
-        if (exerciseId != null) {
-          final exData = await client
-              .from('exercises')
-              .select('id, name, muscle_group, equipment')
-              .eq('id', exerciseId)
-              .maybeSingle();
-          exerciseData = exData;
-        } else if (customExerciseId != null) {
-          final exData = await client
-              .from('custom_exercises')
-              .select('id, name, muscle_group, equipment')
-              .eq('id', customExerciseId)
-              .maybeSingle();
-          exerciseData = exData;
-        }
-
-        if (exerciseData == null) continue;
-
-        final suggestedSets = templateEx['suggested_sets'] as int? ?? 3;
-        final suggestedRepsMax = templateEx['suggested_reps_max'] as int? ?? 12;
-
-        // Créer l'exercice
-        final exercise = Exercise(
-          id: exerciseData['id'] ?? '',
-          name: exerciseData['name'] ?? '',
-          muscleGroup: exerciseData['muscle_group'] ?? '',
-          equipment: exerciseData['equipment'],
-        );
-
-        // Créer les sets par défaut
-        final sets = List<ExerciseSet>.generate(suggestedSets, (i) => ExerciseSet(
-          reps: suggestedRepsMax,
-          weight: 0.0, // Sera rempli par l'utilisateur ou avec l'historique
-        ));
-
-        exercises.add(WorkoutExercise(
-          exercise: exercise,
-          sets: sets,
-        ));
-      }
-
-      if (exercises.isEmpty) {
-        return PlannerActionResult(
-          success: true,
-          message: _getTemplateErrorMessage(langCode, 'template_empty'),
-        );
-      }
-
-      // Créer le workout planifié
-      final workoutName = templateData['name'] as String? ?? 'Custom Workout';
-      final duration = templateData['estimated_duration_minutes'] as int? ?? 45;
-
-      final workout = await WeeklyPlannerService.addPlannedWorkout(
-        plannedDate: targetDay,
-        workoutName: workoutName,
-        exercises: exercises,
-        durationMinutes: duration,
-        userPrompt: 'Template: $workoutName',
-        isAiGenerated: false,
-      );
-
-      if (workout == null) {
-        return PlannerActionResult.error(
-          _getMessage(langCode, 'workout_generation_failed'),
-        );
-      }
-
-      final dayName = _formatDayName(targetDay, langCode);
-      return PlannerActionResult.success(
-        _getTemplateSuccessMessage(langCode, workoutName, dayName),
-        items: [dayName],
-      );
-    } catch (e) {
-      debugPrint('❌ _handleUseTemplateRequest error: $e');
-      return PlannerActionResult.error(
-        _getErrorMessage(langCode, 'workout_error'),
-      );
-    }
-  }
-
-  /// Gérer une demande de déplacement de workout
-  static Future<PlannerActionResult> _handleMoveWorkoutRequest(
-    Map<String, dynamic> info,
-    String langCode,
-  ) async {
-    try {
-      final sourceDayStr = info['source_day'] as String?;
-      final targetDayStr = info['target_day'] as String?;
-      final responseMessage = info['response_message'] as String?;
-
-      if (sourceDayStr == null || targetDayStr == null) {
-        return PlannerActionResult(
-          success: true,
-          message: _getMoveErrorMessage(langCode, 'days_required'),
-        );
-      }
-
-      final sourceDay = _parseSingleDay(sourceDayStr);
-      final targetDay = _parseSingleDay(targetDayStr);
-
-      if (sourceDay == null || targetDay == null) {
-        return PlannerActionResult(
-          success: true,
-          message: _getMoveErrorMessage(langCode, 'invalid_day'),
-        );
-      }
-
-      // Trouver le workout à déplacer
-      final workout = await WeeklyPlannerService.findPlannedWorkoutForDate(sourceDay);
-      if (workout == null) {
-        return PlannerActionResult(
-          success: true,
-          message: _getMoveErrorMessage(langCode, 'no_workout_source'),
-        );
-      }
-
-      // Vérifier si le jour cible est libre
-      final hasWorkoutOnTarget = await WeeklyPlannerService.hasWorkoutForDate(targetDay);
-      if (hasWorkoutOnTarget) {
-        return PlannerActionResult(
-          success: true,
-          message: _getMoveErrorMessage(langCode, 'day_occupied'),
-        );
-      }
-
-      // Déplacer le workout
-      final success = await WeeklyPlannerService.movePlannedWorkout(workout.id, targetDay);
-      if (!success) {
-        return PlannerActionResult.error(
-          _getMoveErrorMessage(langCode, 'move_failed'),
-        );
-      }
-
-      final sourceDayName = _formatDayName(sourceDay, langCode);
-      final targetDayName = _formatDayName(targetDay, langCode);
-
-      return PlannerActionResult.success(
-        responseMessage ?? _getMoveSuccessMessage(langCode, workout.workoutName, sourceDayName, targetDayName),
-        items: [targetDayName],
-      );
-    } catch (e) {
-      debugPrint('❌ _handleMoveWorkoutRequest error: $e');
-      return PlannerActionResult.error(
-        _getErrorMessage(langCode, 'workout_error'),
-      );
-    }
-  }
-
-  /// Gérer une demande de suppression de workout
-  static Future<PlannerActionResult> _handleDeleteWorkoutRequest(
-    Map<String, dynamic> info,
-    String langCode,
-  ) async {
-    try {
-      final deleteDayStr = info['delete_day'] as String?;
-      final responseMessage = info['response_message'] as String?;
-
-      if (deleteDayStr == null) {
-        return PlannerActionResult(
-          success: true,
-          message: _getDeleteErrorMessage(langCode, 'day_required'),
-        );
-      }
-
-      final deleteDay = _parseSingleDay(deleteDayStr);
-      if (deleteDay == null) {
-        return PlannerActionResult(
-          success: true,
-          message: _getDeleteErrorMessage(langCode, 'invalid_day'),
-        );
-      }
-
-      // Trouver le workout à supprimer
-      final workout = await WeeklyPlannerService.findPlannedWorkoutForDate(deleteDay);
-      if (workout == null) {
-        return PlannerActionResult(
-          success: true,
-          message: _getDeleteErrorMessage(langCode, 'no_workout'),
-        );
-      }
-
-      // Supprimer le workout
-      final success = await WeeklyPlannerService.deletePlannedWorkout(workout.id);
-      if (!success) {
-        return PlannerActionResult.error(
-          _getDeleteErrorMessage(langCode, 'delete_failed'),
-        );
-      }
-
-      final dayName = _formatDayName(deleteDay, langCode);
-
-      return PlannerActionResult.success(
-        responseMessage ?? _getDeleteSuccessMessage(langCode, workout.workoutName, dayName),
-        items: [dayName],
-      );
-    } catch (e) {
-      debugPrint('❌ _handleDeleteWorkoutRequest error: $e');
-      return PlannerActionResult.error(
-        _getErrorMessage(langCode, 'workout_error'),
-      );
-    }
-  }
-
-  /// Gérer une demande de modification de workout
-  static Future<PlannerActionResult> _handleModifyWorkoutRequest(
-    Map<String, dynamic> info,
-    String langCode,
-  ) async {
-    try {
-      // Pour l'instant, on supprime l'ancien workout et on en crée un nouveau
-      // L'IA devrait avoir inclus 'delete_day' et 'workouts' dans l'info
-      final modifyDayStr = info['delete_day'] as String? ?? info['source_day'] as String?;
-
-      if (modifyDayStr != null) {
-        final modifyDay = _parseSingleDay(modifyDayStr);
-        if (modifyDay != null) {
-          // Supprimer l'ancien workout
-          final existingWorkout = await WeeklyPlannerService.findPlannedWorkoutForDate(modifyDay);
-          if (existingWorkout != null) {
-            await WeeklyPlannerService.deletePlannedWorkout(existingWorkout.id);
-          }
-        }
-      }
-
-      // Créer le nouveau workout via le handler standard
-      return await _handleWorkoutRequest(info, langCode);
-    } catch (e) {
-      debugPrint('❌ _handleModifyWorkoutRequest error: $e');
-      return PlannerActionResult.error(
-        _getErrorMessage(langCode, 'workout_error'),
-      );
-    }
-  }
-
-  /// Messages d'erreur pour les templates
-  static String _getTemplateErrorMessage(String langCode, String key) {
-    final messages = {
-      'template_not_found': {
-        'fr': 'Je n\'ai pas trouvé cette séance. Vérifie le nom exact.',
-        'en': 'I couldn\'t find that workout. Check the exact name.',
-        'de': 'Ich konnte dieses Training nicht finden. Überprüfe den genauen Namen.',
-      },
-      'day_required': {
-        'fr': 'Quel jour veux-tu planifier cette séance ?',
-        'en': 'Which day do you want to schedule this workout?',
-        'de': 'An welchem Tag möchtest du dieses Training planen?',
-      },
-      'invalid_day': {
-        'fr': 'Ce jour n\'est pas valide. Choisis un jour de cette semaine.',
-        'en': 'That day is not valid. Choose a day this week.',
-        'de': 'Dieser Tag ist nicht gültig. Wähle einen Tag dieser Woche.',
-      },
-      'day_occupied': {
-        'fr': 'Il y a déjà une séance ce jour-là. Veux-tu la remplacer ?',
-        'en': 'There\'s already a workout that day. Do you want to replace it?',
-        'de': 'An diesem Tag gibt es bereits ein Training. Möchtest du es ersetzen?',
-      },
-      'template_empty': {
-        'fr': 'Cette séance n\'a pas d\'exercices. Choisis-en une autre.',
-        'en': 'This workout has no exercises. Choose another one.',
-        'de': 'Dieses Training hat keine Übungen. Wähle ein anderes.',
-      },
-    };
-    return messages[key]?[langCode] ?? messages[key]?['en'] ?? key;
-  }
-
-  /// Message de succès pour les templates
-  static String _getTemplateSuccessMessage(String langCode, String workoutName, String dayName) {
-    final messages = {
-      'fr': '"$workoutName" planifié pour $dayName 💪',
-      'en': '"$workoutName" scheduled for $dayName 💪',
-      'de': '"$workoutName" für $dayName geplant 💪',
-    };
-    return messages[langCode] ?? messages['en']!;
-  }
-
-  /// Messages d'erreur pour le déplacement
-  static String _getMoveErrorMessage(String langCode, String key) {
-    final messages = {
-      'days_required': {
-        'fr': 'De quel jour à quel jour veux-tu déplacer la séance ?',
-        'en': 'From which day to which day do you want to move the workout?',
-        'de': 'Von welchem Tag zu welchem Tag möchtest du das Training verschieben?',
-      },
-      'invalid_day': {
-        'fr': 'Un des jours n\'est pas valide.',
-        'en': 'One of the days is not valid.',
-        'de': 'Einer der Tage ist nicht gültig.',
-      },
-      'no_workout_source': {
-        'fr': 'Il n\'y a pas de séance ce jour-là à déplacer.',
-        'en': 'There\'s no workout on that day to move.',
-        'de': 'An diesem Tag gibt es kein Training zum Verschieben.',
-      },
-      'day_occupied': {
-        'fr': 'Le jour de destination a déjà une séance. Supprime-la d\'abord.',
-        'en': 'The destination day already has a workout. Delete it first.',
-        'de': 'Der Zieltag hat bereits ein Training. Lösche es zuerst.',
-      },
-      'move_failed': {
-        'fr': 'Impossible de déplacer la séance. Réessaie.',
-        'en': 'Couldn\'t move the workout. Try again.',
-        'de': 'Das Training konnte nicht verschoben werden. Versuche es erneut.',
-      },
-    };
-    return messages[key]?[langCode] ?? messages[key]?['en'] ?? key;
-  }
-
-  /// Message de succès pour le déplacement
-  static String _getMoveSuccessMessage(String langCode, String workoutName, String from, String to) {
-    final messages = {
-      'fr': '"$workoutName" déplacé de $from à $to ✓',
-      'en': '"$workoutName" moved from $from to $to ✓',
-      'de': '"$workoutName" von $from nach $to verschoben ✓',
-    };
-    return messages[langCode] ?? messages['en']!;
-  }
-
-  /// Messages d'erreur pour la suppression
-  static String _getDeleteErrorMessage(String langCode, String key) {
-    final messages = {
-      'day_required': {
-        'fr': 'Quel jour veux-tu supprimer la séance ?',
-        'en': 'Which day do you want to delete the workout from?',
-        'de': 'Von welchem Tag möchtest du das Training löschen?',
-      },
-      'invalid_day': {
-        'fr': 'Ce jour n\'est pas valide.',
-        'en': 'That day is not valid.',
-        'de': 'Dieser Tag ist nicht gültig.',
-      },
-      'no_workout': {
-        'fr': 'Il n\'y a pas de séance ce jour-là.',
-        'en': 'There\'s no workout on that day.',
-        'de': 'An diesem Tag gibt es kein Training.',
-      },
-      'delete_failed': {
-        'fr': 'Impossible de supprimer la séance. Réessaie.',
-        'en': 'Couldn\'t delete the workout. Try again.',
-        'de': 'Das Training konnte nicht gelöscht werden. Versuche es erneut.',
-      },
-    };
-    return messages[key]?[langCode] ?? messages[key]?['en'] ?? key;
-  }
-
-  /// Message de succès pour la suppression
-  static String _getDeleteSuccessMessage(String langCode, String workoutName, String dayName) {
-    final messages = {
-      'fr': '"$workoutName" supprimé de $dayName ✓',
-      'en': '"$workoutName" deleted from $dayName ✓',
-      'de': '"$workoutName" von $dayName gelöscht ✓',
-    };
-    return messages[langCode] ?? messages['en']!;
-  }
 
   // =====================================================
   // HELPERS
@@ -1700,8 +660,6 @@ class PlannerAIService {
         }
       }
 
-      // Récupérer l'historique des performances (30 derniers jours)
-      final performanceHistory = await _getPerformanceHistory(client, user.id);
 
       // Récupérer les templates sauvegardés par l'utilisateur
       final userTemplates = await _getUserWorkoutTemplates(client, user.id);
@@ -1744,7 +702,6 @@ class PlannerAIService {
         'days_with_workout': daysWithWorkout.map((d) => dayNames[d - 1]).toList(),
         'days_with_cardio': daysWithCardio.map((d) => dayNames[d - 1]).toList(),
         'exercises_already_planned': plannedExercises.toSet().toList(),
-        'performance_history': performanceHistory,
         'user_templates': userTemplates,
         'planned_workouts_this_week': plannedWorkoutsThisWeek,
         'planned_cardio_this_week': plannedCardioThisWeek,
@@ -1973,773 +930,13 @@ class PlannerAIService {
     return buffer.toString().trim();
   }
 
-  /// Récupérer l'historique des performances de l'utilisateur (poids utilisés par exercice)
-  /// Note: Cette fonction est désactivée temporairement car les requêtes imbriquées
-  /// ne fonctionnent pas avec le schéma actuel. L'IA fonctionne sans ces données.
-  static Future<List<Map<String, dynamic>>> _getPerformanceHistory(
-    SupabaseClient client,
-    String userId,
-  ) async {
-    // Désactivé temporairement - retourne une liste vide
-    // L'historique des performances sera récupéré via AIWorkoutGenerationService
-    return [];
-  }
 
-  /// Prompt spécialisé pour la planification des REPAS uniquement
-  static Future<String> _buildMealsIntentPrompt(String userMessage, String langCode) async {
-    final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
-    final context = await _getNutritionContext();
-    final plannedWorkouts = await _getPlannedWorkoutsForWeek();
-    final loggedMealsToday = await _getLoggedMealTypesToday();
-    final dietaryRestrictions = context['dietary_restrictions'] ?? 'None';
 
-    // Information sur les repas déjà logués
-    final loggedMealsInfo = loggedMealsToday.isEmpty
-        ? 'No meals logged yet today'
-        : 'ALREADY LOGGED TODAY (skip these!): ${loggedMealsToday.join(', ')}';
 
-    return '''
-You are Ryze, an expert NUTRITION coach AI. You help plan SPECIFIC meals with estimated macros.
 
-## Your Specialty
-You create detailed meal plans with:
-- SPECIFIC dish names and descriptions
-- Accurate macro estimates (calories, proteins, carbs, fats)
-- Meal types: breakfast, lunch, dinner, snack
 
-You CANNOT help with workouts or cardio. If asked, redirect politely.
 
-## User Nutritional Profile
-- Daily Calorie Target: ${context['calorie_target'] ?? 2000} kcal
-- Daily Macros: ${context['protein_target'] ?? 100}g protein, ${context['carbs_target'] ?? 250}g carbs, ${context['fats_target'] ?? 70}g fats
-- Fitness Goal: ${context['fitness_goal'] ?? 'general fitness'}
-- Dietary Restrictions: $dietaryRestrictions
 
-## Today's Status
-- Calories consumed: ${context['calories_today'] ?? 0} kcal
-- Remaining: ${context['remaining_calories'] ?? context['calorie_target'] ?? 2000} kcal
-- $loggedMealsInfo
-
-## 🔴 CRITICAL: Already Logged Meals
-$loggedMealsInfo
-⚠️ Do NOT create meals for types that are already logged!
-If user asks for "today's meals" but some are logged, only plan the REMAINING ones.
-
-## This Week's Planned Workouts (adjust carbs on training days)
-$plannedWorkouts
-
-## Today
-- Today is ${context['today'] ?? 'unknown'} (${context['today_date'] ?? ''}).
-- "today", "tonight" and "this evening" mean that day and no other. "tomorrow" is the day after it.
-
-## Available Days This Week
-${context['available_days'] ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
-
-## User Request
-"$userMessage"
-
-## Response Format (JSON)
-{
-  "intent": "meal",
-  "is_complete": true | false,
-  "meals": [
-    {
-      "day": "monday",
-      "meal_type": "breakfast",
-      "dish_name": "Short name (max 25 chars)",
-      "dish_description": "Main ingredients list",
-      "calories": 450,
-      "proteins": 32.0,
-      "carbs": 15.0,
-      "fats": 28.0,
-      "quantity_g": 300,
-      "reasoning": "Brief explanation why this fits their goals"
-    }
-  ],
-  "response_message": "Friendly message in $languageName summarizing what you're proposing",
-  "follow_up_question": "Only if is_complete=false (in $languageName)"
-}
-
-## CRITICAL Rules
-1. EACH dish is a SEPARATE entry in the meals array
-2. Provide REALISTIC macro estimates based on typical portions
-3. On workout days: increase carbs (+20%), reduce fats slightly
-4. RESPECT dietary restrictions STRICTLY (vegetarian, vegan, allergies, etc.)
-5. Provide VARIED meals - no repetition within the same week
-6. Meal order in response: breakfast → lunch → snack → dinner
-7. MAXIMUM calories per meal:
-   - Breakfast: ~25% of daily target
-   - Lunch: ~35% of daily target
-   - Dinner: ~30% of daily target
-   - Snack: ~10% of daily target
-8. If user asks for "une semaine de repas", generate ALL 4 meal types for remaining days
-9. ASK for clarification if meal type or days not specified
-10. 🔴 RESPECT USER'S SPECIFIC FOOD - If user mentions a specific food (whey, chicken, salmon, etc.), you MUST use THAT food in the dish! Example: "30g de whey" = create a dish WITH whey protein, NOT something else!
-
-## Examples
-
-User: "Un petit-déj protéiné pour demain"
-→ Single breakfast entry with high protein (~30g+)
-
-User: "Planifie mes repas de la semaine"
-→ All 4 meal types for all remaining days (up to 28 entries)
-
-User: "Déjeuner et dîner pour lundi et mardi"
-→ 4 entries (lunch + dinner for both days)
-
-User: "30g de whey pour ma collation"
-→ Single snack entry WITH whey protein (e.g., "Whey Protein Shake" with 30g whey, ~120kcal, ~24g protein)
-→ NEVER substitute whey with eggs or other food!
-
-User: "3 séances de musculation"
-→ intent: "unknown", redirect to workout button
-''';
-  }
-
-  /// Prompt spécialisé pour la planification des SÉANCES uniquement
-  static Future<String> _buildWorkoutsIntentPrompt(String userMessage, String langCode) async {
-    final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
-    final context = await _getUserContext();
-
-    // Formater l'historique des performances
-    final performanceHistory = context['performance_history'] as List? ?? [];
-    final performanceStr = performanceHistory.isNotEmpty
-        ? performanceHistory.map((p) =>
-            "• ${p['exercise']}: ${p['typical_weight_kg']}kg typical, ${p['best_weight_kg']}kg PR (${p['best_reps']} reps)"
-          ).join('\n')
-        : 'No history yet (new user)';
-
-    return '''
-You are Ryze, an expert FITNESS coach AI. You ONLY help with workout and cardio planning.
-
-## Your Specialty
-You are a fitness specialist. You can ONLY plan:
-- Strength training sessions (musculation / Krafttraining)
-- Cardio sessions (running, cycling, swimming, HIIT, etc.)
-- Sports activities
-
-You CANNOT help with meal planning or nutrition. If the user asks about food/meals, politely redirect them.
-
-## User Fitness Context
-- Fitness Goal: ${context['fitness_goal'] ?? 'general fitness'}
-- Activity Level: ${context['activity_level'] ?? 'moderate'}
-- Gender: ${context['gender'] ?? 'unknown'}
-- Body Weight: ${context['weight_kg'] ?? 'unknown'} kg
-
-## Today
-- Today is ${context['today'] ?? 'unknown'} (${context['today_date'] ?? ''}).
-- "today" and "tonight" mean that day and no other. "tomorrow" is the day after it.
-
-## This Week's Planned Workouts (can be moved/deleted/modified)
-${context['planned_workouts_this_week'] ?? 'No workouts planned yet'}
-
-## Available Days This Week (no workout yet)
-${context['available_days'] ?? []}
-
-## User's Saved Workout Templates (can be reused)
-${context['user_templates'] ?? 'No saved templates'}
-
-## User's Performance History (last 30 days)
-$performanceStr
-
-${_getFormattedHistory()}
-## User Request
-"$userMessage"
-
-## Response Format (JSON)
-{
-  "intent": "workout" | "cardio" | "use_template" | "move_workout" | "delete_workout" | "modify_workout",
-  "is_complete": true | false,
-  "extracted_info": {
-    // For NEW workout generation:
-    "clear_week_first": true | false,  // Set to true if user wants to DELETE ALL existing workouts first (e.g. "enlève tout et programme...")
-    "workouts": [
-      {
-        "day": "monday" | "tuesday" | etc,
-        "workout_type": "SHORT name IN $languageName (e.g. 'Haut du corps', 'Jambes', 'Full Body', 'Push')",
-        "workout_prompt": "detailed prompt for generating this specific workout IN ENGLISH (for the AI generator)",
-        "duration_minutes": integer (any value between 15-120, use user's exact request)
-      }
-    ],
-    // For USING an existing template:
-    "template_id": "uuid of the template to use",
-    "template_name": "name of the template",
-    "target_day": "monday" | "tuesday" | etc,
-    // For MOVING a workout:
-    "source_day": "current day of the workout",
-    "target_day": "new day to move to",
-    // For DELETING a workout:
-    "delete_day": "day of workout to delete",  // Use "all" to delete ALL workouts this week
-    // For cardio:
-    "cardio_sessions": [
-      {
-        "day": "monday",
-        "activity_name": "Running",
-        "activity_key": "running",
-        "target_minutes": 30,
-        "target_km": 5
-      }
-    ]
-  },
-  "response_message": "friendly message in $languageName explaining the program",
-  "follow_up_question": "only if you need more info (in $languageName)"
-}
-
-## CRITICAL: is_complete rules
-Set "is_complete": false and ask a follow_up_question if ANY of these are missing:
-- Duration not specified for NEW workouts (ask: "Combien de temps pour cette séance ?" or "Combien de temps par séance ?")
-- Day not specified (ask: "Quel jour ?")
-- Workout type unclear (ask what kind of training)
-
-ONLY set "is_complete": true when you have ALL required info to generate/execute the action!
-
-## IMPORTANT - workout_type language
-The "workout_type" field MUST be in $languageName:
-- French: "Haut du corps", "Bas du corps", "Jambes", "Dos & Biceps", "Pectoraux & Triceps", "Épaules", "Full Body", "Push", "Pull"
-- English: "Upper Body", "Lower Body", "Legs", "Back & Biceps", "Chest & Triceps", "Shoulders", "Full Body", "Push", "Pull"
-- German: "Oberkörper", "Unterkörper", "Beine", "Rücken & Bizeps", "Brust & Trizeps", "Schultern", "Ganzkörper", "Push", "Pull"
-
-## IMPORTANT - Duration
-If the user doesn't specify duration, ask them! Default durations by type:
-- Quick workout: 30 min
-- Standard workout: 45 min
-- Full workout: 60 min
-- Long/detailed workout: 90 min
-
-Ask about duration ONLY if not specified. Adapt your question to the context:
-- ONE session: "Combien de temps pour cette séance ?" / "How long for this session?"
-- MULTIPLE sessions: "Combien de temps par séance ?" / "How long per session?"
-NEVER use "chaque séance" if the user only asked for ONE session!
-
-## Rules
-1. If user asks about meals/food, return intent: "unknown" with a polite redirection message
-2. Space workouts 48-72h apart for recovery
-3. Adapt to user's gender (more glutes/hamstrings for women, more upper body for men)
-4. Use their performance history to suggest appropriate weights
-5. AVOID exercises already planned this week - provide variety
-6. **CRITICAL**: COMPLETED sessions count towards weekly totals! If user says "3 sessions this week" and 1 is already completed, only plan 2 more
-7. **CRITICAL**: Only plan on FUTURE days (today or later). Never plan on past days
-8. When planning complementary sessions to existing ones, ensure muscle group balance (don't repeat same muscles within 48h)
-
-## Gender-Specific Adaptations
-For WOMEN: More emphasis on glutes, hamstrings, core. Include hip thrusts, glute bridges, RDLs.
-For MEN: More emphasis on chest, back, shoulders. Include bench press, rows, overhead press.
-
-## Examples
-
-User: "3 séances de muscu cette semaine"
-→ intent: "workout", create optimized 3-day program based on their goal/gender
-
-User: "Du cardio mardi et jeudi"
-→ intent: "cardio", plan cardio sessions for those days
-
-User: "Supprime ma séance de lundi" / "Delete my Monday workout"
-→ intent: "delete_workout", delete_day: "monday", is_complete: true
-
-User: "Enlève la séance du mardi" / "Remove Tuesday's session"
-→ intent: "delete_workout", delete_day: "tuesday", is_complete: true
-
-User: "Décale ma séance de lundi à mercredi" / "Move my Monday workout to Wednesday"
-→ intent: "move_workout", source_day: "monday", target_day: "wednesday", is_complete: true
-
-User: "Met ma séance A mardi" / "Put my Session A on Tuesday"
-→ intent: "use_template", search for template named "Séance A" in user_templates, target_day: "tuesday"
-
-User: "Remplace la séance de mardi par du full body"
-→ intent: "modify_workout", current_day: "tuesday", new_workout_type: "Full Body"
-IMPORTANT: Use ONLY modify_workout, do NOT call delete_workout first!
-
-User: "Enlève toutes mes séances et programme 5 séances" / "Clear my week and add 5 workouts"
-→ intent: "workout", clear_week_first: true, workouts: [...5 workouts for different days...]
-IMPORTANT: When user says "enlève tout" + "programme X séances", use intent "workout" with clear_week_first: true, NOT delete_workout!
-
-User: "Supprime tout et refais moi un programme push/pull/legs"
-→ intent: "workout", clear_week_first: true, workouts: [...PPL split workouts...]
-
-User: "Un petit-déjeuner protéiné"
-→ intent: "unknown", message: "Je suis ton coach fitness ! Pour les repas, utilise le bouton 'Planifier mes repas'. Ici, dis-moi quelle séance tu veux planifier 💪"
-''';
-  }
-
-  /// Récupérer le contexte nutritionnel de l'utilisateur
-  static Future<Map<String, dynamic>> _getNutritionContext() async {
-    try {
-      final user = AuthService().currentUser;
-      if (user == null) return {};
-
-      // Récupérer les objectifs caloriques
-      final calorieTarget = user.dailyCalories ?? 2000;
-      final proteinTarget = ((calorieTarget * 0.25) / 4).round(); // 25% des calories
-      final carbsTarget = ((calorieTarget * 0.45) / 4).round(); // 45% des calories
-      final fatsTarget = ((calorieTarget * 0.30) / 9).round(); // 30% des calories
-
-      // Récupérer les préférences alimentaires (allergies, restrictions)
-      String dietaryRestrictions = 'None';
-      try {
-        final prefs = await CoachPreferenceExtractor.instance.getUserPreferences();
-        if (prefs != null) {
-          final restrictions = <String>[];
-          if (prefs.allergies.isNotEmpty) {
-            restrictions.addAll(prefs.allergies.map((a) => 'allergic to $a'));
-          }
-          if (prefs.dietaryRestrictions.isNotEmpty) {
-            restrictions.addAll(prefs.dietaryRestrictions);
-          }
-          if (restrictions.isNotEmpty) {
-            dietaryRestrictions = restrictions.join(', ');
-          }
-        }
-      } catch (_) {
-        // Ignorer si erreur - utiliser la valeur par défaut
-      }
-
-      // Récupérer les calories consommées aujourd'hui
-      int caloriesToday = 0;
-      try {
-        final todayMeals = await FoodEntriesService.getFoodEntriesForDate(
-          user.id,
-          DateTime.now(),
-        );
-        // Sommer les calories de tous les items de tous les repas
-        for (final meal in todayMeals) {
-          for (final item in meal.items) {
-            caloriesToday += item.calories;
-          }
-        }
-      } catch (_) {
-        // Ignorer si erreur réseau
-      }
-
-      // Jours disponibles
-      final weekStart = planningWindowStart;
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final availableDays = <String>[];
-      final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
-      for (int i = 0; i < 7; i++) {
-        final day = weekStart.add(Duration(days: i));
-        if (!day.isBefore(today)) {
-          availableDays.add(dayNames[i]);
-        }
-      }
-
-      return {
-        'calorie_target': calorieTarget,
-        'protein_target': proteinTarget,
-        'carbs_target': carbsTarget,
-        'fats_target': fatsTarget,
-        'fitness_goal': user.fitnessGoal ?? 'general_fitness',
-        'calories_today': caloriesToday,
-        'remaining_calories': calorieTarget - caloriesToday,
-        'available_days': availableDays,
-        'dietary_restrictions': dietaryRestrictions,
-      };
-    } catch (e) {
-      debugPrint('❌ _getNutritionContext error: $e');
-      return {};
-    }
-  }
-
-  /// Récupérer les workouts planifiés cette semaine (pour adapter les glucides)
-  static Future<String> _getPlannedWorkoutsForWeek() async {
-    try {
-      final data = await WeeklyPlannerService.getWeekData();
-      if (data.workouts.isEmpty) {
-        return 'No workouts planned this week';
-      }
-
-      final buffer = StringBuffer();
-      final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
-      for (final workout in data.workouts) {
-        final dayIndex = workout.plannedDate.weekday - 1;
-        final dayName = dayNames[dayIndex];
-        buffer.writeln('• $dayName: ${workout.workoutName} (${workout.durationMinutes ?? 45}min)');
-      }
-
-      // Ajouter les cardios aussi
-      final cardios = data.activities.where((a) => a.activityType == PlannedActivityType.cardio).toList();
-      for (final cardio in cardios) {
-        final dayIndex = cardio.plannedDate.weekday - 1;
-        final dayName = dayNames[dayIndex];
-        final cardioData = cardio.cardioData;
-        if (cardioData != null) {
-          buffer.writeln('• $dayName: ${cardioData.activityName} (${cardioData.targetMinutes ?? 30}min cardio)');
-        }
-      }
-
-      return buffer.toString().trim();
-    } catch (e) {
-      debugPrint('❌ _getPlannedWorkoutsForWeek error: $e');
-      return 'Unable to fetch planned workouts';
-    }
-  }
-
-  static Future<String> _buildIntentPrompt(String userMessage, String langCode) async {
-    final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
-    final context = await _getUserContext();
-
-    // Formater l'historique des performances
-    final performanceHistory = context['performance_history'] as List? ?? [];
-    final performanceStr = performanceHistory.isNotEmpty
-        ? performanceHistory.map((p) =>
-            "• ${p['exercise']}: ${p['typical_weight_kg']}kg typical, ${p['best_weight_kg']}kg PR (${p['best_reps']} reps)"
-          ).join('\n')
-        : 'No history yet (new user)';
-
-    return '''
-You are Ryze, an expert fitness coach AI. Analyze the user's request and create an INTELLIGENT workout program.
-
-## User Context
-- Fitness Goal: ${context['fitness_goal'] ?? 'general fitness'}
-- Activity Level: ${context['activity_level'] ?? 'moderate'}
-- Gender: ${context['gender'] ?? 'unknown'}
-- Body Weight: ${context['weight_kg'] ?? 'unknown'} kg
-- Days already with workout this week: ${context['days_with_workout'] ?? []}
-- Available days this week: ${context['available_days'] ?? []}
-- Exercises already planned this week: ${context['exercises_already_planned'] ?? []}
-
-## User's Performance History (last 30 days)
-$performanceStr
-
-## User Request
-"$userMessage"
-
-## Your Task
-Based on the user's request and context, create an optimal workout program. YOU decide:
-1. How many sessions (based on their goal and request)
-2. Which days (from available days, well-spaced for recovery)
-3. What type of workout for EACH day (tailored to their specific goal)
-
-## Response Format (JSON)
-{
-  "intent": "workout" | "cardio" | "meal" | "unknown",
-  "is_complete": true | false,
-  "extracted_info": {
-    // For workout - YOU CREATE THE OPTIMAL PROGRAM:
-    "workouts": [
-      {
-        "day": "monday" | "tuesday" | etc,
-        "workout_type": "string describing the focus (e.g., 'Glutes & Hamstrings', 'Push - Chest focus', 'Full Body')",
-        "workout_prompt": "detailed prompt for generating this specific workout",
-        "duration_minutes": 45
-      }
-    ],
-
-    // For cardio:
-    "cardio_sessions": [
-      {
-        "day": "monday",
-        "activity_name": "Running",
-        "activity_key": "running",
-        "target_minutes": 30,
-        "target_km": 5
-      }
-    ],
-
-    // For meal:
-    "food_description": "string",
-    "meal_type": "breakfast" | "lunch" | "dinner" | "snack",
-    "days": ["monday", ...]
-  },
-  "response_message": "friendly message in $languageName explaining what you created and why",
-  "follow_up_question": "only if you need critical info (in $languageName)"
-}
-
-## Intelligence Rules
-
-### IMPORTANT: Exercises Already Planned
-- Check "Exercises already planned this week" list
-- AVOID repeating the same exercises if possible
-- Provide VARIETY - use different exercises targeting same muscles
-- Example: If "Squat" is already planned, use "Leg Press" or "Bulgarian Split Squat" instead
-
-### Gender-Specific Adaptations
-For WOMEN:
-- More emphasis on glutes, hamstrings, and overall lower body
-- Include hip thrusts, glute bridges, Romanian deadlifts
-- For upper body: focus on toning (moderate weight, higher reps)
-- Add core/ab work
-
-For MEN:
-- More emphasis on chest, back, shoulders
-- Include bench press, rows, overhead press
-- For legs: balanced quads/hamstrings/glutes
-- Progressive overload focus
-
-### For muscle-specific goals (e.g., "muscler mes fesses", "bigger arms"):
-- Create 2-3 sessions focusing on that muscle group
-- Include compound AND isolation exercises
-- Space sessions 48-72h apart for recovery
-- Example for glutes: Day1: Glutes & Quads, Day2: Glutes & Hamstrings, Day3: Full Lower Body
-
-### For general fitness / weight loss:
-- Mix of full body and cardio
-- 3-4 sessions per week
-- Variety to prevent boredom
-
-### For muscle gain / strength:
-- PPL or Upper/Lower split
-- 4-5 sessions if available days allow
-- Progressive overload focus
-
-### For beginners (activity_level = sedentary/light):
-- 2-3 Full Body sessions
-- Lower intensity, focus on form
-- More rest days
-
-### For advanced (activity_level = very_active):
-- Can handle 5-6 sessions
-- More volume and intensity
-- Specialized splits
-
-### Weight Suggestions (use performance history)
-- If user has history for an exercise, suggest weights based on their typical_weight_kg
-- For new exercises without history, estimate based on similar exercises
-- For new users: suggest conservative weights based on body weight
-
-## Examples
-
-User: "Je veux muscler mes fesses"
-→ Create 3 glute-focused sessions:
-  - Day 1: "Glutes & Quads" (squats, lunges, leg press, hip thrusts)
-  - Day 2: "Glutes & Hamstrings" (RDL, hip thrusts, cable kickbacks, hamstring curls)
-  - Day 3: "Glute Isolation" (hip thrusts, glute bridges, abductions, kickbacks)
-
-User: "3 séances pour perdre du poids"
-→ Create 3 fat-burning sessions:
-  - Day 1: "Full Body HIIT Style" (compound movements, short rest)
-  - Day 2: "Upper Body Circuit" (supersets, high reps)
-  - Day 3: "Lower Body Metabolic" (leg circuits, finisher cardio)
-
-User: "Programme pour prendre de la masse"
-→ Create PPL or Upper/Lower based on available days
-
-IMPORTANT:
-- Always set is_complete: true if you can create a program
-- Only ask follow_up_question if you REALLY need info (e.g., user says "sport" with no context)
-- The response_message should be enthusiastic and explain the program logic
-''';
-  }
-
-  static IntentAnalysis _parseIntentResponse(
-    Map<String, dynamic> response,
-    String langCode,
-  ) {
-    try {
-      final intentStr = response['intent'] as String? ?? 'unknown';
-      final isComplete = response['is_complete'] as bool? ?? false;
-      final extractedInfo = response['extracted_info'] as Map<String, dynamic>? ?? {};
-      final followUpQuestion = response['follow_up_question'] as String?;
-      final responseMessage = response['response_message'] as String?;
-
-      PlannerIntent intent;
-      switch (intentStr.toLowerCase()) {
-        case 'workout':
-          intent = PlannerIntent.workout;
-          break;
-        case 'cardio':
-          intent = PlannerIntent.cardio;
-          break;
-        case 'meal':
-          intent = PlannerIntent.meal;
-          break;
-        case 'use_template':
-          intent = PlannerIntent.useTemplate;
-          break;
-        case 'move_workout':
-          intent = PlannerIntent.moveWorkout;
-          break;
-        case 'delete_workout':
-          intent = PlannerIntent.deleteWorkout;
-          break;
-        case 'modify_workout':
-          intent = PlannerIntent.modifyWorkout;
-          break;
-        default:
-          intent = PlannerIntent.unknown;
-      }
-
-      // Parser les jours si présents (ancien format)
-      if (extractedInfo['days'] != null) {
-        final dayStrings = extractedInfo['days'] as List;
-        extractedInfo['days'] = _parseDays(dayStrings.cast<String>());
-      }
-
-      // Parser le tableau meals au niveau racine (nouveau format pour meal intent)
-      if (response['meals'] != null) {
-        extractedInfo['meals'] = response['meals'];
-      }
-
-      // Ajouter le response_message dans extractedInfo pour le handler
-      if (responseMessage != null) {
-        extractedInfo['response_message'] = responseMessage;
-      }
-
-      return IntentAnalysis(
-        intent: intent,
-        extractedInfo: extractedInfo,
-        followUpQuestion: followUpQuestion,
-        responseMessage: responseMessage,
-        isComplete: isComplete,
-      );
-    } catch (e) {
-      debugPrint('❌ _parseIntentResponse error: $e');
-      return IntentAnalysis(
-        intent: PlannerIntent.unknown,
-        extractedInfo: {},
-        followUpQuestion: _getErrorMessage(langCode, 'parse_error'),
-      );
-    }
-  }
-
-  static Future<Map<String, dynamic>?> _callGeminiAPI(String prompt) async {
-    const maxRetries = 4; // Augmenté de 3 à 4 pour plus de fiabilité
-    const baseTimeoutSeconds = 25; // Timeout de base augmenté
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        debugPrint('🤖 Planner Gemini API call attempt $attempt/$maxRetries');
-
-        // Utiliser le modèle plus performant pour le planner (gemini-2.5-flash)
-        final url = Uri.parse(
-          '${GeminiConfig.plannerApiUrl}?key=${GeminiConfig.geminiApiKey}',
-        );
-
-        final body = {
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-          'generationConfig': {
-            'temperature': 0.3,
-            'topK': 40,
-            'topP': 0.95,
-            'maxOutputTokens': 1024,
-          },
-        };
-
-        // Timeout progressif: 25s, 30s, 35s, 40s
-        final timeout = Duration(seconds: baseTimeoutSeconds + (attempt - 1) * 5);
-
-        final response = await http.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        ).timeout(timeout);
-
-        // Rate limit (429) ou erreur serveur (500+) - retry avec backoff exponentiel
-        if (response.statusCode == 429 || response.statusCode >= 500) {
-          debugPrint('⏳ Rate limited or server error (${response.statusCode}), waiting before retry...');
-          if (attempt < maxRetries) {
-            // Backoff exponentiel: 2s, 4s, 8s
-            final delay = Duration(seconds: (1 << attempt));
-            await Future.delayed(delay);
-            continue;
-          }
-          return null;
-        }
-
-        if (response.statusCode != 200) {
-          debugPrint('❌ Gemini API error (attempt $attempt/$maxRetries): ${response.statusCode}');
-          debugPrint('📄 Error body: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
-          if (attempt < maxRetries) {
-            await Future.delayed(Duration(seconds: attempt));
-            continue;
-          }
-          return null;
-        }
-
-        final responseData = jsonDecode(response.body);
-
-        // Vérifier si la réponse a été bloquée par safety filters
-        final candidates = responseData['candidates'] as List?;
-        if (candidates == null || candidates.isEmpty) {
-          final promptFeedback = responseData['promptFeedback'];
-          debugPrint('⚠️ No candidates in response. PromptFeedback: $promptFeedback');
-          if (attempt < maxRetries) {
-            await Future.delayed(Duration(seconds: attempt));
-            continue;
-          }
-          return null;
-        }
-
-        // Vérifier le finishReason
-        final finishReason = candidates[0]['finishReason'];
-        if (finishReason != null && finishReason != 'STOP') {
-          debugPrint('⚠️ Gemini finishReason: $finishReason');
-          if (finishReason == 'SAFETY') {
-            debugPrint('🛡️ Content blocked by safety filters');
-          } else if (finishReason == 'MAX_TOKENS') {
-            debugPrint('📏 Response truncated - max tokens reached');
-          }
-        }
-
-        final text = candidates[0]['content']?['parts']?[0]?['text'];
-
-        if (text == null) {
-          debugPrint('⚠️ No text in Gemini response (attempt $attempt/$maxRetries)');
-          debugPrint('📄 Candidate: ${candidates[0]}');
-          if (attempt < maxRetries) {
-            await Future.delayed(Duration(seconds: attempt));
-            continue;
-          }
-          return null;
-        }
-
-        debugPrint('📝 Gemini response length: ${text.length} chars');
-
-        // Extraire le JSON de la réponse
-        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
-        if (jsonMatch == null) {
-          debugPrint('⚠️ No JSON in Gemini response (attempt $attempt/$maxRetries)');
-          debugPrint('📄 Raw response: ${text.length > 300 ? text.substring(0, 300) : text}...');
-          if (attempt < maxRetries) {
-            await Future.delayed(Duration(seconds: attempt));
-            continue;
-          }
-          return null;
-        }
-
-        // Parser le JSON extrait
-        final jsonStr = jsonMatch.group(0)!;
-        try {
-          final parsed = jsonDecode(jsonStr);
-          debugPrint('✅ Gemini API succeeded on attempt $attempt');
-          return parsed;
-        } catch (jsonError) {
-          debugPrint('⚠️ JSON parse error: $jsonError');
-          debugPrint('📄 JSON string: ${jsonStr.length > 300 ? jsonStr.substring(0, 300) : jsonStr}...');
-          if (attempt < maxRetries) {
-            await Future.delayed(Duration(seconds: attempt));
-            continue;
-          }
-          return null;
-        }
-      } on TimeoutException {
-        debugPrint('⏱️ Gemini API timeout (attempt $attempt/$maxRetries)');
-        if (attempt < maxRetries) {
-          await Future.delayed(Duration(seconds: attempt));
-          continue;
-        }
-        return null;
-      } catch (e) {
-        debugPrint('❌ _callGeminiAPI error (attempt $attempt/$maxRetries): $e');
-        if (attempt < maxRetries) {
-          await Future.delayed(Duration(seconds: attempt));
-          continue;
-        }
-        return null;
-      }
-    }
-
-    debugPrint('❌ All $maxRetries attempts failed for Gemini API');
-    return null;
-  }
 
   // =====================================================
   // FUNCTION CALLING - Nouvelle approche
@@ -2748,7 +945,6 @@ IMPORTANT:
   /// Définition des tools disponibles pour le planner
   // Stocker la dernière action pour permettre l'annulation
   static Map<String, dynamic>? _lastAction;
-  static List<Map<String, dynamic>>? _lastDeletedItems;
 
   // Action en attente de confirmation
   static Map<String, dynamic>? _pendingAction;
@@ -2756,7 +952,10 @@ IMPORTANT:
   // Actions supplémentaires à exécuter après confirmation
   static List<Map<String, dynamic>>? _pendingFollowUpActions;
 
-  static List<Map<String, dynamic>> get _plannerTools => [
+  /// Les outils du mode sport. Public pour que les tests lisent la vraie
+  /// liste : le test en portait une copie recopiée à la main, déjà
+  /// désynchronisée sur deux points.
+  static List<Map<String, dynamic>> get plannerTools => [
     {
       'name': 'request_confirmation',
       'description': 'ALWAYS use this tool BEFORE any destructive action (delete). Describe what will be done and ask user to confirm. The user must say "oui", "yes", "confirme" to proceed.',
@@ -3196,7 +1395,7 @@ Example: "Tu veux quel type de HIIT? 🔥 Tabata (4min intense), 💪 HIIT débu
   ];
 
   /// Outils pour le mode repas (nutrition)
-  static List<Map<String, dynamic>> get _mealTools => [
+  static List<Map<String, dynamic>> get mealTools => [
     {
       'name': 'create_meal',
       'description': 'Create a NEW planned meal entry. Use this to ADD meals - multiple entries of the same meal type are allowed (e.g., 2 snacks). ALWAYS use this for adding new items, even if a meal of the same type already exists.',
@@ -3289,6 +1488,10 @@ Example: "Tu veux quel type de HIIT? 🔥 Tabata (4min intense), 💪 HIIT débu
             'type': 'string',
             'description': 'Type of meal to modify',
             'enum': ['breakfast', 'lunch', 'dinner', 'snack'],
+          },
+          'current_dish_name': {
+            'type': 'string',
+            'description': 'Name (or part of it) of the EXISTING dish being replaced. Required when the day has several entries of that meal type (e.g. two snacks), so the right one is replaced.',
           },
           'dish_name': {
             'type': 'string',
@@ -3455,10 +1658,10 @@ Example: 4 available days = 12 create_meal calls minimum
 ═══════════════════════════════════════════════════════════════
                     MEAL TYPES
 ═══════════════════════════════════════════════════════════════
-- breakfast: Morning meal - target ~20-25% daily calories
-- lunch: Midday meal - target ~30-35% daily calories
-- dinner: Evening meal - target ~30-35% daily calories
-- snack: Light snack - target ~10-15% daily calories (optional)
+- breakfast: Morning meal - target ~${_mealSplitPercent('breakfast')}% daily calories
+- lunch: Midday meal - target ~${_mealSplitPercent('lunch')}% daily calories
+- dinner: Evening meal - target ~${_mealSplitPercent('dinner')}% daily calories
+- snack: Light snack - target ~${_mealSplitPercent('snack')}% daily calories (optional)
 
 ═══════════════════════════════════════════════════════════════
                     PLANNING RULES
@@ -3666,26 +1869,33 @@ ${_getFormattedHistory()}
         final dailyCarbsTarget = (context['carbs_target'] as num?)?.toDouble() ?? 250.0;
         final dailyFatTarget = (context['fat_target'] as num?)?.toDouble() ?? 65.0;
 
-        // Distribution par repas (25% breakfast, 35% lunch, 35% dinner, 5% snack)
-        final breakfastCal = (dailyCalorieTarget * 0.25).round();
-        final breakfastProt = (dailyProteinTarget * 0.25).round();
-        final breakfastCarbs = (dailyCarbsTarget * 0.25).round();
-        final breakfastFat = (dailyFatTarget * 0.25).round();
+        // Une seule répartition, celle de [mealSplit] : la prose du prompt
+        // annonçait une fourchette et le tableau juste en dessous en calculait
+        // une autre, sous un encadré « n'invente pas tes propres valeurs ».
+        final breakfastShare = mealSplit['breakfast']!;
+        final lunchShare = mealSplit['lunch']!;
+        final dinnerShare = mealSplit['dinner']!;
+        final snackShare = mealSplit['snack']!;
 
-        final lunchCal = (dailyCalorieTarget * 0.35).round();
-        final lunchProt = (dailyProteinTarget * 0.35).round();
-        final lunchCarbs = (dailyCarbsTarget * 0.35).round();
-        final lunchFat = (dailyFatTarget * 0.35).round();
+        final breakfastCal = (dailyCalorieTarget * breakfastShare).round();
+        final breakfastProt = (dailyProteinTarget * breakfastShare).round();
+        final breakfastCarbs = (dailyCarbsTarget * breakfastShare).round();
+        final breakfastFat = (dailyFatTarget * breakfastShare).round();
 
-        final dinnerCal = (dailyCalorieTarget * 0.35).round();
-        final dinnerProt = (dailyProteinTarget * 0.35).round();
-        final dinnerCarbs = (dailyCarbsTarget * 0.35).round();
-        final dinnerFat = (dailyFatTarget * 0.35).round();
+        final lunchCal = (dailyCalorieTarget * lunchShare).round();
+        final lunchProt = (dailyProteinTarget * lunchShare).round();
+        final lunchCarbs = (dailyCarbsTarget * lunchShare).round();
+        final lunchFat = (dailyFatTarget * lunchShare).round();
 
-        final snackCal = (dailyCalorieTarget * 0.05).round();
-        final snackProt = (dailyProteinTarget * 0.05).round();
-        final snackCarbs = (dailyCarbsTarget * 0.05).round();
-        final snackFat = (dailyFatTarget * 0.05).round();
+        final dinnerCal = (dailyCalorieTarget * dinnerShare).round();
+        final dinnerProt = (dailyProteinTarget * dinnerShare).round();
+        final dinnerCarbs = (dailyCarbsTarget * dinnerShare).round();
+        final dinnerFat = (dailyFatTarget * dinnerShare).round();
+
+        final snackCal = (dailyCalorieTarget * snackShare).round();
+        final snackProt = (dailyProteinTarget * snackShare).round();
+        final snackCarbs = (dailyCarbsTarget * snackShare).round();
+        final snackFat = (dailyFatTarget * snackShare).round();
 
         final contextInfo = '''
 ═══════════════════════════════════════════════════════════════
@@ -3776,10 +1986,15 @@ ${context['planned_meals_this_week'] ?? 'No meals planned yet'}
 USER REQUEST: "$userMessage"
 ''';
         systemPrompt = await _buildMealsSystemPrompt(contextInfo);
-        tools = _mealTools;
+        tools = mealTools;
       } else {
         // Mode sport (défaut) : utiliser le prompt fitness
-        tools = _plannerTools;
+        tools = plannerTools;
+        // Ce que le coach a retenu des contraintes physiques. Le planificateur
+        // ne lisait de la mémoire que les allergies et le régime, côté repas :
+        // un genou blessé raconté au coach n'empêchait ni les squats ni la
+        // course le lendemain.
+        final constraints = await _getPhysicalConstraints();
         systemPrompt = '''
 You are Ryze, a friendly fitness coach AI assistant. You help users plan their weekly workouts and cardio.
 ALWAYS respond in $languageName.
@@ -3986,6 +2201,7 @@ Example if user insists:
 - FR: "OK c'est parti ! Si ton objectif a changé, pense à le modifier dans ⚙️ Paramètres > Objectifs"
 - EN: "OK let's go! If your goals changed, update them in ⚙️ Settings > Objectives"
 
+$constraints
 CONTEXT:
 ⚠️ TODAY IS: ${_getTodayWithDayName()} (when user says "today"/"aujourd'hui"/"heute", use THIS day!)
 - User's Goal: ${context['fitness_goal'] ?? 'general_fitness'}
@@ -4189,9 +2405,14 @@ USER REQUEST: "$userMessage"
           ],
           'tool_config': {
             'function_calling_config': {
-              'mode': 'ANY',  // Force the model to call at least one function
+              // AUTO et non ANY : forcer un appel d'outil à chaque tour tordait
+              // les réponses conversationnelles (« merci », une question sur le
+              // plan) en demande de clarification, faute d'avoir le droit de
+              // répondre en texte.
+              'mode': 'AUTO',
             }
           },
+          'safetySettings': GeminiConfig.safetySettingsList,
           'generationConfig': {
             'temperature': 0.4,
             'topK': 40,
@@ -4637,10 +2858,11 @@ USER REQUEST: "$userMessage"
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
           final result = await AIWorkoutGenerationService.generateWorkout(
             userRequest: '$workoutType workout, $focus',
+            constraints: await _workoutConstraints(),
             durationMinutes: duration,
           );
 
-          if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
+          if (result.success && result.exercises.isNotEmpty) {
             final pendingWorkout = PendingWorkout(
               plannedDate: day,
               workoutName: '$workoutType - ${duration}min',
@@ -4849,15 +3071,16 @@ USER REQUEST: "$userMessage"
             final duration = newDuration ?? 45;
             final result = await AIWorkoutGenerationService.generateWorkout(
               userRequest: '$newType workout',
+              constraints: await _workoutConstraints(),
               durationMinutes: duration,
             );
 
-            if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
+            if (result.success && result.exercises.isNotEmpty) {
               // Sauvegarder directement
               await WeeklyPlannerService.addPlannedWorkout(
                 plannedDate: currentDay,
                 workoutName: '$newType - ${duration}min',
-                exercises: result.exercises!,
+                exercises: result.exercises,
                 durationMinutes: duration,
                 userPrompt: newType,
                 isAiGenerated: true,
@@ -4895,22 +3118,38 @@ USER REQUEST: "$userMessage"
 
           if (isCardio) {
             debugPrint('🔄 modify_workout: Converting workout to cardio (detected: $lowerType)');
-            // Supprimer le workout existant
-            await WeeklyPlannerService.deletePlannedWorkout(existingWorkout.id);
             // Déterminer le type de cardio
             final dayStr = _getDayString(currentDay);
-            String activityKey = 'running'; // Par défaut
+            String? activityKey;
             if (lowerType.contains('bike') || lowerType.contains('vélo') || lowerType.contains('velo') || lowerType.contains('cycling')) {
               activityKey = 'bike';
             } else if (lowerType.contains('walk') || lowerType.contains('marche')) {
               activityKey = 'walking';
-            } else if (lowerType.contains('swim') || lowerType.contains('natation') || lowerType.contains('nager')) {
-              activityKey = 'swimming';
+            } else if (lowerType.contains('run') || lowerType.contains('course') || lowerType.contains('courir') || lowerType.contains('cardio')) {
+              activityKey = 'running';
             }
-            return await _executeToolCall('create_cardio', {
+
+            // La natation, le rameur et compagnie sont détectés comme du cardio
+            // mais l'application ne sait pas les planifier. La séance était
+            // supprimée d'abord, puis la création échouait : l'utilisateur
+            // perdait sa séance et recevait un message d'erreur.
+            if (activityKey == null || PlannedCardioService.validateCardioType(activityKey) == null) {
+              return {
+                'success': false,
+                'message': _unsupportedActivityMessage(lowerType, langCode),
+              };
+            }
+
+            // La création d'abord, la suppression seulement si elle a réussi.
+            final created = await _executeToolCall('create_cardio', {
               'day': dayStr,
               'activity': activityKey,
             }, langCode);
+
+            if (created['success'] == true) {
+              await WeeklyPlannerService.deletePlannedWorkout(existingWorkout.id);
+            }
+            return created;
           }
         }
 
@@ -4939,10 +3178,11 @@ USER REQUEST: "$userMessage"
           // Générer les nouveaux exercices avec l'IA
           final result = await AIWorkoutGenerationService.generateWorkout(
             userRequest: '$newType workout',
+            constraints: await _workoutConstraints(),
             durationMinutes: duration,
           );
 
-          if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
+          if (result.success && result.exercises.isNotEmpty) {
             // Mettre à jour avec le nouveau type ET les nouveaux exercices
             await WeeklyPlannerService.updatePlannedWorkout(
               existingWorkout.id,
@@ -5131,10 +3371,7 @@ USER REQUEST: "$userMessage"
         // Valider le type de cardio via le service partagé
         final validatedType = PlannedCardioService.validateCardioType(activityKey);
         if (validatedType == null) {
-          final errorMsg = langCode == 'fr'
-              ? '❌ Type d\'activité non reconnu: $activityKey\nEssaie: course, vélo, marche'
-              : '❌ Unknown activity type: $activityKey\nTry: running, bike, walking';
-          return {'success': false, 'message': errorMsg};
+          return {'success': false, 'message': _unsupportedActivityMessage(activityKey, langCode)};
         }
 
         // Vérifier qu'au moins une valeur est fournie
@@ -5552,13 +3789,27 @@ USER REQUEST: "$userMessage"
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
       // Récupérer l'ancien repas pour le stocker dans _lastAction (pour undo)
-      final oldMealResult = await Supabase.instance.client
+      //
+      // Le prompt encourage plusieurs entrées du même type le même jour (deux
+      // collations, par exemple). `.maybeSingle()` lève alors une exception,
+      // rendue à l'utilisateur en anglais brut. On prend donc le plus récent,
+      // ou celui dont le nom correspond quand le modèle l'a précisé.
+      final currentDishName = args['current_dish_name'] as String?;
+      var oldMealQuery = Supabase.instance.client
           .from('planned_activities')
           .select()
           .eq('user_id', user.id)
           .eq('activity_type', mealType.value)
           .gte('planned_date', startOfDay.toIso8601String().split('T')[0])
-          .lt('planned_date', endOfDay.toIso8601String().split('T')[0])
+          .lt('planned_date', endOfDay.toIso8601String().split('T')[0]);
+
+      if (currentDishName != null && currentDishName.trim().isNotEmpty) {
+        oldMealQuery = oldMealQuery.ilike('activity_data->>dish_name', '%${currentDishName.trim()}%');
+      }
+
+      final oldMealResult = await oldMealQuery
+          .order('created_at', ascending: false)
+          .limit(1)
           .maybeSingle();
 
       // Stocker l'ancien repas pour undo (si trouvé)
@@ -5624,9 +3875,11 @@ USER REQUEST: "$userMessage"
         return {'success': false, 'message': 'User not logged in'};
       }
 
-      final now = DateTime.now();
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      final normalizedStart = DateTime(weekStart.year, weekStart.month, weekStart.day);
+      // La fenêtre affichée à l'écran, comme partout ailleurs dans le service.
+      // Ce calcul repartait de la date du jour : pendant la démo de
+      // l'onboarding, qui plante sa fenêtre ailleurs, « supprime tous mes
+      // repas » visait une autre semaine que celle sous les yeux.
+      final normalizedStart = planningWindowStart;
       final weekEnd = normalizedStart.add(const Duration(days: 7));
 
       // Supprimer tous les repas de la semaine (breakfast, lunch, dinner, snack)
@@ -5996,19 +4249,6 @@ USER REQUEST: "$userMessage"
     }
   }
 
-  /// Obtient la description de la prochaine action en attente
-  static String? _getNextActionDescription(String langCode) {
-    if (_pendingFollowUpActions == null || _pendingFollowUpActions!.isEmpty) {
-      return null;
-    }
-    final next = _pendingFollowUpActions!.first;
-    final nextName = next['name'] as String;
-    final nextRawArgs = next['args'];
-    final Map<String, dynamic> nextArgs = nextRawArgs is Map
-        ? Map<String, dynamic>.from(nextRawArgs)
-        : {};
-    return _buildConfirmationMessage(nextName, nextArgs, langCode);
-  }
 
   /// Vérifie si deux dates sont le même jour
   static bool _isSameDay(DateTime a, DateTime b) {
@@ -6154,101 +4394,71 @@ USER REQUEST: "$userMessage"
     return dayStrings[date.weekday - 1];
   }
 
-  /// Générer un message de succès spécifique pour le cardio
-  static String _getCardioSuccessMessage(String langCode, String activityName, int? duration, double? distance, String dayName) {
-    // Construire la partie détails
-    String details = '';
-    if (distance != null && duration != null) {
-      // Les deux fournis
-      details = langCode == 'fr' ? '${distance.toStringAsFixed(1)} km / $duration min'
-          : langCode == 'de' ? '${distance.toStringAsFixed(1)} km / $duration min'
-          : '${distance.toStringAsFixed(1)} km / $duration min';
-    } else if (distance != null) {
-      details = '${distance.toStringAsFixed(1)} km';
-    } else if (duration != null) {
-      details = '$duration min';
-    }
-
-    // Construire le message
-    if (langCode == 'fr') {
-      return '✅ $activityName ($details) ajouté le $dayName';
-    } else if (langCode == 'de') {
-      return '✅ $activityName ($details) am $dayName hinzugefügt';
-    } else {
-      return '✅ $activityName ($details) added on $dayName';
+  /// Les seules contraintes physiques, pour le générateur de séance.
+  static Future<List<String>?> _workoutConstraints() async {
+    try {
+      final prefs = await CoachPreferenceExtractor.instance.getUserPreferences();
+      final list = prefs?.fitnessConstraints ?? const <String>[];
+      return list.isEmpty ? null : list;
+    } catch (e) {
+      debugPrint('Could not get workout constraints: $e');
+      return null;
     }
   }
 
-  static List<DateTime> _parseDays(List<String> dayStrings) {
-    final weekStart = planningWindowStart;
-    final dayMap = {
-      'monday': 0, 'lundi': 0, 'montag': 0,
-      'tuesday': 1, 'mardi': 1, 'dienstag': 1,
-      'wednesday': 2, 'mercredi': 2, 'mittwoch': 2,
-      'thursday': 3, 'jeudi': 3, 'donnerstag': 3,
-      'friday': 4, 'vendredi': 4, 'freitag': 4,
-      'saturday': 5, 'samedi': 5, 'samstag': 5,
-      'sunday': 6, 'dimanche': 6, 'sonntag': 6,
-    };
+  /// Les contraintes physiques et les horaires que le coach a retenus.
+  ///
+  /// Elles vivent dans la mémoire du coach ; le planificateur n'en lisait que
+  /// les allergies et le régime, et seulement côté repas. Retourne une chaîne
+  /// vide quand il n'y a rien à dire, pour ne pas gonfler le prompt.
+  static Future<String> _getPhysicalConstraints() async {
+    try {
+      final prefs = await CoachPreferenceExtractor.instance.getUserPreferences();
+      if (prefs == null) return '';
 
-    final days = <DateTime>[];
-    for (final dayStr in dayStrings) {
-      final offset = dayMap[dayStr.toLowerCase()];
-      if (offset != null) {
-        days.add(weekStart.add(Duration(days: offset)));
+      final lines = <String>[];
+      if (prefs.fitnessConstraints.isNotEmpty) {
+        lines.add('PHYSICAL CONSTRAINTS (injuries, limitations): ${prefs.fitnessConstraints.join(', ')}');
+        lines.add('→ Avoid exercises and activities that load these areas. Say so in one short sentence when it changes your plan.');
       }
+      if (prefs.preferredWorkoutTimes.isNotEmpty) {
+        lines.add('PREFERRED TRAINING TIMES: ${prefs.preferredWorkoutTimes.join(', ')}');
+      }
+      if (lines.isEmpty) return '';
+
+      return '''
+═══════════════════════════════════════════════════════════════
+              🔴 WHAT RYZE KNOWS ABOUT THIS USER
+═══════════════════════════════════════════════════════════════
+${lines.join('\n')}
+
+''';
+    } catch (e) {
+      debugPrint('Could not get physical constraints: $e');
+      return '';
     }
-
-    return days;
   }
 
-  static List<DateTime> _getAvailableDays(int count) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final weekEnd = getCurrentWeekStart().add(const Duration(days: 6));
-
-    final available = <DateTime>[];
-    var current = today;
-
-    while (current.isBefore(weekEnd) || current == weekEnd) {
-      if (available.length >= count) break;
-      available.add(current);
-      current = current.add(const Duration(days: 2)); // Espacement
-    }
-
-    return available.take(count).toList();
-  }
-
-  static String _getActivityKey(String activityName) {
-    final mapping = {
-      'course': 'running', 'running': 'running', 'laufen': 'running',
-      'vélo': 'bike', 'cycling': 'bike', 'bike': 'bike', 'radfahren': 'bike',
-      'marche': 'walking', 'walking': 'walking', 'gehen': 'walking',
-      'natation': 'swimming', 'swimming': 'swimming', 'schwimmen': 'swimming',
-      'hiit': 'hiit',
-    };
-
-    return mapping[activityName.toLowerCase()] ?? 'running';
-  }
-
-  static PlannedActivityType _getMealActivityType(String mealType) {
-    switch (mealType.toLowerCase()) {
-      case 'breakfast':
-      case 'petit-déjeuner':
-      case 'frühstück':
-        return PlannedActivityType.breakfast;
-      case 'lunch':
-      case 'déjeuner':
-      case 'mittagessen':
-        return PlannedActivityType.lunch;
-      case 'dinner':
-      case 'dîner':
-      case 'abendessen':
-        return PlannedActivityType.dinner;
+  /// L'activité demandée sort des quatre que l'application sait planifier.
+  ///
+  /// Le message dit ce qui est possible plutôt que de renvoyer une erreur
+  /// technique, et il existe dans les trois langues — l'allemand recevait
+  /// l'anglais.
+  static String _unsupportedActivityMessage(String requested, String langCode) {
+    switch (langCode) {
+      case 'fr':
+        return 'Je ne sais pas encore planifier ça ($requested). Je gère la course, le vélo, la marche et le HIIT.';
+      case 'de':
+        return 'Das kann ich noch nicht planen ($requested). Ich kann Laufen, Radfahren, Gehen und HIIT.';
       default:
-        return PlannedActivityType.snack;
+        return "I can't plan that yet ($requested). I handle running, cycling, walking and HIIT.";
     }
   }
+
+
+
+
+
 
   /// Retourne "Sunday (2026-01-18)" ou selon la langue "Dimanche (2026-01-18)"
   static String _getTodayWithDayName() {
@@ -6270,386 +4480,14 @@ USER REQUEST: "$userMessage"
     return days[date.weekday - 1];
   }
 
-  // =====================================================
-  // FALLBACK GENERATION - Backup quand l'IA ne répond pas
-  // =====================================================
 
-  /// Génère un intent de repas fallback basé sur l'analyse du message utilisateur
-  static Future<IntentAnalysis?> _generateFallbackMealIntent(String userMessage, String langCode) async {
-    try {
-      debugPrint('🍽️ Generating fallback meal intent for: $userMessage');
 
-      final messageLower = userMessage.toLowerCase();
 
-      // Détecter le type de repas
-      String mealType = 'lunch'; // Default
-      if (_containsAny(messageLower, ['petit', 'breakfast', 'matin', 'frühstück', 'morning'])) {
-        mealType = 'breakfast';
-      } else if (_containsAny(messageLower, ['déjeuner', 'lunch', 'midi', 'mittagessen'])) {
-        mealType = 'lunch';
-      } else if (_containsAny(messageLower, ['dîner', 'dinner', 'soir', 'abendessen', 'souper'])) {
-        mealType = 'dinner';
-      } else if (_containsAny(messageLower, ['collation', 'snack', 'goûter', 'zwischenmahlzeit'])) {
-        mealType = 'snack';
-      }
 
-      // Détecter le jour cible (défaut: aujourd'hui ou demain)
-      String targetDay = _getNextAvailableDay();
-      if (_containsAny(messageLower, ['lundi', 'monday', 'montag'])) targetDay = 'monday';
-      if (_containsAny(messageLower, ['mardi', 'tuesday', 'dienstag'])) targetDay = 'tuesday';
-      if (_containsAny(messageLower, ['mercredi', 'wednesday', 'mittwoch'])) targetDay = 'wednesday';
-      if (_containsAny(messageLower, ['jeudi', 'thursday', 'donnerstag'])) targetDay = 'thursday';
-      if (_containsAny(messageLower, ['vendredi', 'friday', 'freitag'])) targetDay = 'friday';
-      if (_containsAny(messageLower, ['samedi', 'saturday', 'samstag'])) targetDay = 'saturday';
-      if (_containsAny(messageLower, ['dimanche', 'sunday', 'sonntag'])) targetDay = 'sunday';
-      if (_containsAny(messageLower, ['demain', 'tomorrow', 'morgen'])) targetDay = _getTomorrowDay();
 
-      // Obtenir les repas template selon le type
-      final fallbackMeals = _getFallbackMeals(mealType, langCode);
 
-      if (fallbackMeals.isEmpty) return null;
 
-      // Sélectionner un repas adapté
-      final selectedMeal = fallbackMeals.first;
-      selectedMeal['day'] = targetDay;
 
-      final responseMessage = langCode == 'fr'
-          ? "J'ai préparé une suggestion de ${_getMealTypeNameFromString(mealType, langCode)} pour toi 🍽️"
-          : langCode == 'de'
-              ? "Ich habe einen ${_getMealTypeNameFromString(mealType, langCode)}-Vorschlag für dich vorbereitet 🍽️"
-              : "I've prepared a ${_getMealTypeNameFromString(mealType, langCode)} suggestion for you 🍽️";
-
-      return IntentAnalysis(
-        intent: PlannerIntent.meal,
-        extractedInfo: {
-          'meals': [selectedMeal],
-          'response_message': responseMessage,
-        },
-        isComplete: true,
-      );
-    } catch (e) {
-      debugPrint('❌ Fallback meal generation failed: $e');
-      return null;
-    }
-  }
-
-  /// Génère un intent de workout fallback basé sur l'analyse du message utilisateur
-  static Future<IntentAnalysis?> _generateFallbackWorkoutIntent(String userMessage, String langCode) async {
-    try {
-      debugPrint('💪 Generating fallback workout intent for: $userMessage');
-
-      final messageLower = userMessage.toLowerCase();
-
-      // Détecter si c'est du cardio
-      if (_containsAny(messageLower, ['course', 'running', 'courir', 'run', 'jogging', 'cardio', 'vélo', 'bike', 'cycling', 'natation', 'swim', 'marche', 'walk'])) {
-        return _generateFallbackCardioIntent(userMessage, langCode);
-      }
-
-      // Détecter le type de séance musculation
-      String workoutType = 'full_body';
-      String workoutName = langCode == 'fr' ? 'Full Body' : 'Full Body';
-
-      if (_containsAny(messageLower, ['push', 'pec', 'chest', 'poitrine', 'épaule', 'shoulder', 'tricep'])) {
-        workoutType = 'push';
-        workoutName = langCode == 'fr' ? 'Push (Pectoraux/Épaules)' : 'Push (Chest/Shoulders)';
-      } else if (_containsAny(messageLower, ['pull', 'dos', 'back', 'bicep', 'tirage'])) {
-        workoutType = 'pull';
-        workoutName = langCode == 'fr' ? 'Pull (Dos/Biceps)' : 'Pull (Back/Biceps)';
-      } else if (_containsAny(messageLower, ['leg', 'jambe', 'squat', 'cuisse', 'quad', 'fessier', 'glute'])) {
-        workoutType = 'legs';
-        workoutName = langCode == 'fr' ? 'Legs (Jambes)' : 'Legs';
-      } else if (_containsAny(messageLower, ['upper', 'haut', 'bras', 'arm'])) {
-        workoutType = 'upper';
-        workoutName = langCode == 'fr' ? 'Upper Body' : 'Upper Body';
-      }
-
-      // Détecter le jour cible
-      String targetDay = _getNextAvailableDay();
-      if (_containsAny(messageLower, ['lundi', 'monday', 'montag'])) targetDay = 'monday';
-      if (_containsAny(messageLower, ['mardi', 'tuesday', 'dienstag'])) targetDay = 'tuesday';
-      if (_containsAny(messageLower, ['mercredi', 'wednesday', 'mittwoch'])) targetDay = 'wednesday';
-      if (_containsAny(messageLower, ['jeudi', 'thursday', 'donnerstag'])) targetDay = 'thursday';
-      if (_containsAny(messageLower, ['vendredi', 'friday', 'freitag'])) targetDay = 'friday';
-      if (_containsAny(messageLower, ['samedi', 'saturday', 'samstag'])) targetDay = 'saturday';
-      if (_containsAny(messageLower, ['dimanche', 'sunday', 'sonntag'])) targetDay = 'sunday';
-      if (_containsAny(messageLower, ['demain', 'tomorrow', 'morgen'])) targetDay = _getTomorrowDay();
-
-      // Générer les exercices selon le type
-      final exercises = _getFallbackExercises(workoutType, langCode);
-
-      final responseMessage = langCode == 'fr'
-          ? "Je t'ai préparé une séance $workoutName 💪"
-          : langCode == 'de'
-              ? "Ich habe ein $workoutName Training für dich vorbereitet 💪"
-              : "I've prepared a $workoutName workout for you 💪";
-
-      return IntentAnalysis(
-        intent: PlannerIntent.workout,
-        extractedInfo: {
-          'workouts': [{
-            'day': targetDay,
-            'workout_name': workoutName,
-            'duration_minutes': 45,
-            'exercises': exercises,
-          }],
-          'response_message': responseMessage,
-        },
-        isComplete: true,
-      );
-    } catch (e) {
-      debugPrint('❌ Fallback workout generation failed: $e');
-      return null;
-    }
-  }
-
-  /// Génère un intent de cardio fallback
-  static IntentAnalysis? _generateFallbackCardioIntent(String userMessage, String langCode) {
-    try {
-      final messageLower = userMessage.toLowerCase();
-
-      // Détecter le type de cardio
-      String cardioType = 'running';
-      String cardioName = langCode == 'fr' ? 'Course' : 'Running';
-
-      if (_containsAny(messageLower, ['vélo', 'bike', 'cycling', 'cyclisme'])) {
-        cardioType = 'cycling';
-        cardioName = langCode == 'fr' ? 'Vélo' : 'Cycling';
-      } else if (_containsAny(messageLower, ['natation', 'swim', 'nager'])) {
-        cardioType = 'swimming';
-        cardioName = langCode == 'fr' ? 'Natation' : 'Swimming';
-      } else if (_containsAny(messageLower, ['marche', 'walk'])) {
-        cardioType = 'walking';
-        cardioName = langCode == 'fr' ? 'Marche' : 'Walking';
-      } else if (_containsAny(messageLower, ['hiit'])) {
-        cardioType = 'hiit';
-        cardioName = 'HIIT';
-      }
-
-      // Détecter la durée (défaut 30 min)
-      int duration = 30;
-      final durationMatch = RegExp(r'(\d+)\s*(?:min|minutes?)').firstMatch(messageLower);
-      if (durationMatch != null) {
-        duration = int.tryParse(durationMatch.group(1)!) ?? 30;
-      }
-
-      // Détecter le jour
-      String targetDay = _getNextAvailableDay();
-      if (_containsAny(messageLower, ['lundi', 'monday'])) targetDay = 'monday';
-      if (_containsAny(messageLower, ['mardi', 'tuesday'])) targetDay = 'tuesday';
-      if (_containsAny(messageLower, ['mercredi', 'wednesday'])) targetDay = 'wednesday';
-      if (_containsAny(messageLower, ['jeudi', 'thursday'])) targetDay = 'thursday';
-      if (_containsAny(messageLower, ['vendredi', 'friday'])) targetDay = 'friday';
-      if (_containsAny(messageLower, ['samedi', 'saturday'])) targetDay = 'saturday';
-      if (_containsAny(messageLower, ['dimanche', 'sunday'])) targetDay = 'sunday';
-      if (_containsAny(messageLower, ['demain', 'tomorrow'])) targetDay = _getTomorrowDay();
-
-      final responseMessage = langCode == 'fr'
-          ? "Je t'ai planifié une session de $cardioName de $duration minutes 🏃"
-          : langCode == 'de'
-              ? "Ich habe eine $cardioName-Session von $duration Minuten für dich geplant 🏃"
-              : "I've planned a $duration minute $cardioName session for you 🏃";
-
-      return IntentAnalysis(
-        intent: PlannerIntent.cardio,
-        extractedInfo: {
-          'activity_type': cardioType,
-          'activity_name': cardioName,
-          'target_days': [targetDay],
-          'target_minutes': duration,
-          'response_message': responseMessage,
-        },
-        isComplete: true,
-      );
-    } catch (e) {
-      debugPrint('❌ Fallback cardio generation failed: $e');
-      return null;
-    }
-  }
-
-  /// Helper pour vérifier si une string contient un des mots-clés
-  static bool _containsAny(String text, List<String> keywords) {
-    return keywords.any((keyword) => text.contains(keyword));
-  }
-
-  /// Retourne le jour suivant disponible (aujourd'hui si pas passé, sinon demain)
-  static String _getNextAvailableDay() {
-    final now = DateTime.now();
-    final hour = now.hour;
-
-    // Si on est après 20h, proposer demain
-    if (hour >= 20) {
-      return _getTomorrowDay();
-    }
-
-    // Sinon aujourd'hui
-    final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    return dayNames[now.weekday - 1];
-  }
-
-  /// Retourne le jour de demain en string
-  static String _getTomorrowDay() {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    return dayNames[tomorrow.weekday - 1];
-  }
-
-  /// Retourne le nom du type de repas selon la langue (version String pour fallback)
-  static String _getMealTypeNameFromString(String mealType, String langCode) {
-    final names = {
-      'breakfast': {'fr': 'petit-déjeuner', 'en': 'breakfast', 'de': 'Frühstück'},
-      'lunch': {'fr': 'déjeuner', 'en': 'lunch', 'de': 'Mittagessen'},
-      'dinner': {'fr': 'dîner', 'en': 'dinner', 'de': 'Abendessen'},
-      'snack': {'fr': 'collation', 'en': 'snack', 'de': 'Snack'},
-    };
-    return names[mealType]?[langCode] ?? names[mealType]?['en'] ?? mealType;
-  }
-
-  /// Templates de repas fallback par type
-  static List<Map<String, dynamic>> _getFallbackMeals(String mealType, String langCode) {
-    final templates = {
-      'breakfast': [
-        {
-          'meal_type': 'breakfast',
-          'dish_name': langCode == 'fr' ? 'Oeufs brouillés & toast' : 'Scrambled eggs & toast',
-          'dish_description': langCode == 'fr' ? 'Oeufs, pain complet, beurre' : 'Eggs, whole wheat bread, butter',
-          'calories': 400,
-          'proteins': 22.0,
-          'carbs': 30.0,
-          'fats': 20.0,
-          'quantity_g': 250,
-          'reasoning': langCode == 'fr' ? 'Équilibré en protéines et glucides pour bien démarrer' : 'Balanced proteins and carbs for a good start',
-        },
-        {
-          'meal_type': 'breakfast',
-          'dish_name': langCode == 'fr' ? 'Porridge protéiné' : 'Protein oatmeal',
-          'dish_description': langCode == 'fr' ? 'Flocons d\'avoine, lait, whey, banane' : 'Oats, milk, whey, banana',
-          'calories': 450,
-          'proteins': 30.0,
-          'carbs': 55.0,
-          'fats': 10.0,
-          'quantity_g': 350,
-          'reasoning': langCode == 'fr' ? 'Idéal avant un entraînement' : 'Perfect before training',
-        },
-      ],
-      'lunch': [
-        {
-          'meal_type': 'lunch',
-          'dish_name': langCode == 'fr' ? 'Poulet grillé & riz' : 'Grilled chicken & rice',
-          'dish_description': langCode == 'fr' ? 'Blanc de poulet, riz basmati, légumes' : 'Chicken breast, basmati rice, vegetables',
-          'calories': 550,
-          'proteins': 40.0,
-          'carbs': 60.0,
-          'fats': 12.0,
-          'quantity_g': 400,
-          'reasoning': langCode == 'fr' ? 'Repas complet riche en protéines' : 'Complete meal rich in protein',
-        },
-        {
-          'meal_type': 'lunch',
-          'dish_name': langCode == 'fr' ? 'Salade César au poulet' : 'Chicken Caesar salad',
-          'dish_description': langCode == 'fr' ? 'Salade, poulet, parmesan, croûtons' : 'Salad, chicken, parmesan, croutons',
-          'calories': 480,
-          'proteins': 35.0,
-          'carbs': 25.0,
-          'fats': 28.0,
-          'quantity_g': 350,
-          'reasoning': langCode == 'fr' ? 'Léger mais nutritif' : 'Light but nutritious',
-        },
-      ],
-      'dinner': [
-        {
-          'meal_type': 'dinner',
-          'dish_name': langCode == 'fr' ? 'Saumon & légumes' : 'Salmon & vegetables',
-          'dish_description': langCode == 'fr' ? 'Pavé de saumon, brocoli, patate douce' : 'Salmon fillet, broccoli, sweet potato',
-          'calories': 520,
-          'proteins': 38.0,
-          'carbs': 35.0,
-          'fats': 24.0,
-          'quantity_g': 380,
-          'reasoning': langCode == 'fr' ? 'Riche en oméga-3 pour la récupération' : 'Rich in omega-3 for recovery',
-        },
-        {
-          'meal_type': 'dinner',
-          'dish_name': langCode == 'fr' ? 'Steak haché & purée' : 'Ground beef & mash',
-          'dish_description': langCode == 'fr' ? 'Boeuf haché 5%, purée de pommes de terre' : 'Lean ground beef, mashed potatoes',
-          'calories': 600,
-          'proteins': 42.0,
-          'carbs': 45.0,
-          'fats': 25.0,
-          'quantity_g': 400,
-          'reasoning': langCode == 'fr' ? 'Apport protéique important' : 'High protein intake',
-        },
-      ],
-      'snack': [
-        {
-          'meal_type': 'snack',
-          'dish_name': langCode == 'fr' ? 'Shake protéiné' : 'Protein shake',
-          'dish_description': langCode == 'fr' ? 'Whey, lait d\'amande, banane' : 'Whey, almond milk, banana',
-          'calories': 250,
-          'proteins': 28.0,
-          'carbs': 20.0,
-          'fats': 5.0,
-          'quantity_g': 300,
-          'reasoning': langCode == 'fr' ? 'Collation post-entraînement idéale' : 'Ideal post-workout snack',
-        },
-        {
-          'meal_type': 'snack',
-          'dish_name': langCode == 'fr' ? 'Yaourt grec & fruits' : 'Greek yogurt & fruits',
-          'dish_description': langCode == 'fr' ? 'Yaourt grec 0%, fruits rouges, miel' : 'Fat-free Greek yogurt, berries, honey',
-          'calories': 200,
-          'proteins': 18.0,
-          'carbs': 25.0,
-          'fats': 2.0,
-          'quantity_g': 250,
-          'reasoning': langCode == 'fr' ? 'Riche en protéines, faible en graisses' : 'High protein, low fat',
-        },
-      ],
-    };
-
-    return List<Map<String, dynamic>>.from(templates[mealType] ?? templates['lunch']!);
-  }
-
-  /// Templates d'exercices fallback par type de séance
-  static List<Map<String, dynamic>> _getFallbackExercises(String workoutType, String langCode) {
-    final templates = {
-      'push': [
-        {'exercise_name': langCode == 'fr' ? 'Développé couché' : 'Bench Press', 'sets': 4, 'reps_max': 10, 'weight_kg': 60.0, 'rest_seconds': 90},
-        {'exercise_name': langCode == 'fr' ? 'Développé incliné haltères' : 'Incline Dumbbell Press', 'sets': 3, 'reps_max': 12, 'weight_kg': 22.0, 'rest_seconds': 75},
-        {'exercise_name': langCode == 'fr' ? 'Élévations latérales' : 'Lateral Raises', 'sets': 3, 'reps_max': 15, 'weight_kg': 10.0, 'rest_seconds': 60},
-        {'exercise_name': langCode == 'fr' ? 'Dips' : 'Dips', 'sets': 3, 'reps_max': 12, 'weight_kg': 0.0, 'rest_seconds': 75},
-        {'exercise_name': langCode == 'fr' ? 'Extensions triceps' : 'Tricep Extensions', 'sets': 3, 'reps_max': 12, 'weight_kg': 15.0, 'rest_seconds': 60},
-      ],
-      'pull': [
-        {'exercise_name': langCode == 'fr' ? 'Tractions' : 'Pull-ups', 'sets': 4, 'reps_max': 10, 'weight_kg': 0.0, 'rest_seconds': 90},
-        {'exercise_name': langCode == 'fr' ? 'Rowing barre' : 'Barbell Row', 'sets': 4, 'reps_max': 10, 'weight_kg': 60.0, 'rest_seconds': 90},
-        {'exercise_name': langCode == 'fr' ? 'Tirage vertical' : 'Lat Pulldown', 'sets': 3, 'reps_max': 12, 'weight_kg': 50.0, 'rest_seconds': 75},
-        {'exercise_name': langCode == 'fr' ? 'Curl biceps' : 'Bicep Curls', 'sets': 3, 'reps_max': 12, 'weight_kg': 12.0, 'rest_seconds': 60},
-        {'exercise_name': langCode == 'fr' ? 'Face pulls' : 'Face Pulls', 'sets': 3, 'reps_max': 15, 'weight_kg': 15.0, 'rest_seconds': 60},
-      ],
-      'legs': [
-        {'exercise_name': langCode == 'fr' ? 'Squat' : 'Squats', 'sets': 4, 'reps_max': 10, 'weight_kg': 80.0, 'rest_seconds': 120},
-        {'exercise_name': langCode == 'fr' ? 'Presse à cuisses' : 'Leg Press', 'sets': 4, 'reps_max': 12, 'weight_kg': 120.0, 'rest_seconds': 90},
-        {'exercise_name': langCode == 'fr' ? 'Fentes' : 'Lunges', 'sets': 3, 'reps_max': 12, 'weight_kg': 20.0, 'rest_seconds': 75},
-        {'exercise_name': langCode == 'fr' ? 'Leg curl' : 'Leg Curl', 'sets': 3, 'reps_max': 12, 'weight_kg': 40.0, 'rest_seconds': 60},
-        {'exercise_name': langCode == 'fr' ? 'Mollets debout' : 'Standing Calf Raises', 'sets': 4, 'reps_max': 15, 'weight_kg': 60.0, 'rest_seconds': 60},
-      ],
-      'upper': [
-        {'exercise_name': langCode == 'fr' ? 'Développé couché' : 'Bench Press', 'sets': 3, 'reps_max': 10, 'weight_kg': 60.0, 'rest_seconds': 90},
-        {'exercise_name': langCode == 'fr' ? 'Rowing haltère' : 'Dumbbell Row', 'sets': 3, 'reps_max': 10, 'weight_kg': 25.0, 'rest_seconds': 75},
-        {'exercise_name': langCode == 'fr' ? 'Développé épaules' : 'Shoulder Press', 'sets': 3, 'reps_max': 10, 'weight_kg': 20.0, 'rest_seconds': 75},
-        {'exercise_name': langCode == 'fr' ? 'Curl biceps' : 'Bicep Curls', 'sets': 3, 'reps_max': 12, 'weight_kg': 12.0, 'rest_seconds': 60},
-        {'exercise_name': langCode == 'fr' ? 'Extensions triceps' : 'Tricep Extensions', 'sets': 3, 'reps_max': 12, 'weight_kg': 15.0, 'rest_seconds': 60},
-      ],
-      'full_body': [
-        {'exercise_name': langCode == 'fr' ? 'Squat' : 'Squats', 'sets': 3, 'reps_max': 10, 'weight_kg': 70.0, 'rest_seconds': 90},
-        {'exercise_name': langCode == 'fr' ? 'Développé couché' : 'Bench Press', 'sets': 3, 'reps_max': 10, 'weight_kg': 55.0, 'rest_seconds': 90},
-        {'exercise_name': langCode == 'fr' ? 'Rowing barre' : 'Barbell Row', 'sets': 3, 'reps_max': 10, 'weight_kg': 50.0, 'rest_seconds': 75},
-        {'exercise_name': langCode == 'fr' ? 'Développé épaules' : 'Shoulder Press', 'sets': 3, 'reps_max': 10, 'weight_kg': 18.0, 'rest_seconds': 75},
-        {'exercise_name': langCode == 'fr' ? 'Fentes' : 'Lunges', 'sets': 3, 'reps_max': 12, 'weight_kg': 16.0, 'rest_seconds': 60},
-      ],
-    };
-
-    return List<Map<String, dynamic>>.from(templates[workoutType] ?? templates['full_body']!);
-  }
 
   static String _getMessage(String langCode, String key) {
     final messages = {
@@ -6750,279 +4588,10 @@ USER REQUEST: "$userMessage"
     return errors[key]?[langCode] ?? errors[key]?['en'] ?? key;
   }
 
-  static String _getFollowUpQuestion(String langCode) {
-    final questions = {
-      'fr': 'Peux-tu me donner plus de détails ?',
-      'en': 'Can you give me more details?',
-      'de': 'Kannst du mir mehr Details geben?',
-    };
 
-    return questions[langCode] ?? questions['en']!;
-  }
 
-  // =====================================================
-  // RECALCUL DES MACROS POUR INGREDIENTS MODIFIES
-  // =====================================================
 
-  /// Recalcule les macros d'un repas basé sur les ingrédients modifiés
-  /// Retourne les données complètes du plat (nom, description, macros) comme le planificateur
-  static Future<Map<String, dynamic>?> recalculateMealMacros({
-    required String dishName,
-    required String ingredients,
-    required String langCode,
-    String? originalDescription,
-  }) async {
-    try {
-      final model = GenerativeModel(
-        model: 'gemini-2.0-flash',
-        apiKey: GeminiConfig.geminiApiKey,
-        generationConfig: GenerationConfig(
-          temperature: 0.3,
-          maxOutputTokens: 2048,
-        ),
-      );
 
-      final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
-
-      debugPrint('🧮 Recalcul - Dish: $dishName');
-      debugPrint('🧮 Recalcul - Ingredients provided: $ingredients');
-
-      final prompt = '''
-You are a macronutrient calculator. The user has provided an EXACT list of ingredients.
-
-RESPOND IN $languageName.
-
-═══════════════════════════════════════════════════════════════
-                    🚨 STRICT RULES 🚨
-═══════════════════════════════════════════════════════════════
-
-1. USE EXACTLY the ingredients provided - DO NOT MODIFY, DO NOT REMOVE ANY
-2. ALL ingredients MUST appear in dish_description
-3. Calculate macros for EACH ingredient separately, then ADD them up
-4. ONE ingredient per line
-   - NEVER: "- 1 egg + 1 yolk" or "- Salt, pepper"
-   - ALWAYS: Separate lines for each ingredient
-
-═══════════════════════════════════════════════════════════════
-                    DATA TO PROCESS
-═══════════════════════════════════════════════════════════════
-
-Base dish: $dishName
-EXACT LIST OF INGREDIENTS (must be respected exactly):
-$ingredients
-
-═══════════════════════════════════════════════════════════════
-                    NUTRITIONAL VALUES REFERENCE
-═══════════════════════════════════════════════════════════════
-
-Cheeses:
-- Camembert: 300 kcal/100g, 20g protein, 0.5g carbs, 25g fat
-- Emmental: 380 kcal/100g, 28g protein, 0g carbs, 30g fat
-- Parmesan: 430 kcal/100g, 38g protein, 0g carbs, 30g fat
-
-Starches (cooked):
-- Pasta: 130 kcal/100g, 5g protein, 25g carbs, 1g fat
-- Rice: 130 kcal/100g, 3g protein, 28g carbs, 0.5g fat
-
-Meats:
-- Bacon/Lardons: 250 kcal/100g, 15g protein, 1g carbs, 20g fat
-- Chicken: 165 kcal/100g, 31g protein, 0g carbs, 3.5g fat
-
-Others:
-- Egg: 155 kcal/100g (1 egg ~75 kcal)
-- Heavy cream: 300 kcal/100g, 2g protein, 3g carbs, 30g fat
-
-═══════════════════════════════════════════════════════════════
-                    CALCULATION EXAMPLE
-═══════════════════════════════════════════════════════════════
-
-If ingredients = "200g pasta, 100g bacon, 150g camembert":
-- Pasta 200g: 260 kcal, 10g protein, 50g carbs, 2g fat
-- Bacon 100g: 250 kcal, 15g protein, 1g carbs, 20g fat
-- Camembert 150g: 450 kcal, 30g protein, 0.75g carbs, 37.5g fat
-TOTAL: 960 kcal, 55g protein, 51.75g carbs, 59.5g fat
-
-═══════════════════════════════════════════════════════════════
-                    RESPONSE FORMAT
-═══════════════════════════════════════════════════════════════
-
-Use section names in user's language ($languageName):
-- French: INGRÉDIENTS, RECETTE, ASTUCE
-- English: INGREDIENTS, RECIPE, TIP
-- German: ZUTATEN, REZEPT, TIPP
-
-Respond ONLY with valid JSON (no markdown, no \`\`\`):
-
-{
-  "dish_name": "Short name (max 25 chars)",
-  "dish_description": "Description---INGREDIENTS:\\n- 200g pasta\\n- 100g bacon\\n- 150g camembert\\n...---RECIPE:\\n1. Step 1\\n2. Step 2---TIP: cooking tip",
-  "calories": 960,
-  "proteins": 55.0,
-  "carbs": 51.75,
-  "fats": 59.5
-}
-
-CALCULATE NOW with the EXACT ingredients provided:
-''';
-
-      final response = await model.generateContent([Content.text(prompt)]);
-      final text = response.text?.trim() ?? '';
-
-      debugPrint('🧮 Recalcul complet response: $text');
-
-      // Nettoyer la réponse (enlever ```json si présent)
-      String cleanedJson = text;
-      if (cleanedJson.startsWith('```')) {
-        cleanedJson = cleanedJson.replaceFirst(RegExp(r'^```json?\s*'), '');
-        cleanedJson = cleanedJson.replaceFirst(RegExp(r'\s*```$'), '');
-      }
-
-      final json = jsonDecode(cleanedJson) as Map<String, dynamic>;
-
-      // Extraire les macros de l'IA
-      final proteins = (json['proteins'] as num).toDouble();
-      final carbs = (json['carbs'] as num).toDouble();
-      final fats = (json['fats'] as num).toDouble();
-
-      // IMPORTANT: Calculer les calories avec la formule au lieu de prendre la valeur IA
-      // Formule standard: protéines × 4 + glucides × 4 + lipides × 9
-      final calculatedCalories = ((proteins * 4) + (carbs * 4) + (fats * 9)).round();
-
-      debugPrint('🧮 Calories IA: ${json['calories']} vs Calculées: $calculatedCalories');
-
-      return {
-        'success': true,
-        'dish_name': json['dish_name'] as String? ?? dishName,
-        'dish_description': json['dish_description'] as String? ?? '',
-        'calories': calculatedCalories,
-        'proteins': proteins,
-        'carbs': carbs,
-        'fats': fats,
-      };
-    } catch (e) {
-      debugPrint('❌ Error recalculating macros: $e');
-      return {
-        'success': false,
-        'error': e.toString(),
-      };
-    }
-  }
-
-  // =====================================================
-  // NOUVEAU: FLOW MULTI-SESSIONS AVEC QUESTIONS SÉQUENTIELLES
-  // =====================================================
-
-  /// Continuer le planning après une réponse de l'utilisateur
-  static Future<PlannerActionResult> continueSessionPlanning(
-    SessionPlanningState state,
-    String userAnswer,
-    String langCode,
-  ) async {
-    try {
-      // 1. Appliquer la réponse à la session concernée
-      final questionIdx = state.nextQuestionIndex;
-      if (questionIdx >= 0) {
-        state.applyAnswerToSession(questionIdx, userAnswer);
-        state.answerCurrentQuestion(userAnswer);
-      }
-
-      // 2. Vérifier s'il reste des questions
-      final nextQuestion = state.nextQuestion;
-      if (nextQuestion != null) {
-        return PlannerActionResult.question(
-          questionText: nextQuestion.questionText,
-          question: nextQuestion,
-          planningState: state,
-        );
-      }
-
-      // 3. Toutes les questions sont répondues → générer les sessions
-      return await _generateSessionsFromState(state, langCode);
-    } catch (e) {
-      debugPrint('❌ continueSessionPlanning error: $e');
-      return PlannerActionResult.error('Erreur lors de la planification: $e');
-    }
-  }
-
-  /// Générer les sessions finales depuis l'état complété
-  static Future<PlannerActionResult> _generateSessionsFromState(
-    SessionPlanningState state,
-    String langCode,
-  ) async {
-    try {
-      final pendingSessions = <PendingSession>[];
-
-      for (final partial in state.sessions) {
-        if (partial.isWorkout) {
-          // Générer le workout avec l'IA
-          final pendingWorkout = partial.toPendingWorkout();
-          final result = await AIWorkoutGenerationService.generateWorkout(
-            userRequest: pendingWorkout.workoutPrompt,
-            durationMinutes: pendingWorkout.durationMinutes,
-          );
-
-          if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
-            final workoutWithExercises = pendingWorkout.copyWithExercises(result.exercises!);
-            pendingSessions.add(PendingSession.fromWorkout(workoutWithExercises));
-          }
-        } else {
-          // Cardio: pas de génération, juste créer le PendingCardio
-          final pendingCardio = partial.toPendingCardio();
-          pendingSessions.add(PendingSession.fromCardio(pendingCardio));
-        }
-      }
-
-      if (pendingSessions.isEmpty) {
-        return PlannerActionResult.error(
-          _getMessage(langCode, 'workout_generation_failed'),
-        );
-      }
-
-      // Trier: par date puis workout avant cardio
-      pendingSessions.sort((a, b) {
-        final dateCompare = a.plannedDate.compareTo(b.plannedDate);
-        if (dateCompare != 0) return dateCompare;
-        // Workouts avant cardios pour le même jour
-        if (a.isWorkout && b.isCardio) return -1;
-        if (a.isCardio && b.isWorkout) return 1;
-        return 0;
-      });
-
-      return PlannerActionResult.sessionPreview(
-        message: _getSessionPreviewMessage(langCode, pendingSessions),
-        sessions: pendingSessions,
-      );
-    } catch (e) {
-      debugPrint('❌ _generateSessionsFromState error: $e');
-      return PlannerActionResult.error('Erreur lors de la génération: $e');
-    }
-  }
-
-  /// Message de preview pour les sessions
-  static String _getSessionPreviewMessage(String langCode, List<PendingSession> sessions) {
-    final workoutCount = sessions.where((s) => s.isWorkout).length;
-    final cardioCount = sessions.where((s) => s.isCardio).length;
-
-    if (langCode == 'fr') {
-      final parts = <String>[];
-      if (workoutCount > 0) {
-        parts.add('$workoutCount séance${workoutCount > 1 ? 's' : ''} de musculation');
-      }
-      if (cardioCount > 0) {
-        parts.add('$cardioCount séance${cardioCount > 1 ? 's' : ''} de cardio');
-      }
-      return 'Voici ton programme ! ${parts.join(' et ')} 👇\nValide chaque séance une par une.';
-    }
-
-    final parts = <String>[];
-    if (workoutCount > 0) {
-      parts.add('$workoutCount workout session${workoutCount > 1 ? 's' : ''}');
-    }
-    if (cardioCount > 0) {
-      parts.add('$cardioCount cardio session${cardioCount > 1 ? 's' : ''}');
-    }
-    return 'Here\'s your program! ${parts.join(' and ')} 👇\nValidate each session one by one.';
-  }
 
   /// Confirmer une seule session (workout ou cardio)
   static Future<PlannerActionResult> confirmSingleSession(PendingSession session) async {
@@ -7072,120 +4641,4 @@ CALCULATE NOW with the EXACT ingredients provided:
     }
   }
 
-  /// Créer un état de planning depuis une analyse d'intent avec questions
-  static SessionPlanningState? createPlanningStateFromIntent(
-    Map<String, dynamic> info,
-    String langCode,
-  ) {
-    final sessions = <PartialSession>[];
-    final questions = <PendingQuestion>[];
-
-    // 1. Parser les workouts
-    final workouts = info['workouts'] as List?;
-    if (workouts != null) {
-      for (int i = 0; i < workouts.length; i++) {
-        final w = workouts[i] as Map<String, dynamic>;
-        final dayStr = w['day'] as String?;
-        final day = _parseSingleDay(dayStr ?? '');
-        if (day == null) continue;
-
-        final workoutType = w['workout_type'] as String? ?? 'Full Body';
-        final durationMinutes = w['duration_minutes'] as int?;
-
-        sessions.add(PartialSession(
-          type: PendingSessionType.workout,
-          plannedDate: day,
-          workoutType: workoutType,
-          durationMinutes: durationMinutes,
-          workoutPrompt: w['workout_prompt'] as String? ?? 'Séance de $workoutType',
-        ));
-
-        // Si durée manquante, ajouter une question
-        if (durationMinutes == null) {
-          final questionText = langCode == 'fr'
-              ? 'Quelle durée pour ta séance de $workoutType ?'
-              : 'How long for your $workoutType session?';
-          questions.add(PendingQuestion(
-            sessionIndex: sessions.length - 1,
-            questionType: 'duration',
-            questionText: questionText,
-          ));
-        }
-      }
-    }
-
-    // 2. Parser les cardios
-    final cardios = info['cardios'] as List?;
-    if (cardios != null) {
-      for (int i = 0; i < cardios.length; i++) {
-        final c = cardios[i] as Map<String, dynamic>;
-        final dayStr = c['day'] as String?;
-        final day = _parseSingleDay(dayStr ?? '');
-        if (day == null) continue;
-
-        final activityName = c['activity_name'] as String? ?? 'Cardio';
-        final activityKey = _getActivityKey(activityName);
-        final distanceKm = (c['target_km'] as num?)?.toDouble();
-        final durationMinutes = c['target_minutes'] as int?;
-
-        sessions.add(PartialSession(
-          type: PendingSessionType.cardio,
-          plannedDate: day,
-          activityName: activityName,
-          activityKey: activityKey,
-          distanceKm: distanceKm,
-          durationMinutes: durationMinutes,
-        ));
-
-        // Si ni distance ni durée, ajouter une question
-        if (distanceKm == null && durationMinutes == null) {
-          final questionText = langCode == 'fr'
-              ? 'Tu veux un objectif de distance ou de durée pour ton $activityName ?'
-              : 'Do you want a distance or duration target for your $activityName?';
-          questions.add(PendingQuestion(
-            sessionIndex: sessions.length - 1,
-            questionType: 'distance',
-            questionText: questionText,
-          ));
-        }
-      }
-    }
-
-    // 3. Gérer l'ancien format (single cardio)
-    final singleActivityName = info['activity_name'] as String?;
-    if (singleActivityName != null && cardios == null) {
-      final daysList = info['days'] as List<DateTime>?;
-      final targetKm = info['target_km'] as double?;
-      final targetMinutes = info['target_minutes'] as int?;
-
-      for (final day in daysList ?? [DateTime.now()]) {
-        sessions.add(PartialSession(
-          type: PendingSessionType.cardio,
-          plannedDate: day,
-          activityName: singleActivityName,
-          activityKey: _getActivityKey(singleActivityName),
-          distanceKm: targetKm,
-          durationMinutes: targetMinutes,
-        ));
-
-        if (targetKm == null && targetMinutes == null) {
-          final questionText = langCode == 'fr'
-              ? 'Tu veux un objectif de distance ou de durée pour ton $singleActivityName ?'
-              : 'Do you want a distance or duration target for your $singleActivityName?';
-          questions.add(PendingQuestion(
-            sessionIndex: sessions.length - 1,
-            questionType: 'distance',
-            questionText: questionText,
-          ));
-        }
-      }
-    }
-
-    if (sessions.isEmpty) return null;
-
-    return SessionPlanningState(
-      sessions: sessions,
-      questions: questions,
-    );
-  }
 }
