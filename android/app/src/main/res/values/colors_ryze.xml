@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Ryze design system, for the widgets. Mirrors lib/design/tokens.dart:
+     a value changed there is changed here. Ink is what the user chooses or
+     presses, amber is what Ryze gives back. -->
+<resources>
+    <color name="ryze_paper">#F5F6F8</color>
+    <color name="ryze_paper2">#EEF0F4</color>
+    <color name="ryze_surf">#FFFFFF</color>
+    <color name="ryze_ink">#0B132B</color>
+    <color name="ryze_ink2">#1B2A5B</color>
+    <color name="ryze_mute">#5F6779</color>
+    <color name="ryze_mute2">#9AA1B2</color>
+    <color name="ryze_line">#1A0B132B</color>
+    <color name="ryze_line2">#0F0B132B</color>
+    <color name="ryze_idle">#D5DAE1</color>
+    <color name="ryze_acc">#F2A93B</color>
+    <color name="ryze_acc_ink">#9A5F0C</color>
+
+    <!-- paper at the opacities the ink tile uses for its second text and edges -->
+    <color name="ryze_paper_72">#B8F5F6F8</color>
+    <color name="ryze_paper_55">#8CF5F6F8</color>
+    <color name="ryze_paper_35">#59F5F6F8</color>
+    <color name="ryze_paper_30">#4DF5F6F8</color>
+</resources>

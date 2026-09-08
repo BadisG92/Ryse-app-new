@@ -2,79 +2,86 @@
 //  AddWaterIntent.swift
 //  RyseMealWidget
 //
-//  App Intent pour ajouter de l'eau directement depuis le widget (iOS 17+)
+//  One or two glasses, added from the widget without opening the app.
+//
+//  The intent runs in the widget's own process, so it does two things: it
+//  redraws the glasses at once, and it leaves the amount in the App Group
+//  for the app, which writes it to the journal the next time it comes to
+//  the front (WidgetWaterHandler). What is left for the app is added to
+//  what is already waiting, never written over it: two taps while the app
+//  is closed are two glasses, on the widget and in the journal alike.
 //
 
 import AppIntents
 import Foundation
 import WidgetKit
 
-@available(iOS 17.0, *)
 struct AddWaterIntent: AppIntent {
-    static var title: LocalizedStringResource { "Ajouter de l'eau" }
-    static var description: IntentDescription { IntentDescription("Ajoute de l'eau à ta journée") }
+    static var title: LocalizedStringResource = "Add water"
+    static var description = IntentDescription("Adds one or two glasses to today's water in Ryze.")
+    static var openAppWhenRun: Bool = false
 
-    static var openAppWhenRun: Bool = false // Ne pas ouvrir l'app
-    
-    @Parameter(title: "Amount (ml)")
-    var amount: Int
-    
+    @Parameter(title: "Glasses")
+    var glasses: Int
+
     init() {
-        amount = 0
+        glasses = 1
     }
-    
-    init(amount: Int) {
-        self.amount = amount
+
+    init(glasses: Int) {
+        self.glasses = glasses
     }
-    
+
     func perform() async throws -> some IntentResult {
-        // Sauvegarder dans App Group UserDefaults pour que Flutter puisse le traiter
-        guard let userDefaults = UserDefaults(suiteName: "group.com.ryze.app") else {
-            throw IntentError.appGroupUnavailable
+        guard let defaults = WidgetStore.defaults else {
+            throw WidgetIntentError.appGroupUnavailable
         }
 
-        // MISE À JOUR OPTIMISTE : Mettre à jour immédiatement les valeurs affichées
-        // Récupérer les données actuelles du widget
-        if let jsonString = userDefaults.string(forKey: "widget_meal_data"),
-           let jsonData = jsonString.data(using: .utf8),
-           var widgetData = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-           var water = widgetData["water"] as? [String: Any] {
+        var json = WidgetStore.raw() ?? [:]
+        var water = json["water"] as? [String: Any] ?? [:]
+        let glassMl = WidgetSnapshot.int(water["glassMl"], or: 250)
+        let millilitres = max(1, glasses) * glassMl
 
-            // Ajouter la quantité à la valeur actuelle
-            let currentMl = (water["current"] as? Int) ?? 0
-            let goalMl = (water["goal"] as? Int) ?? 2000
-            let newCurrentMl = currentMl + amount
-            let newCurrentL = Double(newCurrentMl) / 1000.0
-            let newPercentage = goalMl > 0 ? (newCurrentMl * 100 / goalMl) : 0
-
-            // Mettre à jour les valeurs
-            water["current"] = newCurrentMl
-            water["currentL"] = newCurrentL
-            water["percentage"] = newPercentage
-            widgetData["water"] = water
-
-            // Sauvegarder immédiatement pour que le widget affiche les nouvelles valeurs
-            if let updatedJsonData = try? JSONSerialization.data(withJSONObject: widgetData),
-               let updatedJsonString = String(data: updatedJsonData, encoding: .utf8) {
-                userDefaults.set(updatedJsonString, forKey: "widget_meal_data")
+        // The glasses fill now. Data from another day is first brought to
+        // today, empty: a glass drunk this morning must not be added to
+        // yesterday's evening.
+        let today = WidgetStore.todayKey()
+        if (json["day"] as? String) != today {
+            json["day"] = today
+            if var kcal = json["kcal"] as? [String: Any] {
+                kcal["eaten"] = 0
+                json["kcal"] = kcal
             }
+            json["lines"] = []
+            let freeWord = (json["strings"] as? [String: String])?["free_word"]
+            if let slots = json["slots"] as? [[String: Any]] {
+                json["slots"] = slots.map { slot -> [String: Any] in
+                    var free = slot
+                    free["state"] = "free"
+                    if let word = freeWord { free["word"] = word }
+                    return free
+                }
+            }
+            water["ml"] = 0
         }
+        water["ml"] = WidgetSnapshot.int(water["ml"]) + millilitres
+        json["water"] = water
+        WidgetStore.write(json)
 
-        // Notifier Flutter pour la synchronisation en arrière-plan
-        userDefaults.set(true, forKey: "widget_pending_water_add")
-        userDefaults.set(amount, forKey: "widget_pending_water_amount")
-        userDefaults.set(Date().timeIntervalSince1970, forKey: "widget_pending_water_timestamp")
+        // And the app writes it when it comes back, added to what it has
+        // not taken yet.
+        let waiting = defaults.bool(forKey: WidgetStore.pendingFlagKey)
+            ? defaults.integer(forKey: WidgetStore.pendingAmountKey)
+            : 0
+        defaults.set(true, forKey: WidgetStore.pendingFlagKey)
+        defaults.set(waiting + millilitres, forKey: WidgetStore.pendingAmountKey)
+        defaults.set(Date().timeIntervalSince1970, forKey: WidgetStore.pendingStampKey)
 
-        // Recharger le widget immédiatement avec les nouvelles valeurs
         WidgetCenter.shared.reloadAllTimelines()
-
         return .result()
     }
 }
 
-@available(iOS 17.0, *)
-enum IntentError: Error {
+enum WidgetIntentError: Error {
     case appGroupUnavailable
 }
-
-// Actions rapides prédéfinies pour les boutons du widget (iOS 17+)

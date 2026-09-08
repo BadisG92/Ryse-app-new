@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A pill's ground: the session tile and the buttons. Tinted at runtime. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFF" />
+    <corners android:radius="999dp" />
+</shape>

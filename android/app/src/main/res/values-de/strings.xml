@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_meal_name">Mahlzeiten</string>
+    <string name="widget_meal_description">Was dir bleibt, und die Mahlzeiten des Tages</string>
+    <string name="widget_water_name">Wasser</string>
+    <string name="widget_water_description">Deine Gläser heute, und eins mehr mit einem Tipp</string>
+    <string name="widget_open_app">Ryze öffnen</string>
+</resources>

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Ryze Meal</string>
+	<string>Ryze</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -25,5 +25,11 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<!-- The two faces of the design system, the same files the app bundles -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>Archivo-Variable.ttf</string>
+		<string>InstrumentSans-Variable.ttf</string>
+	</array>
 </dict>
 </plist>

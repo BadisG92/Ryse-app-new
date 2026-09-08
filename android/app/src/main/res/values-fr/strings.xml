@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_meal_name">Repas</string>
+    <string name="widget_meal_description">Ce qu\'il te reste, et les repas du jour</string>
+    <string name="widget_water_name">Eau</string>
+    <string name="widget_water_description">Tes verres du jour, et un de plus d\'un tap</string>
+    <string name="widget_open_app">Ouvre Ryze</string>
+</resources>

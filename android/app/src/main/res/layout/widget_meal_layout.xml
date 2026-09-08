@@ -1,201 +1,212 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The home in miniature: what is left, its gauge, and the five slots of
+     the day in their three states. Every colour that belongs to the palette
+     (ink, accent, edges) is set at runtime by RyseMealWidget.kt: the grounds
+     and edges of the slots are ImageViews, because a tint is the only colour
+     RemoteViews can change on a shape. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:paddingHorizontal="14dp"
-    android:paddingVertical="12dp"
-    android:gravity="center_vertical">
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp">
 
-    <!-- Calorie Progress Section -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginBottom="10dp">
-
-        <TextView
-            android:id="@+id/calorie_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="0 / 2000 kcal"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.02" />
-
-        <ProgressBar
-            android:id="@+id/calorie_progress"
-            style="@android:style/Widget.ProgressBar.Horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="8dp"
-            android:layout_marginTop="6dp"
-            android:progressDrawable="@drawable/progress_gradient"
-            android:max="100"
-            android:progress="0" />
-    </LinearLayout>
-
-    <!-- Meal Buttons Row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center"
         android:baselineAligned="false">
 
-        <!-- Breakfast -->
         <LinearLayout
-            android:id="@+id/btn_breakfast"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/meal_button_background"
-            android:paddingVertical="10dp"
-            android:paddingHorizontal="4dp"
-            android:layout_marginEnd="6dp">
-
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:src="@drawable/ic_sunrise" />
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/breakfast_label"
+                android:id="@+id/lead"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Breakfast"
-                android:textColor="#94A3B8"
-                android:textSize="9sp"
-                android:layout_marginTop="4dp" />
+                android:text=""
+                android:textSize="11sp"
+                android:fontFamily="@font/instrument_sans"
+                android:fontVariationSettings="'wght' 600"
+                android:textColor="@color/ryze_mute"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
-            <TextView
-                android:id="@+id/breakfast_calories"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="#3B82F6"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:layout_marginTop="2dp" />
+                android:layout_marginTop="2dp"
+                android:orientation="horizontal"
+                android:baselineAligned="true">
+
+                <TextView
+                    android:id="@+id/figure"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="34sp"
+                    android:fontFamily="@font/archivo"
+                    android:fontVariationSettings="'wght' 800"
+                    android:letterSpacing="-0.028"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/ryze_ink"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/unit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:text=""
+                    android:textSize="12sp"
+                    android:fontFamily="@font/instrument_sans"
+                    android:fontVariationSettings="'wght' 600"
+                    android:textColor="@color/ryze_mute" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- Lunch -->
-        <LinearLayout
-            android:id="@+id/btn_lunch"
-            android:layout_width="0dp"
+        <TextView
+            android:id="@+id/detail"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/meal_button_background"
-            android:paddingVertical="10dp"
-            android:paddingHorizontal="4dp"
-            android:layout_marginEnd="6dp">
+            android:layout_marginStart="8dp"
+            android:paddingTop="3dp"
+            android:gravity="end"
+            android:text=""
+            android:textSize="10.5sp"
+            android:fontFamily="@font/instrument_sans"
+            android:textColor="@color/ryze_mute"
+            android:maxLines="2" />
+    </LinearLayout>
 
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:src="@drawable/ic_sun" />
+    <ProgressBar
+        android:id="@+id/gauge"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="8dp"
+        android:progressDrawable="@drawable/gauge_amber"
+        android:max="100"
+        android:progress="0" />
 
-            <TextView
-                android:id="@+id/lunch_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Lunch"
-                android:textColor="#94A3B8"
-                android:textSize="9sp"
-                android:layout_marginTop="4dp" />
+    <LinearLayout
+        android:id="@+id/slots"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
 
-            <TextView
-                android:id="@+id/lunch_calories"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="#3B82F6"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:layout_marginTop="2dp" />
-        </LinearLayout>
-
-        <!-- Dinner -->
-        <LinearLayout
-            android:id="@+id/btn_dinner"
+        <FrameLayout
+            android:id="@+id/slot_1"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/meal_button_background"
-            android:paddingVertical="10dp"
-            android:paddingHorizontal="4dp"
-            android:layout_marginEnd="6dp">
+            android:layout_marginEnd="5dp">
+            <ImageView android:id="@+id/slot_1_fill" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/tile_fill" android:contentDescription="@null" />
+            <ImageView android:id="@+id/slot_1_edge" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/tile_edge" android:contentDescription="@null" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp">
+                <ImageView android:id="@+id/slot_1_icon" android:layout_width="14dp" android:layout_height="14dp" android:src="@drawable/ic_sunrise" android:contentDescription="@null" />
+                <TextView android:id="@+id/slot_1_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="" android:textSize="9.5sp" android:fontFamily="@font/instrument_sans" android:fontVariationSettings="'wght' 600" android:textColor="@color/ryze_mute" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/slot_1_word" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textSize="8.5sp" android:fontFamily="@font/instrument_sans" android:textColor="@color/ryze_mute2" android:maxLines="1" />
+            </LinearLayout>
+        </FrameLayout>
 
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:src="@drawable/ic_sunset" />
-
-            <TextView
-                android:id="@+id/dinner_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Dinner"
-                android:textColor="#94A3B8"
-                android:textSize="9sp"
-                android:layout_marginTop="4dp" />
-
-            <TextView
-                android:id="@+id/dinner_calories"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="#3B82F6"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:layout_marginTop="2dp" />
-        </LinearLayout>
-
-        <!-- Snack -->
-        <LinearLayout
-            android:id="@+id/btn_snack"
+        <FrameLayout
+            android:id="@+id/slot_2"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/meal_button_background"
-            android:paddingVertical="10dp"
-            android:paddingHorizontal="4dp">
+            android:layout_marginEnd="5dp">
+            <ImageView android:id="@+id/slot_2_fill" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/tile_fill" android:contentDescription="@null" />
+            <ImageView android:id="@+id/slot_2_edge" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/tile_edge" android:contentDescription="@null" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp">
+                <ImageView android:id="@+id/slot_2_icon" android:layout_width="14dp" android:layout_height="14dp" android:src="@drawable/ic_sun" android:contentDescription="@null" />
+                <TextView android:id="@+id/slot_2_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="" android:textSize="9.5sp" android:fontFamily="@font/instrument_sans" android:fontVariationSettings="'wght' 600" android:textColor="@color/ryze_mute" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/slot_2_word" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textSize="8.5sp" android:fontFamily="@font/instrument_sans" android:textColor="@color/ryze_mute2" android:maxLines="1" />
+            </LinearLayout>
+        </FrameLayout>
 
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:src="@drawable/ic_milk" />
+        <FrameLayout
+            android:id="@+id/slot_3"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp">
+            <ImageView android:id="@+id/slot_3_fill" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/tile_fill" android:contentDescription="@null" />
+            <ImageView android:id="@+id/slot_3_edge" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/tile_edge" android:contentDescription="@null" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp">
+                <ImageView android:id="@+id/slot_3_icon" android:layout_width="14dp" android:layout_height="14dp" android:src="@drawable/ic_cookie" android:contentDescription="@null" />
+                <TextView android:id="@+id/slot_3_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="" android:textSize="9.5sp" android:fontFamily="@font/instrument_sans" android:fontVariationSettings="'wght' 600" android:textColor="@color/ryze_mute" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/slot_3_word" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textSize="8.5sp" android:fontFamily="@font/instrument_sans" android:textColor="@color/ryze_mute2" android:maxLines="1" />
+            </LinearLayout>
+        </FrameLayout>
 
-            <TextView
-                android:id="@+id/snack_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Snack"
-                android:textColor="#94A3B8"
-                android:textSize="9sp"
-                android:layout_marginTop="4dp" />
+        <FrameLayout
+            android:id="@+id/slot_4"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp">
+            <ImageView android:id="@+id/slot_4_fill" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/tile_fill" android:contentDescription="@null" />
+            <ImageView android:id="@+id/slot_4_edge" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/tile_edge" android:contentDescription="@null" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp">
+                <ImageView android:id="@+id/slot_4_icon" android:layout_width="14dp" android:layout_height="14dp" android:src="@drawable/ic_sunset" android:contentDescription="@null" />
+                <TextView android:id="@+id/slot_4_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="" android:textSize="9.5sp" android:fontFamily="@font/instrument_sans" android:fontVariationSettings="'wght' 600" android:textColor="@color/ryze_mute" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/slot_4_word" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textSize="8.5sp" android:fontFamily="@font/instrument_sans" android:textColor="@color/ryze_mute2" android:maxLines="1" />
+            </LinearLayout>
+        </FrameLayout>
 
-            <TextView
-                android:id="@+id/snack_calories"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="#3B82F6"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:layout_marginTop="2dp" />
-        </LinearLayout>
-
+        <FrameLayout
+            android:id="@+id/slot_5"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1">
+            <ImageView android:id="@+id/slot_5_fill" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/pill_fill" android:contentDescription="@null" />
+            <ImageView android:id="@+id/slot_5_edge" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/pill_edge" android:contentDescription="@null" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp">
+                <ImageView android:id="@+id/slot_5_icon" android:layout_width="14dp" android:layout_height="14dp" android:src="@drawable/ic_dumbbell" android:contentDescription="@null" />
+                <TextView android:id="@+id/slot_5_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="" android:textSize="9.5sp" android:fontFamily="@font/instrument_sans" android:fontVariationSettings="'wght' 600" android:textColor="@color/ryze_mute" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/slot_5_word" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textSize="8.5sp" android:fontFamily="@font/instrument_sans" android:textColor="@color/ryze_mute2" android:maxLines="1" />
+            </LinearLayout>
+        </FrameLayout>
     </LinearLayout>
 
 </LinearLayout>

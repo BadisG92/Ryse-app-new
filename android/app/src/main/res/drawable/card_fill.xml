@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Paper, a light edge, the system's corner -->
+<!-- The water tile's ink ground once the goal is reached, tinted with the
+     palette's ink at runtime. Laid over the paper background. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/ryze_paper" />
+    <solid android:color="#FFFFFF" />
     <corners android:radius="@dimen/widget_radius" />
-    <stroke
-        android:width="1dp"
-        android:color="@color/ryze_line" />
 </shape>

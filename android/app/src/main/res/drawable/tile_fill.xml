@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A meal tile's ground, drawn white and tinted at runtime (white for a
+     free or planned slot, the palette's ink for a done one). Drawn through
+     an ImageView because a tint is the only colour RemoteViews can change
+     on a shape. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFF" />
+    <corners android:radius="10dp" />
+</shape>

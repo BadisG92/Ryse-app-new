@@ -177,6 +177,26 @@ import WidgetKit
           result(FlutterError(code: "INVALID_ARGS", message: "key and value required", details: nil))
         }
 
+      case "setBool":
+        if let args = call.arguments as? [String: Any],
+           let key = args["key"] as? String,
+           let value = args["value"] as? Bool {
+          userDefaults.set(value, forKey: key)
+          result(true)
+        } else {
+          result(FlutterError(code: "INVALID_ARGS", message: "key and value required", details: nil))
+        }
+
+      case "setDouble":
+        if let args = call.arguments as? [String: Any],
+           let key = args["key"] as? String,
+           let value = args["value"] as? Double {
+          userDefaults.set(value, forKey: key)
+          result(true)
+        } else {
+          result(FlutterError(code: "INVALID_ARGS", message: "key and value required", details: nil))
+        }
+
       default:
         result(FlutterMethodNotImplemented)
       }

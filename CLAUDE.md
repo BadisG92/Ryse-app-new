@@ -82,29 +82,20 @@ lib/
 └── utils/                # Utility functions
 ```
 
-## 📱 iOS Widget
+## 📱 Widgets (iOS + Android)
 
-### Smart Meal Widget (NEW!)
-**Le widget iOS intelligent qui transforme l'expérience utilisateur**
+Trois widgets iOS (Eau, Repas, Aujourd'hui sur l'écran verrouillé) et deux
+Android (Repas, Eau), sur le design system. L'app écrit un seul JSON
+(contrat v2) que le natif ne fait que poser ; chaque mot passe par
+`translations.dart` (FR/EN/DE). Tout est dans [`WIDGET.md`](WIDGET.md) :
+le contrat, la synchro dans les deux sens, les fichiers, la check-list sur
+appareil.
 
-- **Détection Contextuelle**: Affiche automatiquement le bon repas selon l'heure
-  - 7h-10h → Petit-déjeuner 🌅
-  - 11h-14h → Déjeuner 🌤️
-  - 18h-21h → Dîner 🌙
-- **Actions Rapides**: 5 boutons pour ajouter rapidement (📝 Manuel, 📸 Scanner, 🔍 Barcode, 🍳 Recettes, 💬 Chat)
-- **Progression Temps Réel**: Visualisation instantanée des calories
-- **2 Tailles**: Small (Lock Screen) et Medium (Home Screen)
-- **Deep Links Intelligents**: Navigation directe vers l'app avec contexte pré-sélectionné
-
-**Documentation**:
-- [`WIDGET_INSTALLATION_GUIDE.md`](WIDGET_INSTALLATION_GUIDE.md) - Guide complet d'installation
-- [`WIDGET_README.md`](WIDGET_README.md) - Documentation technique
-- [`WIDGET_IMPLEMENTATION_SUMMARY.md`](WIDGET_IMPLEMENTATION_SUMMARY.md) - Résumé de l'implémentation
-
-**Fichiers**:
-- `lib/services/widget_deep_link_handler.dart` - Gestion des deep links
-- `lib/services/meal_widget_data_provider.dart` - Synchronisation données
-- `ios/RyseMealWidget/RyseMealWidget.swift` - Widget iOS
+- `lib/services/meal_widget_data_provider.dart` - le contrat et la synchro
+- `lib/services/widget_deep_link_handler.dart` - ce qu'un tap ouvre (les feuilles du nouveau design)
+- `lib/services/widget_water_handler.dart` - l'eau ajoutée depuis le widget iOS app fermée
+- `ios/RyseMealWidget/` - Swift (jetons dans `RyzeTokens.swift`)
+- `android/app/src/main/kotlin/com/ryze/app/widget/` - Kotlin (jetons dans `res/values/colors_ryze.xml`)
 
 ## Key Features & Functionality
 

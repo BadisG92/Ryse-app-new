@@ -2,11 +2,12 @@
 <resources>
     <string name="app_name">Ryze</string>
 
-    <!-- Widget Descriptions -->
-    <string name="widget_meal_description">Track your meals and daily calorie intake</string>
-    <string name="widget_water_description">Track your daily water intake</string>
-
-    <!-- Widget Names -->
-    <string name="widget_meal_name">Ryze Meals</string>
-    <string name="widget_water_name">Ryze Water</string>
+    <!-- Widgets: the names in the launcher's gallery and the empty state, in
+         the device's language. Once the app has written, every word on a
+         widget comes from the app's dictionary (lib/services/translations.dart). -->
+    <string name="widget_meal_name">Meals</string>
+    <string name="widget_meal_description">What is left, and today\'s meals</string>
+    <string name="widget_water_name">Water</string>
+    <string name="widget_water_description">Today\'s glasses, and one more in a tap</string>
+    <string name="widget_open_app">Open Ryze</string>
 </resources>
