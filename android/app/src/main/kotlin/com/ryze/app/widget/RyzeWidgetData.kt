@@ -98,15 +98,30 @@ class RyzeWidgetData private constructor(json: JSONObject, val isToday: Boolean)
     val waterText: String get() = litres(waterMl)
     val waterGoalText: String get() = fill("water_goal_tpl", "g" to litres(goalMl))
 
-    // The palette the user chose (lib/design/palette.dart): the ink and its
-    // accent vary, paper and the greys do not. The tokens in colors_ryze.xml
-    // are the original palette, used before the app has written one.
+    // The edition the user chose (lib/design/palette.dart). An edition owns
+    // its ground — paper, card, greys, text — and not only its mark, so a
+    // widget on Volt is black with volt writing. The tokens in colors_ryze.xml
+    // are the original edition, worn before the app has written one.
 
-    fun ink(context: Context): Int = parse(theme.optString("ink", "")) ?: color(context, R.color.ryze_ink)
-    fun acc(context: Context): Int = parse(theme.optString("acc", "")) ?: color(context, R.color.ryze_acc)
+    val dark: Boolean = theme.optBoolean("dark", false)
 
-    /** The ink at 10 %: the light edge of a free slot and of the widget. */
-    fun line(context: Context): Int = withAlpha(ink(context), 0x1A)
+    fun paper(context: Context): Int = col(context, "paper", R.color.ryze_paper)
+    fun surf(context: Context): Int = col(context, "surf", R.color.ryze_surf)
+    fun text(context: Context): Int = col(context, "text", R.color.ryze_ink)
+    fun mute(context: Context): Int = col(context, "mute", R.color.ryze_mute)
+    fun mute2(context: Context): Int = col(context, "mute2", R.color.ryze_mute2)
+    fun idle(context: Context): Int = col(context, "idle", R.color.ryze_idle)
+    fun ink(context: Context): Int = col(context, "ink", R.color.ryze_ink)
+    fun acc(context: Context): Int = col(context, "acc", R.color.ryze_acc)
+
+    /** The light edge of a free slot and of the widget: the text at 11 %, as the tokens derive it. */
+    fun line(context: Context): Int = withAlpha(text(context), 0x1C)
+
+    /** What is written on an ink surface: the card, which follows the ground. */
+    fun onInk(context: Context): Int = surf(context)
+
+    private fun col(context: Context, key: String, fallback: Int): Int =
+        parse(theme.optString(key, "")) ?: color(context, fallback)
 
     private fun parse(hex: String): Int? = try {
         if (hex.isEmpty()) null else Color.parseColor(hex)

@@ -13,11 +13,12 @@ import com.ryze.app.R
 
 /**
  * The home in miniature: one thing to read, what is left of the goal, and
- * the five slots of the day in their three states. Free is a white tile with
- * a light edge, planned an ink edge, done an ink fill with a check. The
- * session is a pill, a meal a tile, as everywhere in the app. The ink and
- * the accent are the palette's, sent by the app. Its class name is the first
- * widget's, so the widgets already placed stay where they are.
+ * the five slots of the day in their three states. Free is the card with a
+ * light edge, planned an ink edge, done an ink fill with a check. The
+ * session is a pill, a meal a tile, as everywhere in the app. Every colour
+ * is the edition's, sent by the app: the ground, the text, the greys, the
+ * ink and the accent. Its class name is the first widget's, so the widgets
+ * already placed stay where they are.
  */
 class RyseMealWidget : AppWidgetProvider() {
 
@@ -55,8 +56,10 @@ class RyseMealWidget : AppWidgetProvider() {
             manager.updateAppWidget(widgetId, views)
         }
 
-        /** Before the app has written anything, or after a sign-out. */
+        /** Before the app has written anything, or after a sign-out: the original edition. */
         private fun empty(context: Context, views: RemoteViews) {
+            views.setInt(R.id.ground, "setColorFilter", RyzeWidgetData.color(context, R.color.ryze_paper))
+            views.setInt(R.id.ground_edge, "setColorFilter", RyzeWidgetData.color(context, R.color.ryze_line))
             views.setTextViewText(R.id.lead, context.getString(R.string.widget_meal_description))
             views.setTextViewText(R.id.figure, context.getString(R.string.widget_open_app))
             views.setTextViewText(R.id.unit, "")
@@ -66,26 +69,37 @@ class RyseMealWidget : AppWidgetProvider() {
         }
 
         private fun fill(context: Context, views: RemoteViews, data: RyzeWidgetData) {
+            val paper = data.paper(context)
+            val surf = data.surf(context)
+            val text = data.text(context)
+            val mute = data.mute(context)
+            val mute2 = data.mute2(context)
+            val idle = data.idle(context)
             val ink = data.ink(context)
             val acc = data.acc(context)
             val line = data.line(context)
-            val surf = RyzeWidgetData.color(context, R.color.ryze_surf)
-            val paper = RyzeWidgetData.color(context, R.color.ryze_paper)
-            val paper72 = RyzeWidgetData.color(context, R.color.ryze_paper_72)
-            val mute = RyzeWidgetData.color(context, R.color.ryze_mute)
-            val mute2 = RyzeWidgetData.color(context, R.color.ryze_mute2)
+            val onInk = data.onInk(context)
+            val onInk72 = RyzeWidgetData.withAlpha(onInk, 0xB8)
+
+            // the ground and its edge are the edition's
+            views.setInt(R.id.ground, "setColorFilter", paper)
+            views.setInt(R.id.ground_edge, "setColorFilter", line)
 
             views.setTextViewText(R.id.lead, data.string(data.leadKey))
+            views.setTextColor(R.id.lead, mute)
             views.setTextViewText(R.id.figure, data.figure)
-            views.setTextColor(R.id.figure, ink)
+            views.setTextColor(R.id.figure, text)
             views.setTextViewText(R.id.unit, if (data.goalKnown) data.string("unit", "kcal") else "")
+            views.setTextColor(R.id.unit, mute)
             views.setTextViewText(R.id.detail, data.eatenText + "\n" + data.goalText)
+            views.setTextColor(R.id.detail, mute)
             views.setProgressBar(R.id.gauge, 100, data.percent, false)
-            // the accent of the gauge follows the palette where the system
-            // lets a widget tint a progress bar; below Android 12 it keeps
-            // the original amber of the drawable
+            // the gauge follows the edition where the system lets a widget
+            // tint a progress bar; below Android 12 it keeps the original
+            // amber on grey of the drawable
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 views.setColorStateList(R.id.gauge, "setProgressTintList", ColorStateList.valueOf(acc))
+                views.setColorStateList(R.id.gauge, "setProgressBackgroundTintList", ColorStateList.valueOf(idle))
             }
             views.setViewVisibility(R.id.slots, View.VISIBLE)
 
@@ -100,8 +114,8 @@ class RyseMealWidget : AppWidgetProvider() {
                 val done = slot.state == "done"
                 val planned = slot.state == "planned"
                 val sport = slot.id == "sport"
-                val fg = if (done) paper else if (planned) ink else mute
-                val fg2 = if (done) paper72 else mute2
+                val fg = if (done) onInk else if (planned) ink else mute
+                val fg2 = if (done) onInk72 else mute2
 
                 // the ground and the edge are two tinted shapes: ink fill when
                 // done, an ink edge when planned, a light edge when free

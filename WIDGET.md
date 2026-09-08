@@ -40,7 +40,10 @@ Android. Il est construit par `MealWidgetDataProvider.buildPayload()`.
   ],
   "lines": [ { "from": 0, "text": "…" }, { "from": 5, "text": "…" }, { "from": 11, "text": "…" } ],
   "strings": { "lead_remaining": "Il te reste", "unit": "kcal", "eaten_tpl": "{n} kcal mangées", "…": "…" },
-  "theme": { "key": "theme_nuit", "ink": "#0B132B", "ink2": "#1B2A5B", "acc": "#F2A93B", "accInk": "#9A5F0C" }
+  "theme": { "key": "theme_nuit", "dark": false,
+             "paper0": "#F8F9FB", "paper": "#F5F6F8", "paper2": "#EEF0F4", "surf": "#FFFFFF",
+             "text": "#0B132B", "mute": "#5F6779", "mute2": "#9AA1B2", "idle": "#D5DAE1",
+             "ink": "#0B132B", "ink2": "#1B2A5B", "acc": "#F2A93B", "accInk": "#9A5F0C" }
 }
 ```
 
@@ -60,15 +63,18 @@ Les règles qui font tenir l'ensemble :
   `strings`. Le natif ne porte que les noms de la galerie et l'état vide dont
   il a besoin avant la première écriture : `WidgetFallback` en Swift,
   `values/`, `values-fr/`, `values-de/` sur Android.
-- **La palette suit.** L'encre et l'accent sont ceux que l'utilisateur a
-  choisis dans Réglages → Couleurs (`RyzeColors.palette`), envoyés dans
-  `theme` et réécrits à la seconde du choix. Le papier, les gris et le
-  remplissage libre ne bougent pas. Avant la première écriture, le widget
-  porte la palette d'origine (`RyzePalette.nuit` en Swift, `colors_ryze.xml`
-  sur Android). Sur Android, les fonds et les bords des créneaux sont des
-  `ImageView` teintées, seule couleur que `RemoteViews` sait changer sur une
-  forme ; la jauge suit l'accent à partir d'Android 12 et garde l'ambre
-  d'origine avant.
+- **L'édition suit, en entier.** Une édition possède son sol — papier,
+  carte, gris, texte — et non seulement sa marque : sur Volt, le widget est
+  noir avec l'écriture volt, pas l'écriture volt sur un blanc à lui. Toute
+  la palette (`RyzeColors.palette`) voyage dans `theme` et est réécrite à
+  la seconde du choix ; le natif dérive les bords comme les jetons (texte à
+  11 %). La règle de l'app tient : sur une surface encre, ce qui est écrit
+  est la carte (`surf`), jamais du blanc. Avant la première écriture, le
+  widget porte l'édition d'origine (`RyzePalette.nuit` en Swift,
+  `colors_ryze.xml` sur Android). Sur Android, le sol, son bord, les fonds
+  et les bords des créneaux sont des `ImageView` teintées, seule couleur que
+  `RemoteViews` sait changer sur une forme ; la jauge suit l'accent et le
+  gris de repos à partir d'Android 12 et garde l'ambre d'origine avant.
 - **Pas de mode démo** : le provider n'écrit rien quand
   `WeeklyPlannerService.isDemoMode` est vrai.
 

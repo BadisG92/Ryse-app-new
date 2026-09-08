@@ -1,19 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The home in miniature: what is left, its gauge, and the five slots of
-     the day in their three states. Every colour that belongs to the palette
-     (ink, accent, edges) is set at runtime by RyseMealWidget.kt: the grounds
-     and edges of the slots are ImageViews, because a tint is the only colour
+     the day in their three states. Every colour is the edition's, set at
+     runtime by RyseMealWidget.kt: the ground and its edge, the grounds and
+     edges of the slots, are ImageViews, because a tint is the only colour
      RemoteViews can change on a shape. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@drawable/widget_background"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:paddingTop="14dp"
-    android:paddingBottom="14dp">
+    android:background="@drawable/widget_background">
+
+    <ImageView
+        android:id="@+id/ground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/card_fill"
+        android:contentDescription="@null" />
+
+    <ImageView
+        android:id="@+id/ground_edge"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/card_edge"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -208,5 +228,6 @@
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>
+    </LinearLayout>
 
-</LinearLayout>
+</FrameLayout>

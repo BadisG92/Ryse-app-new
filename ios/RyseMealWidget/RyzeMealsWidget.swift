@@ -42,6 +42,8 @@ struct MealsWidgetView: View {
     }
 }
 
+/// On the edition's paper: the figure in its text colour, the gauge in its
+/// accent on its idle grey, the slots on its card.
 struct MealsView: View {
     let snapshot: WidgetSnapshot
 
@@ -53,17 +55,17 @@ struct MealsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(snapshot.string(snapshot.leadKey))
                         .font(RyzeFont.body(11, weight: 600))
-                        .foregroundStyle(RyzeColor.mute)
+                        .foregroundStyle(p.mute)
                         .lineLimit(1)
                     HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Text(snapshot.figure)
                             .font(RyzeFont.display(34))
                             .tracking(RyzeFont.tracking(34))
                             .monospacedDigit()
-                            .foregroundStyle(p.ink)
+                            .foregroundStyle(p.text)
                         Text(snapshot.string("unit"))
                             .font(RyzeFont.body(12, weight: 600))
-                            .foregroundStyle(RyzeColor.mute)
+                            .foregroundStyle(p.mute)
                     }
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -75,12 +77,12 @@ struct MealsView: View {
                 }
                 .font(RyzeFont.body(10.5))
                 .monospacedDigit()
-                .foregroundStyle(RyzeColor.mute)
+                .foregroundStyle(p.mute)
                 .lineLimit(1)
                 .padding(.top, 3)
             }
 
-            AmberGauge(fraction: snapshot.fraction, color: p.acc)
+            AmberGauge(fraction: snapshot.fraction, color: p.acc, track: p.idle)
                 .padding(.top, 8)
 
             HStack(spacing: 5) {
@@ -93,7 +95,7 @@ struct MealsView: View {
             .padding(.top, 12)
         }
         .padding(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
-        .containerBackground(for: .widget) { RyzeColor.paper }
+        .containerBackground(for: .widget) { p.paper }
         .widgetURL(URL(string: "ryse://dashboard"))
     }
 
@@ -112,35 +114,37 @@ struct MealsEmptyView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(WidgetFallback.string("desc_meals", lang: lang))
                 .font(RyzeFont.body(11, weight: 600))
-                .foregroundStyle(RyzeColor.mute)
+                .foregroundStyle(p.mute)
                 .lineLimit(1)
             Text(WidgetFallback.string("open_app", lang: lang))
                 .font(RyzeFont.display(28))
                 .tracking(RyzeFont.tracking(28))
-                .foregroundStyle(p.ink)
+                .foregroundStyle(p.text)
                 .padding(.top, 2)
-            AmberGauge(fraction: 0, color: p.acc)
+            AmberGauge(fraction: 0, color: p.acc, track: p.idle)
                 .padding(.top, 8)
             Spacer(minLength: 0)
         }
         .padding(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
-        .containerBackground(for: .widget) { RyzeColor.paper }
+        .containerBackground(for: .widget) { p.paper }
         .widgetURL(URL(string: "ryse://dashboard"))
     }
 }
 
 // MARK: - Slot
 
-/// One slot: free is a white tile with a light edge, planned an ink edge,
-/// done an ink fill with a check. The session is a pill, a meal a tile.
+/// One slot, as the home's row of the day draws it: free is the card with a
+/// light edge, planned the card with an ink edge, done an ink fill with a
+/// check and the card colour written on it. The session is a pill, a meal
+/// a tile.
 struct SlotTile: View {
     let slot: WidgetSnapshot.Slot
     let palette: RyzePalette
 
     private var done: Bool { slot.state == .done }
     private var planned: Bool { slot.state == .planned }
-    private var fg: Color { done ? RyzeColor.paper : (planned ? palette.ink : RyzeColor.mute) }
-    private var fg2: Color { done ? RyzeColor.paper.opacity(0.72) : RyzeColor.mute2 }
+    private var fg: Color { done ? palette.onInk : (planned ? palette.ink : palette.mute) }
+    private var fg2: Color { done ? palette.onInk.opacity(0.72) : palette.mute2 }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: slot.id == "sport" ? RyzeRadius.pill : 10, style: .continuous)
@@ -161,7 +165,7 @@ struct SlotTile: View {
         .padding(.horizontal, 2)
         .frame(maxWidth: .infinity)
         .frame(height: 50)
-        .background(shape.fill(done ? palette.ink : RyzeColor.surf))
+        .background(shape.fill(done ? palette.ink : palette.surf))
         .overlay(shape.stroke(done || planned ? palette.ink : palette.line, lineWidth: planned && !done ? 1.4 : 1))
     }
 }

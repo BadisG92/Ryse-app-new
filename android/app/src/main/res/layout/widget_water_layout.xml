@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The day's water as glasses, and two buttons that write. Twelve glasses
      are drawn here; RyseWaterWidget.kt shows as many as the goal needs
-     (four to twelve) and tints them by state. Goal reached, an ink card is
-     laid over the paper and the glasses turn to paper. -->
+     (four to twelve) and tints them by state. The ground is a tinted shape:
+     the edition's paper, or its ink once the goal is reached. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_water_container"
     android:layout_width="match_parent"
@@ -10,12 +10,19 @@
     android:background="@drawable/widget_background">
 
     <ImageView
-        android:id="@+id/card_ink"
+        android:id="@+id/ground"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitXY"
         android:src="@drawable/card_fill"
-        android:visibility="gone"
+        android:contentDescription="@null" />
+
+    <ImageView
+        android:id="@+id/ground_edge"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/card_edge"
         android:contentDescription="@null" />
 
     <LinearLayout

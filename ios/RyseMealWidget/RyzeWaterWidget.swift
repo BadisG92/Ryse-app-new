@@ -41,16 +41,16 @@ struct WaterWidgetView: View {
     }
 }
 
-/// Goal reached, the tile turns to ink and the glasses to paper, exactly as
-/// the water tile of the home does. No check, no green: the state is the
-/// ground. The ink is the palette's, so the widget wears what the app wears.
+/// On the edition's paper, in its text and greys. Goal reached, the tile
+/// turns to ink and everything on it to the card colour, exactly as the
+/// water tile of the home does. No check, no green: the state is the ground.
 struct WaterView: View {
     let snapshot: WidgetSnapshot
 
     private var p: RyzePalette { snapshot.palette }
     private var full: Bool { snapshot.waterFull }
-    private var fg: Color { full ? RyzeColor.paper : p.ink }
-    private var fg2: Color { full ? RyzeColor.paper.opacity(0.72) : RyzeColor.mute }
+    private var fg: Color { full ? p.onInk : p.text }
+    private var fg2: Color { full ? p.onInk.opacity(0.72) : p.mute }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -78,9 +78,9 @@ struct WaterView: View {
             GlassRow(
                 full: snapshot.glasses,
                 goal: snapshot.goalGlasses,
-                ink: fg,
-                nextEdge: full ? RyzeColor.paper.opacity(0.55) : RyzeColor.mute2,
-                emptyEdge: full ? RyzeColor.paper.opacity(0.3) : p.line
+                ink: full ? p.onInk : p.ink,
+                nextEdge: full ? p.onInk.opacity(0.55) : p.mute2,
+                emptyEdge: full ? p.onInk.opacity(0.3) : p.line
             )
             .frame(height: 34)
 
@@ -90,12 +90,12 @@ struct WaterView: View {
                 Button(intent: AddWaterIntent(glasses: 1)) {
                     Text(snapshot.string("glass_one"))
                         .font(RyzeFont.body(11.5, weight: 600))
-                        .foregroundStyle(full ? p.ink : RyzeColor.paper)
+                        .foregroundStyle(full ? p.ink : p.onInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity)
                         .frame(height: 28)
-                        .background(Capsule().fill(full ? RyzeColor.paper : p.ink))
+                        .background(Capsule().fill(full ? p.surf : p.ink))
                 }
                 .buttonStyle(.plain)
 
@@ -105,10 +105,10 @@ struct WaterView: View {
                         .foregroundStyle(fg)
                         .frame(width: 44, height: 28)
                         .background(
-                            Capsule().fill(full ? Color.clear : RyzeColor.surf)
+                            Capsule().fill(full ? Color.clear : p.surf)
                         )
                         .overlay(
-                            Capsule().stroke(full ? RyzeColor.paper.opacity(0.35) : p.line, lineWidth: 1)
+                            Capsule().stroke(full ? p.onInk.opacity(0.35) : p.line, lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
@@ -116,7 +116,7 @@ struct WaterView: View {
         }
         .padding(14)
         .containerBackground(for: .widget) {
-            full ? p.ink : RyzeColor.paper
+            full ? p.ink : p.paper
         }
         .widgetURL(URL(string: "ryse://dashboard"))
     }
@@ -131,7 +131,7 @@ struct WaterEmptyView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(WidgetFallback.string("water", lang: lang))
                 .font(RyzeFont.body(11, weight: 600))
-                .foregroundStyle(RyzeColor.mute)
+                .foregroundStyle(p.mute)
             Spacer(minLength: 8)
             GlassRow(full: 0, goal: 8, ink: p.ink, nextEdge: p.line, emptyEdge: p.line)
                 .frame(height: 34)
@@ -139,10 +139,10 @@ struct WaterEmptyView: View {
             Text(WidgetFallback.string("open_app", lang: lang))
                 .font(RyzeFont.display(15))
                 .tracking(RyzeFont.tracking(15))
-                .foregroundStyle(p.ink)
+                .foregroundStyle(p.text)
         }
         .padding(14)
-        .containerBackground(for: .widget) { RyzeColor.paper }
+        .containerBackground(for: .widget) { p.paper }
         .widgetURL(URL(string: "ryse://dashboard"))
     }
 }

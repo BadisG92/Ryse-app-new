@@ -2,34 +2,28 @@
 //  RyzeTokens.swift
 //  RyseMealWidget
 //
-//  The Ryze design system as the widgets see it. Mirrors lib/design/tokens.dart
-//  and lib/design/type.dart: a value changed there is changed here.
+//  The Ryze design system as the widgets see it. Mirrors lib/design/tokens.dart,
+//  lib/design/palette.dart and lib/design/type.dart: a value changed there is
+//  changed here.
 //
 
 import CoreText
 import SwiftUI
 
-/// Colours. The rule of the app holds in the widget: ink is what the user
-/// chooses or presses, amber is what Ryze gives back, and one variable, the
-/// fill, carries the state of a slot.
+/// The original edition, Nuit: navy and amber on grey paper. What a widget
+/// wears before the app has ever written an edition, and the values every
+/// other edition is read against.
 enum RyzeColor {
+    static let paper0 = Color(rgb: 0xF8F9FB)
     static let paper = Color(rgb: 0xF5F6F8)
     static let paper2 = Color(rgb: 0xEEF0F4)
     static let surf = Color(rgb: 0xFFFFFF)
+    static let text = Color(rgb: 0x0B132B)
+    static let mute = Color(rgb: 0x5F6779)
+    static let mute2 = Color(rgb: 0x9AA1B2)
+    static let idle = Color(rgb: 0xD5DAE1)
     static let ink = Color(rgb: 0x0B132B)
     static let ink2 = Color(rgb: 0x1B2A5B)
-
-    /// 5.2:1 on paper, above AA for the small print it carries.
-    static let mute = Color(rgb: 0x5F6779)
-
-    /// Decorative only (dashes, borders): too light for text.
-    static let mute2 = Color(rgb: 0x9AA1B2)
-    static let line = Color(rgb: 0x0B132B).opacity(0.10)
-    static let line2 = Color(rgb: 0x0B132B).opacity(0.06)
-
-    /// The idle fill of a free slot and of the gauge's track.
-    static let idle = Color(rgb: 0xD5DAE1)
-
     static let acc = Color(rgb: 0xF2A93B)
     static let accInk = Color(rgb: 0x9A5F0C)
 }
@@ -49,6 +43,81 @@ enum RyzeSpace {
     static let sm: CGFloat = 12
     static let md: CGFloat = 16
     static let lg: CGFloat = 24
+}
+
+/// An edition of Ryze, as the user chose it in the settings.
+///
+/// An edition owns its ground — paper, card, greys, text — and not only its
+/// mark: that is what makes it read as another app rather than as a colour
+/// option. The rule of the app holds on the widget: ink is what the user
+/// chooses or presses, the accent is what Ryze gives back, and on a dark
+/// edition what is written on ink is the card, not white. The app sends
+/// the edition with its data; before the first write the widget wears Nuit.
+struct RyzePalette {
+    let key: String
+    let dark: Bool
+    let paper0: Color
+    let paper: Color
+    let paper2: Color
+    let surf: Color
+    let text: Color
+    let mute: Color
+    let mute2: Color
+    let idle: Color
+    let ink: Color
+    let ink2: Color
+    let acc: Color
+    let accInk: Color
+
+    /// The light edge of a free slot and of a card: the text at 11 %, as
+    /// the tokens derive it, so it stays visible on a dark ground.
+    var line: Color { text.opacity(0.11) }
+    var line2: Color { text.opacity(0.06) }
+
+    /// What is written on an ink surface. The card follows the ground, so
+    /// "surf on ink" reads right on a light edition and on a dark one.
+    var onInk: Color { surf }
+
+    static let nuit = RyzePalette(
+        key: "theme_nuit",
+        dark: false,
+        paper0: RyzeColor.paper0,
+        paper: RyzeColor.paper,
+        paper2: RyzeColor.paper2,
+        surf: RyzeColor.surf,
+        text: RyzeColor.text,
+        mute: RyzeColor.mute,
+        mute2: RyzeColor.mute2,
+        idle: RyzeColor.idle,
+        ink: RyzeColor.ink,
+        ink2: RyzeColor.ink2,
+        acc: RyzeColor.acc,
+        accInk: RyzeColor.accInk
+    )
+
+    static func from(_ json: [String: Any]?) -> RyzePalette {
+        guard let json else { return .nuit }
+        func color(_ key: String, _ fallback: Color) -> Color {
+            (json[key] as? String).flatMap { Color(hexString: $0) } ?? fallback
+        }
+        let base = RyzePalette.nuit
+        return RyzePalette(
+            key: json["key"] as? String ?? base.key,
+            dark: json["dark"] as? Bool ?? false,
+            paper0: color("paper0", base.paper0),
+            paper: color("paper", base.paper),
+            paper2: color("paper2", base.paper2),
+            surf: color("surf", base.surf),
+            text: color("text", base.text),
+            mute: color("mute", base.mute),
+            mute2: color("mute2", base.mute2),
+            idle: color("idle", base.idle),
+            ink: color("ink", base.ink),
+            ink2: color("ink2", base.ink2),
+            acc: color("acc", base.acc),
+            accInk: color("accInk", base.accInk)
+        )
+    }
 }
 
 /// Archivo for the figure, Instrument Sans for everything else: the two
@@ -85,36 +154,6 @@ enum RyzeFont {
     }
 }
 
-/// The palette the user chose in the settings (lib/design/palette.dart): the
-/// ink and its accent vary, paper and the greys do not. The app sends it
-/// with its data; before the first write the widget wears the original one.
-struct RyzePalette {
-    let key: String
-    let ink: Color
-    let ink2: Color
-    let acc: Color
-    let accInk: Color
-
-    var line: Color { ink.opacity(0.10) }
-    var line2: Color { ink.opacity(0.06) }
-
-    static let nuit = RyzePalette(key: "nuit", ink: RyzeColor.ink, ink2: RyzeColor.ink2, acc: RyzeColor.acc, accInk: RyzeColor.accInk)
-
-    static func from(_ json: [String: Any]?) -> RyzePalette {
-        guard let json else { return .nuit }
-        func color(_ key: String, _ fallback: Color) -> Color {
-            (json[key] as? String).flatMap { Color(hexString: $0) } ?? fallback
-        }
-        return RyzePalette(
-            key: json["key"] as? String ?? "nuit",
-            ink: color("ink", RyzePalette.nuit.ink),
-            ink2: color("ink2", RyzePalette.nuit.ink2),
-            acc: color("acc", RyzePalette.nuit.acc),
-            accInk: color("accInk", RyzePalette.nuit.accInk)
-        )
-    }
-}
-
 extension Color {
     init(rgb: UInt32) {
         self.init(
@@ -126,7 +165,7 @@ extension Color {
         )
     }
 
-    /// "#RRGGBB", as the app writes its palette.
+    /// "#RRGGBB", as the app writes its edition.
     init?(hexString: String) {
         let digits = hexString.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         guard digits.count == 6, let rgb = UInt32(digits, radix: 16) else { return nil }
@@ -134,17 +173,18 @@ extension Color {
     }
 }
 
-/// The gauge under the figure: the track is the idle grey, the fill is the
-/// one accent element of the widget.
+/// The gauge under the figure: the track is the edition's idle grey, the
+/// fill is the one accent element of the widget.
 struct AmberGauge: View {
     let fraction: Double
     var color: Color = RyzeColor.acc
+    var track: Color = RyzeColor.idle
     var height: CGFloat = 6
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
-                Capsule().fill(RyzeColor.idle)
+                Capsule().fill(track)
                 Capsule()
                     .fill(color)
                     .frame(width: max(0, geometry.size.width * min(max(fraction, 0), 1)))

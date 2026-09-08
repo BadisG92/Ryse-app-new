@@ -187,13 +187,24 @@ class MealWidgetDataProvider {
     };
   }
 
-  /// The palette in force, so a widget wears what the user chose in the
-  /// settings: the ink and its accent, as the tokens give them. Paper, the
-  /// greys and the idle fill do not move, in the app or on the widget.
-  static Map<String, String> theme() {
+  /// The edition in force, whole: an edition owns its ground — paper, card,
+  /// greys, text — and not only its mark, so a widget on Volt is black with
+  /// volt writing, not volt writing on the widget's own white. Every colour
+  /// the tokens derive from the palette travels; the native side derives
+  /// the edges the same way the tokens do.
+  static Map<String, dynamic> theme() {
     final p = RyzeColors.palette;
     return {
       'key': p.key,
+      'dark': p.dark,
+      'paper0': _hex(p.paper0),
+      'paper': _hex(p.paper),
+      'paper2': _hex(p.paper2),
+      'surf': _hex(p.surf),
+      'text': _hex(p.text),
+      'mute': _hex(p.mute),
+      'mute2': _hex(p.mute2),
+      'idle': _hex(p.idle),
       'ink': _hex(p.ink),
       'ink2': _hex(p.ink2),
       'acc': _hex(p.acc),

@@ -12,9 +12,10 @@ import com.ryze.app.R
 /**
  * The day's water as glasses, and two buttons that write. A button opens the
  * app on its own write path with the amount in the link, so the glass lands
- * in the journal at once and the widget is redrawn from the truth. Goal
- * reached, the tile turns to ink and the glasses to paper, as the home's
- * water tile does. The ink is the palette's, sent by the app.
+ * in the journal at once and the widget is redrawn from the truth. On the
+ * edition's paper, in its text and greys; goal reached, the tile turns to
+ * ink and everything on it to the card colour, as the home's water tile
+ * does.
  */
 class RyseWaterWidget : AppWidgetProvider() {
 
@@ -50,9 +51,11 @@ class RyseWaterWidget : AppWidgetProvider() {
             manager.updateAppWidget(widgetId, views)
         }
 
-        /** Before the app has written anything, or after a sign-out. */
+        /** Before the app has written anything, or after a sign-out: the original edition. */
         private fun empty(context: Context, views: RemoteViews) {
-            views.setViewVisibility(R.id.card_ink, View.GONE)
+            views.setInt(R.id.ground, "setColorFilter", RyzeWidgetData.color(context, R.color.ryze_paper))
+            views.setViewVisibility(R.id.ground_edge, View.VISIBLE)
+            views.setInt(R.id.ground_edge, "setColorFilter", RyzeWidgetData.color(context, R.color.ryze_line))
             views.setTextViewText(R.id.water_label, context.getString(R.string.widget_water_name))
             views.setTextViewText(R.id.water_value, context.getString(R.string.widget_open_app))
             views.setTextViewText(R.id.water_goal, "")
@@ -67,18 +70,24 @@ class RyseWaterWidget : AppWidgetProvider() {
 
         private fun fill(context: Context, views: RemoteViews, data: RyzeWidgetData) {
             val full = data.waterFull
+            val paper = data.paper(context)
+            val surf = data.surf(context)
+            val text = data.text(context)
+            val mute = data.mute(context)
+            val mute2 = data.mute2(context)
             val ink = data.ink(context)
             val line = data.line(context)
-            val surf = RyzeWidgetData.color(context, R.color.ryze_surf)
-            val paper = RyzeWidgetData.color(context, R.color.ryze_paper)
-            val fg = if (full) paper else ink
-            val fg2 = RyzeWidgetData.color(context, if (full) R.color.ryze_paper_72 else R.color.ryze_mute)
-            val nextEdge = RyzeWidgetData.color(context, if (full) R.color.ryze_paper_55 else R.color.ryze_mute2)
-            val emptyEdge = if (full) RyzeWidgetData.color(context, R.color.ryze_paper_30) else line
+            val onInk = data.onInk(context)
 
-            // goal reached: an ink card over the paper
-            views.setViewVisibility(R.id.card_ink, if (full) View.VISIBLE else View.GONE)
-            views.setInt(R.id.card_ink, "setColorFilter", ink)
+            val fg = if (full) onInk else text
+            val fg2 = if (full) RyzeWidgetData.withAlpha(onInk, 0xB8) else mute
+            val nextEdge = if (full) RyzeWidgetData.withAlpha(onInk, 0x8C) else mute2
+            val emptyEdge = if (full) RyzeWidgetData.withAlpha(onInk, 0x4D) else line
+
+            // the ground is the edition's paper, or its ink once the goal is reached
+            views.setInt(R.id.ground, "setColorFilter", if (full) ink else paper)
+            views.setViewVisibility(R.id.ground_edge, if (full) View.GONE else View.VISIBLE)
+            views.setInt(R.id.ground_edge, "setColorFilter", line)
 
             views.setTextViewText(R.id.water_label, data.string("water", context.getString(R.string.widget_water_name)))
             views.setTextColor(R.id.water_label, fg2)
@@ -89,6 +98,7 @@ class RyseWaterWidget : AppWidgetProvider() {
 
             val shown = data.goalGlasses
             val fullGlasses = data.glasses
+            val glassInk = if (full) onInk else ink
             for (i in GLASS_IDS.indices) {
                 if (i >= shown) {
                     views.setViewVisibility(GLASS_IDS[i], View.GONE)
@@ -98,7 +108,7 @@ class RyseWaterWidget : AppWidgetProvider() {
                 when {
                     i < fullGlasses -> {
                         views.setImageViewResource(GLASS_IDS[i], R.drawable.glass_full)
-                        views.setInt(GLASS_IDS[i], "setColorFilter", fg)
+                        views.setInt(GLASS_IDS[i], "setColorFilter", glassInk)
                     }
                     i == fullGlasses -> {
                         views.setImageViewResource(GLASS_IDS[i], R.drawable.glass_next)
@@ -111,11 +121,12 @@ class RyseWaterWidget : AppWidgetProvider() {
                 }
             }
 
-            // the buttons: an ink pill and a ghost one on paper, the reverse on ink
+            // the buttons: an ink pill written in the card colour and a ghost
+            // one on paper; on ink, a card pill written in ink and a ghost edge
             views.setViewVisibility(R.id.buttons, View.VISIBLE)
             views.setTextViewText(R.id.btn_glass_one_text, data.string("glass_one", "+ 1"))
-            views.setTextColor(R.id.btn_glass_one_text, if (full) ink else paper)
-            views.setInt(R.id.btn_glass_one_fill, "setColorFilter", if (full) paper else ink)
+            views.setTextColor(R.id.btn_glass_one_text, if (full) ink else onInk)
+            views.setInt(R.id.btn_glass_one_fill, "setColorFilter", if (full) surf else ink)
             views.setTextViewText(R.id.btn_glass_two_text, data.string("glass_two", "+ 2"))
             views.setTextColor(R.id.btn_glass_two_text, fg)
             views.setViewVisibility(R.id.btn_glass_two_fill, if (full) View.GONE else View.VISIBLE)
@@ -123,7 +134,7 @@ class RyseWaterWidget : AppWidgetProvider() {
             views.setInt(
                 R.id.btn_glass_two_edge,
                 "setColorFilter",
-                if (full) RyzeWidgetData.color(context, R.color.ryze_paper_35) else line,
+                if (full) RyzeWidgetData.withAlpha(onInk, 0x59) else line,
             )
 
             // the amount travels in the link, and the app writes it on arrival
