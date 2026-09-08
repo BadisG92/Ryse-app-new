@@ -329,7 +329,9 @@ class CoachAvatar extends StatelessWidget {
       width: s,
       height: s,
       decoration: BoxDecoration(
-        color: const Color(0xFFDFE4F2),
+        // Le fond du buste : la marque a 14 %, pour qu'il suive le theme.
+        // C'etait un lavande fige, qui restait bleu sous une palette rose.
+        color: RyzeColors.ink.withValues(alpha: 0.14),
         shape: BoxShape.circle,
         border: Border.all(color: OnbColors.surf, width: 2),
         boxShadow: [BoxShadow(color: OnbColors.ink.withValues(alpha: 0.12), blurRadius: context.vw(2.4), offset: Offset(0, context.vw(1)))],
