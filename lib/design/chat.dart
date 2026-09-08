@@ -104,6 +104,22 @@ class RyzeChatHeader extends StatelessWidget {
   }
 }
 
+/// Le visage du jour, quand la conversation ne dit pas lequel des deux parle.
+///
+/// Les deux coachs se relaient d'un jour sur l'autre. Un message ne porte pas
+/// son domaine en base, et le deviner sur son texte se tromperait ; plutôt que
+/// d'en fixer un pour toujours, ils alternent.
+///
+/// Le repère est **le jour du message**, pas celui d'aujourd'hui : en remontant
+/// le fil, une réponse garde le visage qu'elle avait le jour où elle a été
+/// écrite, au lieu d'en changer chaque nuit. Et le compte des jours passe par
+/// une date UTC construite sur le calendrier local, pour qu'un changement
+/// d'heure ne décale jamais la relève.
+String coachFaceOfDay(DateTime day) {
+  final ordinal = DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/ 86400000;
+  return ordinal.isEven ? RyzeAssets.nutriAvatar : RyzeAssets.sportAvatar;
+}
+
 /// Un ou deux bustes. À deux, ils se chevauchent d'un tiers et le second
 /// passe devant — le même geste que la pilule de la barre du bas, pour que
 /// « les coachs » se reconnaisse d'un écran à l'autre.
@@ -169,11 +185,9 @@ class RyzeBubble extends StatelessWidget {
   /// fait signature d'entreprise et non conversation. Une conversation a des
   /// visages.
   ///
-  /// Le message ne porte pas son domaine en base : dans le planificateur on
-  /// sait lequel des deux parle parce que la conversation est d'un mode, dans
-  /// le chat du coach on ne le sait pas et c'est le coach de la nutrition qui
-  /// tient la ligne — c'est lui la voix du quotidien, le coach du sport ayant
-  /// ses propres entrées, la séance et l'analyse, où il apparaît seul.
+  /// Dans le planificateur on sait lequel des deux parle, parce que la
+  /// conversation est d'un mode. Dans le chat du coach on ne le sait pas :
+  /// c'est `coachFaceOfDay` qui tranche, et les deux s'y relaient.
   final String? avatar;
 
   void _copy(BuildContext context) {

@@ -524,7 +524,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
               mine: message.isUser,
               streaming: _isSending && at == _messages.length - 1 && message.isAssistant,
               copyLabel: 'chat_copied'.tr(lang),
-              avatar: message.isUser ? null : RyzeAssets.nutriAvatar,
+              avatar: message.isUser ? null : coachFaceOfDay(message.createdAt),
             ),
             if (_needsDaySeparator(at)) _buildDaySeparator(message.createdAt, lang),
           ],
@@ -543,7 +543,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       child: Column(
         children: [
           SizedBox(height: context.vw(8)),
-          const CoachAvatar(RyzeAssets.nutriAvatar, sizeVw: 26),
+          CoachAvatar(coachFaceOfDay(DateTime.now()), sizeVw: 26),
           SizedBox(height: context.vw(5.1)),
           Text(
             'coach_chat_how_can_i_help'.tr(lang),

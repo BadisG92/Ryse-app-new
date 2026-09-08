@@ -46,8 +46,8 @@ class RyzeLogo {
   /// the dot and the rise, so a mark blown up from there opens onto a gap. From
   /// the arm, every point of a screen is inside the shape once the scale passes
   /// `distance / armRadius`.
-  static const Offset _armAnchor = Offset(143.1, 136.7);
-  static const double _armRadius = 29.3;
+  static const Offset _armAnchor = Offset(150.3, 146.5);
+  static const double _armRadius = 27.2;
 
   static Offset armAnchor(Rect box) =>
       Offset(box.left + _armAnchor.dx * box.width / 312, box.top + _armAnchor.dy * box.height / 367);
