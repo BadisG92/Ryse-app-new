@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../components/main_app.dart';
-import '../design/design.dart';
 import '../design/palette.dart';
 import '../components/ui/ryze_intro.dart';
 import '../onboarding/onboarding_flow.dart';
