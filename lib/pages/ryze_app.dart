@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/app_navigator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -49,6 +50,9 @@ class _RyzeAppState extends State<RyzeApp> {
   @override
   void initState() {
     super.initState();
+    // after a sign-in the intro is not replayed: it counts as done for the
+    // gestures that wait for it (a widget tap, a link)
+    if (_introShown) AppNavigator().introDone.value = true;
     _determineInitialRoute();
   }
 
@@ -208,6 +212,7 @@ class _RyzeAppState extends State<RyzeApp> {
             ready: screen != null,
             onDone: () {
               _introShown = true;
+              AppNavigator().introDone.value = true;
               if (mounted) setState(() => _introDone = true);
             },
           ),

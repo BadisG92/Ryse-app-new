@@ -55,15 +55,15 @@ void main() async {
   // NOUVEAU: Handle deep links for iOS/Android widgets
   final appLinks = AppLinks();
 
-  // Handle initial link (app opened from widget)
+  // Handle initial link (app opened from widget). The handler itself waits
+  // for the app to be ready — intro finished, tab bar mounted — and drops
+  // the same link delivered twice, which the stream below also does with
+  // the initial one.
   try {
     final initialLink = await appLinks.getInitialLinkString();
     if (initialLink != null) {
       debugPrint('🔗 Initial deep link detected: $initialLink');
-      // Le lien sera géré après que l'app soit complètement initialisée
-      Future.delayed(const Duration(seconds: 2), () {
-        WidgetDeepLinkHandler.handleDeepLink(Uri.parse(initialLink));
-      });
+      WidgetDeepLinkHandler.handleDeepLink(Uri.parse(initialLink));
     }
   } catch (e) {
     debugPrint('❌ Error getting initial link: $e');

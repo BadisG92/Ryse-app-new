@@ -43,11 +43,14 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
       _offerResume();
       // a widget may have asked for a tab before the bar existed
       _onRequestedTab();
+      // from here on, a gesture from a widget has somewhere to land
+      AppNavigator().mainReady.value = true;
     });
   }
 
   @override
   void dispose() {
+    AppNavigator().mainReady.value = false;
     AppNavigator().requestedTab.removeListener(_onRequestedTab);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();

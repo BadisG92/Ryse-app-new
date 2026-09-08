@@ -18,6 +18,32 @@ class AppNavigator {
     requestedTab.value = tab;
   }
 
+  /// L'animation d'ouverture est finie. L'app principale est construite
+  /// sous elle pendant qu'elle joue, ce qui suffit pour la préparer mais pas
+  /// pour poser une feuille dessus : une feuille ouverte sur le logo qui
+  /// s'écrit est une feuille ouverte sur rien.
+  final ValueNotifier<bool> introDone = ValueNotifier<bool>(false);
+
+  /// La barre des onglets est montée : un utilisateur connecté, une page
+  /// d'accueil, un endroit où une feuille a un sens.
+  final ValueNotifier<bool> mainReady = ValueNotifier<bool>(false);
+
+  bool get isReady => introDone.value && mainReady.value;
+
+  /// Attend que l'app soit prête à recevoir un geste venu de l'extérieur.
+  /// Faux si elle ne l'est pas dans le délai : l'écran de connexion, par
+  /// exemple, ne monte jamais la barre.
+  Future<bool> whenReady({Duration timeout = const Duration(seconds: 20)}) async {
+    final end = DateTime.now().add(timeout);
+    while (!isReady) {
+      if (DateTime.now().isAfter(end)) return false;
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    // une image de plus, pour que l'accueil ait posé son premier rendu
+    await Future.delayed(const Duration(milliseconds: 250));
+    return true;
+  }
+
   /// Initialiser avec le navigatorKey de l'app
   void initialize(GlobalKey<NavigatorState> key) {
     _navigatorKey = key;

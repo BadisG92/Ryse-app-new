@@ -25,6 +25,16 @@ import 'water_service.dart';
 /// Every destination is the one the home opens for the same gesture: the
 /// add sheet of that meal, the journal's own write path for a glass, a tab.
 /// The widget is a remote control for the app, never a second app.
+///
+/// Three rules make a tap from a closed app feel like one tap:
+/// - the same link delivered twice within a few seconds is one tap — the
+///   plugin hands the launch link to both the initial-link call and the
+///   stream, and iOS can deliver it more than once on top;
+/// - nothing opens before the app is ready — the intro finished and the tab
+///   bar mounted — because the app is built under the intro while it plays,
+///   and a sheet over the logo being written is a sheet over nothing;
+/// - one gesture at a time: a second tap while a sheet from the first is
+///   open closes that sheet and opens its own.
 class WidgetDeepLinkHandler {
   WidgetDeepLinkHandler._();
 
@@ -34,24 +44,59 @@ class WidgetDeepLinkHandler {
     navigatorKey = key;
   }
 
+  /// How long the same link stays "the same tap".
+  static const Duration _sameTap = Duration(seconds: 5);
+
+  static Uri? _lastUri;
+  static DateTime? _lastAt;
+  static bool _dispatching = false;
+  static bool _sheetOpen = false;
+
   static Future<void> handleDeepLink(Uri uri) async {
     if (uri.scheme != 'ryse') return;
+
+    final now = DateTime.now();
+    final last = _lastAt;
+    if (_lastUri == uri && last != null && now.difference(last) < _sameTap) {
+      if (kDebugMode) debugPrint('🔗 Widget link repeated, ignored: $uri');
+      return;
+    }
+    _lastUri = uri;
+    _lastAt = now;
+
+    if (_dispatching) {
+      if (kDebugMode) debugPrint('🔗 Widget link while another is being opened, ignored: $uri');
+      return;
+    }
+    _dispatching = true;
     if (kDebugMode) debugPrint('🔗 Widget link: $uri');
 
-    switch (uri.host) {
-      case 'add-food':
-        await _addFood(uri.queryParameters['meal'], uri.queryParameters['mode']);
-      case 'add-water':
-        await _addWater(int.tryParse(uri.queryParameters['amount'] ?? ''));
-      case 'sport':
-      case 'nutrition':
-      case 'progress':
-        AppNavigator().requestTab(uri.host);
-      case 'dashboard':
-      case 'home':
-        AppNavigator().requestTab('home');
-      default:
-        if (kDebugMode) debugPrint('⚠️ Widget link not understood: $uri');
+    try {
+      final ready = await AppNavigator().whenReady();
+      if (!ready) {
+        if (kDebugMode) debugPrint('🔗 Widget link dropped: the app is not ready (signed out?)');
+        return;
+      }
+
+      switch (uri.host) {
+        case 'add-food':
+          await _addFood(uri.queryParameters['meal'], uri.queryParameters['mode']);
+        case 'add-water':
+          await _addWater(int.tryParse(uri.queryParameters['amount'] ?? ''));
+        case 'sport':
+        case 'nutrition':
+        case 'progress':
+          _closeOurSheet();
+          AppNavigator().requestTab(uri.host);
+        case 'dashboard':
+        case 'home':
+          _closeOurSheet();
+          AppNavigator().requestTab('home');
+        default:
+          if (kDebugMode) debugPrint('⚠️ Widget link not understood: $uri');
+      }
+    } finally {
+      _dispatching = false;
     }
   }
 
@@ -59,15 +104,17 @@ class WidgetDeepLinkHandler {
 
   static String get _lang => LocalizationService.instance.currentLanguageCode;
 
-  /// The overlay's context, once the app has one. A link can arrive while
-  /// the app is still starting, so this waits a little rather than failing.
-  static Future<BuildContext?> _context() async {
-    for (var i = 0; i < 40; i++) {
-      final c = AppNavigator().safestContext;
-      if (c != null && c.mounted) return c;
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
-    return null;
+  static BuildContext? get _context {
+    final c = AppNavigator().safestContext;
+    return c != null && c.mounted ? c : null;
+  }
+
+  /// A sheet this handler opened and the user has not closed: a new tap
+  /// replaces it rather than stacking a second one on top.
+  static void _closeOurSheet() {
+    if (!_sheetOpen) return;
+    AppNavigator().navigatorState?.maybePop();
+    _sheetOpen = false;
   }
 
   /// A meal from the widget: the same sheet the home opens for that slot, or
@@ -75,10 +122,11 @@ class WidgetDeepLinkHandler {
   static Future<void> _addFood(String? meal, String? mode) async {
     final slot = _slotOf(meal);
     final tool = _toolOf(mode);
-    final context = await _context();
+    final context = _context;
     if (context == null || !_signedIn) return;
 
     if (slot == null || slot == WeekSlot.sport) {
+      _closeOurSheet();
       AppNavigator().requestTab('nutrition');
       return;
     }
@@ -88,18 +136,20 @@ class WidgetDeepLinkHandler {
 
     void logged(FoodItem item) {
       RyzeFeedback.success();
-      final c = AppNavigator().safestContext;
+      final c = _context;
       if (c != null) {
         RyzeUndo.note(c, message: 'home_meal_logged'.tr(lang).replaceAll('{m}', mealName));
       }
     }
 
-    if (!context.mounted) return;
-    if (tool != null) {
-      await FoodAddFlow.open(context, tool, mealName: mealName, onWritten: logged);
-    } else {
-      await AddFoodSheet.show(context, mealName: mealName, title: mealName, onAdded: logged);
-    }
+    _closeOurSheet();
+    // the sheet is a modal: the handler is free again as soon as it is up,
+    // so the next tap can replace it instead of waiting for it to close
+    _sheetOpen = true;
+    final shown = tool != null
+        ? FoodAddFlow.open(context, tool, mealName: mealName, onWritten: logged)
+        : AddFoodSheet.show(context, mealName: mealName, title: mealName, onAdded: logged);
+    shown.whenComplete(() => _sheetOpen = false);
   }
 
   /// Water from the widget writes at once, through the journal's own path,
@@ -107,11 +157,12 @@ class WidgetDeepLinkHandler {
   /// brings the home up, where the tile is.
   static Future<void> _addWater(int? millilitres) async {
     if (millilitres == null || millilitres <= 0) {
+      _closeOurSheet();
       AppNavigator().requestTab('home');
       return;
     }
-    final context = await _context();
-    if (context == null || !context.mounted) return;
+    final context = _context;
+    if (context == null) return;
     final lang = _lang;
     if (!_signedIn) {
       RyzeUndo.failed(context, message: 'must_be_connected'.tr(lang));
@@ -123,7 +174,7 @@ class WidgetDeepLinkHandler {
       amount: millilitres,
       sourceType: millilitres == 250 ? 'glass' : 'manual',
     );
-    final c = AppNavigator().safestContext ?? context;
+    final c = _context ?? context;
     if (!c.mounted) return;
     if (ok) {
       RyzeUndo.note(c, message: millilitres == 250 ? 'home_glass_added'.tr(lang) : '$millilitres ${'water_added'.tr(lang)}');
