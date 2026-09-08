@@ -224,7 +224,7 @@ class MyApp extends StatelessWidget {
           textTheme: GoogleFonts.interTextTheme(),
           colorScheme: ColorScheme.fromSeed(
             seedColor: RyzeColors.ink,
-            brightness: Brightness.light,
+            brightness: RyzeColors.isDark ? Brightness.dark : Brightness.light,
           ),
           useMaterial3: true,
           snackBarTheme: SnackBarThemeData(

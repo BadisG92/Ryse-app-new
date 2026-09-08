@@ -257,7 +257,7 @@ class _Dot extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: done || planned ? RyzeColors.ink : RyzeColors.idle, width: 2),
       ),
-      child: done ? const Icon(LucideIcons.check, size: 9, color: Colors.white) : null,
+      child: done ? Icon(LucideIcons.check, size: 9, color: RyzeColors.surf) : null,
     );
   }
 }

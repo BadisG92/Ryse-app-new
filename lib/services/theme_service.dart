@@ -1,4 +1,6 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../design/palette.dart';
@@ -11,9 +13,8 @@ import '../design/tokens.dart';
 /// ne fait que deux choses de plus — la relire au lancement et la garder d'une
 /// fois sur l'autre.
 ///
-/// `ChangeNotifier` pour que l'application se redessine à la seconde du choix,
-/// sans redémarrage : les jetons sont lus à chaque `build`, il suffit d'en
-/// déclencher un depuis la racine.
+/// `ChangeNotifier` pour que la racine refasse son theme Material a la
+/// seconde du choix ; le reste de l'arbre est reconstruit par `choose`.
 class ThemeService extends ChangeNotifier {
   ThemeService._();
 
@@ -42,6 +43,11 @@ class ThemeService extends ChangeNotifier {
     if (palette.key == RyzeColors.palette.key) return;
     RyzeColors.palette = palette;
     notifyListeners();
+    // Les jetons sont statiques : un widget `const` deja monte (le fond, une
+    // carte) ne relit pas ses couleurs tant qu'on ne le reconstruit pas, et
+    // la racine ne peut pas l'atteindre. On demande a Flutter ce que fait un
+    // rechargement a chaud : reconstruire chaque element, sans perdre un etat.
+    unawaited(WidgetsBinding.instance.reassembleApplication());
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_key, palette.key);

@@ -76,7 +76,9 @@ class RyzeColors {
 
   /// Le secondaire assombri jusqu'a porter du petit texte sur le papier.
   static Color get accInk => _palette.accInk;
-  static Color get onAcc => _palette.ink;
+  /// Ce qui s'ecrit sur le retour : la marque sur un sol clair, le sol sur
+  /// une edition sombre (du volt sur de l'orange ne ferait que 2,4).
+  static Color get onAcc => _palette.dark ? _palette.paper : _palette.ink;
 
   /// La couleur des ombres. Le quasi-noir du texte sur un sol clair ; du noir
   /// pur sur un sol sombre.

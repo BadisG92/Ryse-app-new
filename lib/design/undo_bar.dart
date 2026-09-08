@@ -134,7 +134,7 @@ class _UndoBarState extends State<_UndoBar> with SingleTickerProviderStateMixin 
                       widget.message,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: RyzeText.body(context, 3.6, weight: FontWeight.w500, color: Colors.white),
+                      style: RyzeText.body(context, 3.6, weight: FontWeight.w500, color: RyzeColors.surf),
                     ),
                   ),
                   if (widget.action != null)

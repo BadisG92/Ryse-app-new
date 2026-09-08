@@ -104,8 +104,10 @@ class RyzePalettes {
     mute: Color(0xFF5F6779),
     mute2: Color(0xFF9AA1B2),
     idle: Color(0xFFD5DAE1),
-    ink: Color(0xFF16265C),
-    ink2: Color(0xFF2A3F86),
+    // Le navy d'origine, celui de l'ecran de lancement et des widgets :
+    // rien ne saute entre le lancement et le premier rendu.
+    ink: Color(0xFF0B132B),
+    ink2: Color(0xFF1B2A5B),
     acc: Color(0xFFF2A93B),
     accDeep: Color(0xFFD98A16),
     accLight: Color(0xFFFFC766),

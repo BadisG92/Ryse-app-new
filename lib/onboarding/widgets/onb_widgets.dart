@@ -140,7 +140,8 @@ class _OnbButtonState extends State<OnbButton> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final Color bg = widget.ghost ? OnbColors.surf : (widget.gold ? OnbColors.acc : OnbColors.ink);
-    final Color fg = widget.ghost ? OnbColors.ink : (widget.gold ? OnbColors.onAcc : Colors.white);
+    // Sur la marque on ecrit dans le sol : blanc sur navy, noir sur volt.
+    final Color fg = widget.ghost ? OnbColors.ink : (widget.gold ? OnbColors.onAcc : OnbColors.surf);
 
     final pill = Container(
       width: double.infinity,
@@ -567,7 +568,10 @@ class OnbBackground extends StatelessWidget {
                 stops: [0, 0.3, 0.7, 1],
               ).createShader(rect),
               blendMode: BlendMode.dstIn,
-              child: CustomPaint(painter: _GridPainter(spacing: w * 0.08)),
+              // La grille est une separation, pas une identite : elle se trace dans
+              // le texte de l'edition, comme les traits. Sur un sol sombre elle
+              // devient d'elle-meme une grille claire sur noir.
+              child: CustomPaint(painter: _GridPainter(spacing: w * 0.08, color: RyzeColors.text.withValues(alpha: 0.045))),
             ),
           ],
         ),
@@ -577,17 +581,14 @@ class OnbBackground extends StatelessWidget {
 }
 
 class _GridPainter extends CustomPainter {
-  const _GridPainter({required this.spacing});
+  const _GridPainter({required this.spacing, required this.color});
   final double spacing;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      // La grille est une separation, pas une identite : elle se trace dans le
-      // texte de l'edition, comme les traits. Sur un sol sombre elle devient
-      // d'elle-meme une grille claire sur noir ; tracee dans la marque, elle
-      // aurait ete volt.
-      ..color = RyzeColors.text.withValues(alpha: 0.045)
+      ..color = color
       ..strokeWidth = 1;
     for (var x = 0.0; x <= size.width; x += spacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
@@ -598,5 +599,5 @@ class _GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _GridPainter old) => old.spacing != spacing;
+  bool shouldRepaint(covariant _GridPainter old) => old.spacing != spacing || old.color != color;
 }
