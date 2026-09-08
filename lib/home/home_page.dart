@@ -273,6 +273,36 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     _logMealOf(next);
   }
 
+  /// Les verres de l'accueil. Monter en ajoute un, descendre en retire un —
+  /// les memes gestes que dans le journal, avec la meme annulation.
+  Future<void> _setGlasses(int glasses) async {
+    final gs = GlobalStateManager.instance;
+    final current = (gs.currentWaterL / GlassRow.glassLitres).floor();
+    if (glasses == current) return;
+    if (glasses > current) {
+      await _addWater(250);
+      return;
+    }
+    if (Supabase.instance.client.auth.currentUser == null) return;
+    RyzeFeedback.tap();
+    // On descend : on retire les entrees les plus recentes jusqu'au niveau
+    // vise, exactement comme le journal le fait.
+    final target = glasses * 250;
+    final entries = await WaterService.getTodayWaterEntries();
+    entries.sort((a, b) => b.consumedAt.compareTo(a.consumedAt));
+    var total = entries.fold<int>(0, (s, e) => s + e.amount);
+    var removed = 0;
+    for (final entry in entries) {
+      if (total <= target) break;
+      final ok = await WaterService.deleteWaterEntry(entry.id, amountToRemove: entry.amount);
+      if (!ok) break;
+      total -= entry.amount;
+      removed++;
+    }
+    if (!mounted || removed == 0) return;
+    _acknowledge('undo_glass_removed'.tr(_lang));
+  }
+
   Future<void> _addWater(int millilitres) async {
     if (Supabase.instance.client.auth.currentUser == null) {
       RyzeUndo.failed(context, message: 'must_be_connected'.tr(_lang));
@@ -565,7 +595,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                       litres: gs.currentWaterL,
                       goal: gs.waterGoalL,
                       shown: shown,
-                      onTap: () => _addWater(250),
+                      onSet: _setGlasses,
                       onMore: _waterSheet,
                     ),
                   ),

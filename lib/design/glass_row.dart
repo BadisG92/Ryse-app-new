@@ -163,9 +163,9 @@ class _GlassPainter extends CustomPainter {
   /// plutôt qu'un rectangle.
   static const double _taper = 0.14;
 
-  /// Le contour, du buvant droit au buvant gauche : deux flancs et un fond,
-  /// et rien en haut. Le trait faisait le tour complet, ce qui dessinait un
-  /// carré ; un verre est ouvert.
+  /// Le contour, du buvant droit au buvant gauche : deux flancs droits et un
+  /// fond arrondi, rien en haut. Le trait faisait le tour complet, ce qui
+  /// dessinait un carré ; un verre est ouvert.
   ///
   /// Le chemin reste ouvert. Rempli ou utilisé en découpe, Flutter le referme
   /// par une droite entre ses deux extrémités — c'est justement le buvant, et
@@ -173,19 +173,21 @@ class _GlassPainter extends CustomPainter {
   Path _silhouette(Size size) {
     final w = size.width;
     final h = size.height;
-    final inset = w * _taper / 2;
-    final foot = math.min(w * 0.30, h * 0.18);
-    final lip = math.min(w * 0.10, 3.0);
+    final inset = w * _taper;
+    final foot = math.min(w * 0.26, h * 0.16);
 
+    // Deux flancs droits, du buvant au pied, et le fond arrondi. Les flancs
+    // partaient du buvant par une courbe qui les évasait : un reste de
+    // l'époque où le trait faisait le tour et devait rejoindre un bord
+    // supérieur. Sans ce bord, l'évasement n'a plus rien à raccorder et se
+    // lit comme un creux. Un verre n'a que trois traits.
     return Path()
-      ..moveTo(w - lip, 0)
-      ..quadraticBezierTo(w, 0, w - inset * 0.35, h * 0.16)
+      ..moveTo(w, 0)
       ..lineTo(w - inset, h - foot)
-      ..quadraticBezierTo(w - inset, h, w - inset - foot * 0.55, h)
-      ..lineTo(inset + foot * 0.55, h)
+      ..quadraticBezierTo(w - inset, h, w - inset - foot * 0.6, h)
+      ..lineTo(inset + foot * 0.6, h)
       ..quadraticBezierTo(inset, h, inset, h - foot)
-      ..lineTo(inset * 0.35, h * 0.16)
-      ..quadraticBezierTo(0, 0, lip, 0);
+      ..lineTo(0, 0);
   }
 
   @override
@@ -217,7 +219,7 @@ class _GlassPainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(glass);
     final shine = RRect.fromRectAndRadius(
-      Rect.fromLTWH(size.width * 0.17, size.height * 0.14, math.max(size.width * 0.09, 1.5), size.height * 0.5),
+      Rect.fromLTWH(size.width * 0.19, size.height * 0.16, math.max(size.width * 0.085, 1.5), size.height * 0.48),
       Radius.circular(size.width * 0.06),
     );
     canvas.drawRRect(shine, Paint()..color = RyzeColors.surf.withValues(alpha: 0.55));

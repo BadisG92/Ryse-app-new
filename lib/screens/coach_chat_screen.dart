@@ -524,6 +524,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
               mine: message.isUser,
               streaming: _isSending && at == _messages.length - 1 && message.isAssistant,
               copyLabel: 'chat_copied'.tr(lang),
+              avatar: message.isUser ? null : RyzeAssets.nutriAvatar,
             ),
             if (_needsDaySeparator(at)) _buildDaySeparator(message.createdAt, lang),
           ],

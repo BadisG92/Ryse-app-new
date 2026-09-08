@@ -163,13 +163,17 @@ class RyzeBubble extends StatelessWidget {
   /// Ce qui se glisse sous le texte, dans la bulle : des boutons, une carte.
   final Widget? footer;
 
-  /// Le buste de qui parle, a gauche de la bulle. Nul quand on ne le sait
-  /// pas : le message ne porte pas son domaine, et un visage choisi au
-  /// hasard vaudrait moins que pas de visage du tout. L'alignement dit deja
-  /// qui parle, et l'en-tete montre les deux coachs.
+  /// Le buste de qui parle, à gauche de la bulle.
   ///
-  /// C'etait la marque de Ryze — un logo colle contre chaque bulle, ce qui
-  /// fait signature d'entreprise et non conversation.
+  /// C'était la marque de Ryze — un logo collé contre chaque bulle, ce qui
+  /// fait signature d'entreprise et non conversation. Une conversation a des
+  /// visages.
+  ///
+  /// Le message ne porte pas son domaine en base : dans le planificateur on
+  /// sait lequel des deux parle parce que la conversation est d'un mode, dans
+  /// le chat du coach on ne le sait pas et c'est le coach de la nutrition qui
+  /// tient la ligne — c'est lui la voix du quotidien, le coach du sport ayant
+  /// ses propres entrées, la séance et l'analyse, où il apparaît seul.
   final String? avatar;
 
   void _copy(BuildContext context) {
