@@ -316,6 +316,12 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [for (final row in _today) SessionRow(lang: lang, row: row, onTap: () => _open(row), showDate: false)],
           )
+        else if (!_loaded)
+          // Tant qu'on n'a pas lu, on ne dit rien. La carte « rien de prevu »
+          // s'affichait pendant la lecture puis cedait la place a la vraie
+          // seance : l'application annoncait une absence qu'elle n'avait pas
+          // encore verifiee.
+          const _PendingCard()
         else
           _EmptyCard(lang: lang, onStart: _start),
       ],
@@ -393,6 +399,24 @@ class _PlannedCard extends StatelessWidget {
 }
 
 /// Rien de prévu : démarrer, ou laisser Ryze planifier la semaine.
+/// La place de la carte, le temps de la lecture. Elle en a la hauteur, pour
+/// que rien ne saute quand la vraie arrive.
+class _PendingCard extends StatelessWidget {
+  const _PendingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: context.vw(31),
+      decoration: BoxDecoration(
+        color: RyzeColors.surf.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(RyzeRadius.md),
+        border: Border.all(color: RyzeColors.line),
+      ),
+    );
+  }
+}
+
 class _EmptyCard extends StatelessWidget {
   const _EmptyCard({required this.lang, required this.onStart});
 

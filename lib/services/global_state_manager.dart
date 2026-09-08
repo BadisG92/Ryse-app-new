@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../config/supabase_config.dart';
@@ -122,9 +124,105 @@ class GlobalStateManager {
     _eventController.add(StateChangeEvent(type: ChangeType.planner, value: null));
   }
 
+
+  // ------------------------------------------------- l'etat du jour, sur le
+  // telephone
+
+  /// La cle porte sa version : le jour ou l'etat gagne un champ, l'ancien
+  /// enregistrement est ignore au lieu d'etre lu de travers.
+  static const String _dayKey = 'global_day_state_v1';
+
+  /// L'ecriture est groupee : une seance qui valide dix series ne doit pas
+  /// declencher dix ecritures disque.
+  Timer? _persistTimer;
+
+  String get _todayKey {
+    final n = DateTime.now();
+    return '${n.year}-${n.month}-${n.day}';
+  }
+
+  /// Ecrit l'etat du jour, au plus une fois par demi-seconde.
+  void _persistSoon() {
+    _persistTimer?.cancel();
+    _persistTimer = Timer(const Duration(milliseconds: 500), _persistNow);
+  }
+
+  Future<void> _persistNow() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_dayKey, jsonEncode({
+        'day': _todayKey,
+        'calories': _currentCalories,
+        'proteins': _currentProteins,
+        'carbs': _currentCarbs,
+        'fats': _currentFats,
+        'waterL': _currentWaterL,
+        'meals': _mealsCount,
+        'workout': _workoutCompleted,
+        'sportSessions': _sportSessions,
+        'sportKcal': _sportCaloriesBurned,
+        'calorieGoal': _calorieGoal,
+        'waterGoalL': _waterGoalL,
+        'proteinGoal': _proteinGoal,
+        'carbsGoal': _carbsGoal,
+        'fatGoal': _fatGoal,
+        'streak': _currentStreak,
+        'name': _userName,
+      }));
+    } catch (_) {
+      // Le disque peut refuser : l'etat en memoire reste juste, et la
+      // prochaine ecriture reessaiera.
+    }
+  }
+
+  /// Relit l'etat du jour avant toute tentative reseau.
+  ///
+  /// Les objectifs et le prenom sont relus meme si la journee enregistree
+  /// n'est pas celle d'aujourd'hui : ils ne changent pas d'un jour a l'autre,
+  /// et sans eux la page s'ouvrirait sur un objectif de 2 000 kcal invente.
+  /// Les compteurs, eux, ne sont restitues que pour le bon jour.
+  Future<void> _restoreDay() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_dayKey);
+      if (raw == null) return;
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+
+      double num_(String k, double fallback) => (map[k] as num?)?.toDouble() ?? fallback;
+      int int_(String k, int fallback) => (map[k] as num?)?.toInt() ?? fallback;
+
+      _calorieGoal = num_('calorieGoal', _calorieGoal);
+      _waterGoalL = num_('waterGoalL', _waterGoalL);
+      _proteinGoal = int_('proteinGoal', _proteinGoal);
+      _carbsGoal = int_('carbsGoal', _carbsGoal);
+      _fatGoal = int_('fatGoal', _fatGoal);
+      _currentStreak = int_('streak', _currentStreak);
+      _userName = (map['name'] as String?) ?? _userName;
+
+      if (map['day'] != _todayKey) return;
+
+      _currentCalories = num_('calories', 0);
+      _currentProteins = num_('proteins', 0);
+      _currentCarbs = num_('carbs', 0);
+      _currentFats = num_('fats', 0);
+      _currentWaterL = num_('waterL', 0);
+      _mealsCount = int_('meals', 0);
+      _workoutCompleted = (map['workout'] as bool?) ?? false;
+      _sportSessions = int_('sportSessions', 0);
+      _sportCaloriesBurned = int_('sportKcal', 0);
+    } catch (_) {
+      // Un enregistrement illisible ne doit pas empecher l'application de
+      // demarrer : on repart des valeurs par defaut.
+    }
+  }
+
   /// Initialiser avec les données existantes de Supabase
   Future<void> initialize() async {
     if (kDebugMode) debugPrint('🚀 GlobalStateManager: Initialisation DEBUT...');
+
+    // Ce que le telephone sait deja, avant meme d'essayer le reseau : la page
+    // s'ouvre sur la vraie journee, et reste juste s'il n'y a pas de reseau.
+    await _restoreDay();
 
     try {
       final client = SupabaseConfig.client;
@@ -287,6 +385,10 @@ class GlobalStateManager {
       if (kDebugMode) debugPrint('Stack trace: $stackTrace');
       // Continue sans les données, elles seront chargées par les pages
     }
+
+    // Ce que le reseau vient de dire fait foi : on l'ecrit tout de suite,
+    // sans attendre le prochain geste de l'utilisateur.
+    unawaited(_persistNow());
 
     if (kDebugMode) debugPrint('🏁 GlobalStateManager: Initialisation TERMINEE');
 
@@ -768,6 +870,9 @@ class GlobalStateManager {
     if (!_eventController.isClosed) {
       _eventController.add(event);
     }
+    // Tout passe par ici : c'est le seul endroit ou l'etat du jour change,
+    // donc le seul endroit ou il doit etre ecrit.
+    _persistSoon();
   }
 
   /// Vérifie si les conditions sont remplies pour demander une review

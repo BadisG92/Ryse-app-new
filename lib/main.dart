@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -29,7 +28,6 @@ import 'services/meal_widget_data_provider.dart';
 import 'services/haptic_service.dart';
 import 'design/tokens.dart';
 import 'design/feedback.dart';
-import 'design/logo_draw.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'services/ryze_connectivity.dart';
 import 'services/workout_session_store.dart';
@@ -125,19 +123,28 @@ void main() async {
   // Initialiser le service de retour haptique
   await HapticService.instance.initialize();
   await RyzeFeedback.initialize();
-  // Mettre les données widget à jour dès que le state global est prêt avec les VRAIES valeurs
-  await MealWidgetDataProvider.forceWidgetUpdate();
+
+  // Les widgets du telephone. Ce travail refait une lecture complete de l'etat
+  // du jour et ecrit le fichier partage : sans reseau il n'aboutissait jamais,
+  // et il bloquait le lancement — l'ecran restait bleu, sans animation, le
+  // temps qu'il abandonne. Il part en arriere-plan, borne.
+  unawaited(
+    MealWidgetDataProvider.forceWidgetUpdate()
+        .timeout(const Duration(seconds: 6))
+        .catchError((Object e) => debugPrint('⚠️ Widgets non mis a jour: $e')),
+  );
 
   // Initialiser les services d'analyse IA avec Gemini
   ExerciseAiAnalysisService.initialize();
   CoachRyzeNutritionService.initialize();
 
-  // Initialiser le service d'abonnement unifié (gère RevenueCat + DB)
-  await UnifiedSubscriptionService().initialize().timeout(
-    const Duration(seconds: 2),
-    onTimeout: () {
-      debugPrint('⚠️ UnifiedSubscriptionService timeout - defaulting to free tier');
-    },
+  // L'abonnement : rien du premier ecran n'en depend, et sans reseau ses deux
+  // secondes s'ajoutaient a toutes les autres. Il part en arriere-plan.
+  unawaited(
+    UnifiedSubscriptionService()
+        .initialize()
+        .timeout(const Duration(seconds: 8))
+        .catchError((Object e) => debugPrint('⚠️ Abonnement indisponible: $e')),
   );
 
   // Initialiser le service de notifications (non-bloquant)

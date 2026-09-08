@@ -88,6 +88,8 @@ class SettingsProfile {
 class SettingsData {
   SettingsData._();
 
+  /// Le profil que le telephone connait deja. Instantane, et juste hors
+  /// ligne : c'est lui qui s'affiche, la base ne fait que le corriger.
   static Future<SettingsProfile> load() async {
     final p = SettingsProfile.empty();
     try {
@@ -108,7 +110,17 @@ class SettingsData {
       debugPrint('SettingsData.load prefs: $e');
     }
 
-    // Puis la base, qui fait foi quand elle répond.
+    return p;
+  }
+
+  /// La base, qui fait foi quand elle repond. Rend nul si elle ne repond pas :
+  /// l'appelant garde alors ce qu'il affiche deja.
+  ///
+  /// C'etait la meme methode que `load`, qui attendait donc le reseau avant de
+  /// rendre quoi que ce soit : sans reseau, la page des reglages restait huit
+  /// secondes sur un tourniquet alors qu'elle avait tout ce qu'il fallait.
+  static Future<SettingsProfile?> refresh(SettingsProfile local) async {
+    final p = local;
     try {
       final client = Supabase.instance.client;
       final userId = client.auth.currentUser?.id;
@@ -119,7 +131,7 @@ class SettingsData {
                 'daily_calories, daily_protein, daily_carbs, daily_fat, dietary_restrictions')
             .eq('id', userId)
             .maybeSingle()
-            .timeout(const Duration(seconds: 8));
+            .timeout(const Duration(seconds: 4));
         if (row != null) {
           p.gender = (row['gender'] as String?) ?? p.gender;
           p.age = (row['age'] as num?)?.toInt() ?? p.age;
@@ -137,7 +149,8 @@ class SettingsData {
         }
       }
     } catch (e) {
-      debugPrint('SettingsData.load supabase: $e');
+      debugPrint('SettingsData.refresh: $e');
+      return null;
     }
     return p;
   }

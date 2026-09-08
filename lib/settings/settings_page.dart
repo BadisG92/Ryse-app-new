@@ -43,8 +43,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _load() async {
+    // Ce que le telephone sait, tout de suite ; la base ensuite, si elle
+    // repond. La page ne reste plus sur un tourniquet en mode avion.
     final p = await SettingsData.load();
-    if (mounted) setState(() => _p = p);
+    if (!mounted) return;
+    setState(() => _p = p);
+
+    final fresh = await SettingsData.refresh(p);
+    if (fresh != null && mounted) setState(() => _p = fresh);
   }
 
   String get _lang => LocalizationService.instance.currentLanguageCode;
