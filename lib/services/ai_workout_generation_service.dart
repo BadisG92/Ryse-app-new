@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/gemini_config.dart';
 import '../models/sport_models.dart';
 import 'database_service.dart';
+import 'exercise_resolver.dart';
 import 'localization_service.dart';
 
 /// Service pour générer des séances d'entraînement avec Gemini AI
@@ -373,14 +374,16 @@ class AIWorkoutGenerationService {
       groupedExercises[group]!.add(exercise);
     }
 
-    buffer.writeln('AVAILABLE EXERCISES (${exercises.length} total) - USE EXACT NAMES:');
+    buffer.writeln('CATALOGUE (${exercises.length} exercises we already know):');
     buffer.writeln();
 
-    // Lister TOUS les exercices par groupe avec IDs
+    // Les identifiants ne partent plus dans le prompt. Ils pesaient plus lourd
+    // que les noms eux-mêmes, environ treize mille caractères sur vingt-six
+    // mille, et le résolveur retrouve l'exercice à partir du seul nom.
     for (final entry in groupedExercises.entries) {
       buffer.writeln('${entry.key}:');
       for (final exercise in entry.value) {
-        buffer.writeln('  - "${exercise.name}" (ID: ${exercise.id})');
+        buffer.writeln('  - ${exercise.name}');
       }
       buffer.writeln();
     }
@@ -435,9 +438,9 @@ $userContext
 $exercisesList
 
 CRITICAL REQUIREMENTS:
-1. **USE ONLY EXERCISES FROM THE PROVIDED LIST ABOVE** - NEVER invent exercise names
-2. Return exercise names EXACTLY as they appear between quotes in the list (matching $userLanguage language)
-3. If you cannot find an exact match, choose the CLOSEST equivalent from the list
+1. **PREFER THE CATALOGUE.** If the movement you want is in the list above, use its name exactly as written, in $userLanguage. A catalogue exercise comes with instructions and a tutorial link; an invented one does not.
+2. **You MAY name an exercise that is not in the catalogue** when nothing in it fits what the user asked for. Do not distort the session to stay inside the list.
+3. For EVERY exercise, catalogue or not, always fill "canonical_name_en" with the standard English name of the movement (e.g. "bench press", "russian twist", "hanging leg raise"). This is how the app recognises the same exercise across languages and spellings, so it must be the common English name, never a translation you invented.
 4. Match the requested duration - adjust number of exercises proportionally:
    - ~15-30 min: 2-3 exercises
    - ~30-45 min: 3-5 exercises
@@ -468,9 +471,10 @@ OUTPUT FORMAT (JSON):
   "estimated_duration_minutes": $durationText (use the EXACT requested duration),
   "exercises": [
     {
-      "exercise_name": "EXACT name from list (in quotes)",
-      "exercise_id": "ID from the list",
+      "exercise_name": "Name in $userLanguage, exactly as in the catalogue when it is there",
+      "canonical_name_en": "Standard English name of the movement - ALWAYS required",
       "muscle_group": "Primary muscle group",
+      "equipment": "Main equipment, or bodyweight",
       "sets": 4,
       "target_reps": 10,
       "suggested_weight_kg": 15.0,
@@ -486,7 +490,7 @@ EXAMPLE (if user requests "Haut du corps" and has done "Développé couché" at 
   "exercises": [
     {
       "exercise_name": "Développé couché",
-      "exercise_id": "xxx-yyy-zzz",
+      "canonical_name_en": "bench press",
       "sets": 4,
       "target_reps": 10,
       "suggested_weight_kg": 35.0,
@@ -494,7 +498,7 @@ EXAMPLE (if user requests "Haut du corps" and has done "Développé couché" at 
     },
     {
       "exercise_name": "Rowing barre",
-      "exercise_id": "aaa-bbb-ccc",
+      "canonical_name_en": "barbell row",
       "sets": 4,
       "target_reps": 12,
       "suggested_weight_kg": 30.0,
@@ -502,7 +506,7 @@ EXAMPLE (if user requests "Haut du corps" and has done "Développé couché" at 
     },
     {
       "exercise_name": "Développé militaire",
-      "exercise_id": "bbb-ccc-ddd",
+      "canonical_name_en": "overhead press",
       "sets": 3,
       "target_reps": 10,
       "suggested_weight_kg": 20.0,
@@ -697,9 +701,23 @@ Generate the workout now as valid JSON:
           foundExercise = exerciseMapByName[exerciseName.toLowerCase()];
         }
 
+        // L'exercice que le catalogue ne connaît pas n'est plus jeté.
+        //
+        // Cette ligne faisait `continue` : une séance abdo proposée par Ryze
+        // perdait en silence tout ce qui n'était pas au catalogue, et
+        // l'utilisateur recevait une séance plus courte sans savoir pourquoi.
+        // Le résolveur rend toujours un exercice réel, du catalogue ou créé
+        // pour cet utilisateur, et le dédoublonnage est garanti par la base.
+        foundExercise ??= await ExerciseResolver.resolve(
+          name: exerciseName,
+          canonicalEnglishName: exerciseData['canonical_name_en'] as String?,
+          muscleGroup: exerciseData['muscle_group'] as String?,
+          equipment: exerciseData['equipment'] as String?,
+        );
+
         if (foundExercise == null) {
-          debugPrint('⚠️ Exercise not found: $exerciseName (ID: $exerciseId)');
-          continue; // Skip si l'exercice n'existe pas
+          debugPrint('⚠️ Exercise unresolved: $exerciseName (ID: $exerciseId)');
+          continue;
         }
 
         // Créer les séries avec le poids suggéré par Gemini (arrondi aux incréments de salle)

@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'workout_cache_service.dart';
 import 'sport_dashboard_service.dart';
 import 'offline_workout_service.dart';
+import 'exercise_resolver.dart';
 import 'localization_service.dart';
 import 'translations.dart';
 import 'global_state_manager.dart';
@@ -92,33 +93,19 @@ class DatabaseService {
     if (userId == null) {
       return null;
     }
-    try {
-      final locService = LocalizationService.instance;
-      
-      final row = await _client
-          .from('custom_exercises')
-          .insert({
-            'user_id': userId,
-            'name': name.trim(),
-            'equipment': equipment,
-            'description': description,
-            'visible_list': true,
-          })
-          .select('id, name, muscle_group_fr, muscle_group_en, equipment, description')
-          .single();
 
-      return models.Exercise(
-        id: row['id']?.toString() ?? '',
-        name: row['name'] as String? ?? name,
-        muscleGroup: locService.getTextFromColumns(row['muscle_group_fr'], row['muscle_group_en']) ?? muscleGroup,
-        equipment: row['equipment'] as String? ?? equipment,
-        description: row['description'] as String? ?? description,
-        isCustom: true,
-      );
-    } catch (e) {
-      debugPrint('❌ createCustomExercise error: $e');
-      return null;
-    }
+    // Le résolveur d'abord : ce que l'utilisateur tape à la main mérite le
+    // même traitement que ce que Ryze propose. Un nom déjà connu, sous une
+    // autre orthographe ou dans une autre langue, rend l'exercice existant au
+    // lieu d'en créer un second. Le groupe musculaire est écrit, ce qui n'était
+    // pas le cas : les exercices personnalisés sortaient du classement par
+    // muscle.
+    return ExerciseResolver.resolve(
+      name: name,
+      muscleGroup: muscleGroup,
+      equipment: equipment,
+      description: description,
+    );
   }
 
   // EXERCISES
@@ -1124,13 +1111,21 @@ class DatabaseService {
       };
 
       // Gérer exercice générique vs custom
-      // Vérifier d'abord si l'exercice existe dans custom_exercises
-      final customExerciseCheck = await _client
-          .from('custom_exercises')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('name', exercise.name)
-          .maybeSingle();
+      // Même règle que pour l'historique : nom normalisé, une seule ligne.
+      Map<String, dynamic>? customExerciseCheck;
+      try {
+        customExerciseCheck = await _client
+            .from('custom_exercises')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('normalized_name', ExerciseResolver.normalize(exercise.name))
+            .order('created_at', ascending: true)
+            .limit(1)
+            .maybeSingle();
+      } catch (e) {
+        debugPrint('⚠️ Recherche exercice personnalisé (modèle): $e');
+        customExerciseCheck = null;
+      }
       
       if (customExerciseCheck != null || exercise.isCustom) {
         debugPrint('- TRAITEMENT EXERCICE CUSTOM');
@@ -1422,13 +1417,28 @@ class DatabaseService {
       String? exerciseId;
       String? customExerciseId;
       
-      // Vérifier d'abord si l'exercice existe dans custom_exercises (comme dans saveUserWorkoutTemplate)
-      final customExerciseCheck = await _client
-          .from('custom_exercises')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('name', we.exercise.name)
-          .maybeSingle();
+      // Vérifier d'abord si l'exercice existe dans custom_exercises.
+      //
+      // La comparaison porte sur le nom normalisé, et la requête ne demande
+      // qu'une ligne. Elle exigeait auparavant un nom exact et *au plus un*
+      // résultat : deux orthographes voisines du même exercice faisaient lever
+      // une exception, qui remontait jusqu'à faire échouer l'enregistrement de
+      // toute la séance. La séance repartait dans la file d'attente et
+      // réessayait indéfiniment, sans un mot à l'utilisateur.
+      Map<String, dynamic>? customExerciseCheck;
+      try {
+        customExerciseCheck = await _client
+            .from('custom_exercises')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('normalized_name', ExerciseResolver.normalize(we.exercise.name))
+            .order('created_at', ascending: true)
+            .limit(1)
+            .maybeSingle();
+      } catch (e) {
+        debugPrint('⚠️ Recherche exercice personnalisé: $e');
+        customExerciseCheck = null;
+      }
       
       if (customExerciseCheck != null || we.exercise.isCustom) {
         // Exercice custom

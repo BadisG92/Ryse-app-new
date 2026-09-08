@@ -9,6 +9,7 @@ import '../models/sport_models.dart';
 import '../services/auth_service.dart';
 import '../services/calorie_burn_service.dart';
 import '../services/dashboard_service.dart';
+import '../services/exercise_resolver.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/sport_dashboard_service.dart';
@@ -167,15 +168,48 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
         return;
       }
 
+      // Les identifiants d'exercice, relus AVANT de supprimer.
+      //
+      // Cette réécriture ne gardait que le nom : corriger une séance passée
+      // coupait définitivement son lien avec le catalogue, et la fiche
+      // « comment on fait cet exercice » cessait de répondre pour elle. On ne
+      // peut pas les reprendre sur les objets en mémoire — la feuille de récap
+      // qui ouvre cet écran ne connaît que les noms et construit ses exercices
+      // avec un identifiant vide. Ils ne peuvent venir que de la base.
+      final previous = await client
+          .from('workout_set_history')
+          .select('exercise_name, exercise_id, custom_exercise_id')
+          .eq('history_session_id', widget.historySessionId);
+
+      final knownIds = <String, Map<String, dynamic>>{};
+      for (final row in previous) {
+        final key = ExerciseResolver.normalize('${row['exercise_name'] ?? ''}');
+        if (key.isEmpty) continue;
+        if (row['exercise_id'] == null && row['custom_exercise_id'] == null) continue;
+        knownIds.putIfAbsent(key, () => row);
+      }
+
       await client.from('workout_set_history').delete().eq('history_session_id', widget.historySessionId);
 
       final rows = <Map<String, dynamic>>[];
       var order = 1;
       for (final we in _exercises) {
+        final known = knownIds[ExerciseResolver.normalize(we.exercise.name)];
+
+        // Un exercice ajouté pendant la correction n'a pas d'histoire dans
+        // cette séance : ses identifiants viennent alors de la feuille de choix.
+        final isUuid = RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(we.exercise.id);
+        final exerciseId = known?['exercise_id'] ??
+            (isUuid && !we.exercise.isCustom ? we.exercise.id : null);
+        final customExerciseId = known?['custom_exercise_id'] ??
+            (isUuid && we.exercise.isCustom ? we.exercise.id : null);
+
         for (final set in we.sets.where((s) => s.reps > 0)) {
           rows.add({
             'user_id': userId,
             'history_session_id': widget.historySessionId,
+            if (exerciseId != null) 'exercise_id': exerciseId,
+            if (customExerciseId != null) 'custom_exercise_id': customExerciseId,
             'exercise_name': we.exercise.name,
             'set_order': order,
             'reps': set.reps,

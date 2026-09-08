@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'exercise_resolver.dart';
 import 'localization_service.dart';
 import 'unit_service.dart';
 
@@ -27,7 +28,6 @@ class WorkoutCacheService {
   static Future<String> getLocalizedExerciseName(String exerciseName) async {
     try {
       final locService = LocalizationService.instance;
-      final suffix = locService.getColumnSuffix();
       
       // Chercher l'exercice dans la table exercises avec un seul appel
       final exerciseData = await _client
@@ -247,7 +247,7 @@ class WorkoutCacheService {
       // Requête directe comme dans exercise_list_bottom_sheet.dart
       final historyRows = await _client
           .from('workout_set_history')
-          .select('history_session_id, exercise_name, exercise_id, custom_exercise_id, weight, reps, performed_at')
+          .select('history_session_id, exercise_name, normalized_exercise_name, exercise_id, custom_exercise_id, weight, reps, performed_at')
           .eq('user_id', userId)
           .gte('performed_at', DateTime.now().subtract(const Duration(days: 180)).toIso8601String()) // 6 derniers mois
           .order('performed_at', ascending: false);
@@ -290,33 +290,65 @@ class WorkoutCacheService {
         }
         
         if (localizedName.trim().isEmpty) continue;
-        
+
         final sessionId = row['history_session_id']?.toString() ?? '';
         if (sessionId.isEmpty) continue;
-        
+
+        // Le regroupement se fait sur le nom comparable, pas sur le nom
+        // affiché.
+        //
+        // Le nom affiché vient de l'identifiant quand il y en a un, et du nom
+        // brut sinon. Deux séries du même exercice, l'une avec identifiant et
+        // l'autre sans, produisaient donc deux lignes dans « Tes exercices » —
+        // « Curl à la barre · 1 fois » et « Barbell Curl · 1 fois » — et deux
+        // détails ne montrant chacun que la moitié des séances.
+        //
+        // C'est la même clé que la lecture du détail, qui rassemble par
+        // `normalized_exercise_name`. Les deux écrans racontent la même chose.
+        final groupKey = row['normalized_exercise_name']?.toString().trim().isNotEmpty == true
+            ? row['normalized_exercise_name'] as String
+            : ExerciseResolver.normalize(localizedName);
+        if (groupKey.isEmpty) continue;
+
         // Initialiser ou récupérer les stats de cet exercice
-        if (!exerciseStats.containsKey(localizedName)) {
-          exerciseStats[localizedName] = {
+        if (!exerciseStats.containsKey(groupKey)) {
+          exerciseStats[groupKey] = {
             'name': localizedName,
             'localized_name': localizedName,
+            'named_from_id': row['exercise_id'] != null || row['custom_exercise_id'] != null,
             'sessions': <String>{},
             'maxWeight': 0.0,
             'maxReps': 0,
           };
+        } else if (exerciseStats[groupKey]!['named_from_id'] != true &&
+            (row['exercise_id'] != null || row['custom_exercise_id'] != null)) {
+          // Le libellé traduit l'emporte sur le nom brut, dès qu'une des
+          // séries du groupe en porte un.
+          exerciseStats[groupKey]!['name'] = localizedName;
+          exerciseStats[groupKey]!['localized_name'] = localizedName;
+          exerciseStats[groupKey]!['named_from_id'] = true;
         }
-        
+
         // Ajouter cette session à la liste
-        (exerciseStats[localizedName]!['sessions'] as Set<String>).add(sessionId);
-        
-        // Mettre à jour le max de poids et reps
+        (exerciseStats[groupKey]!['sessions'] as Set<String>).add(sessionId);
+
+        // La meilleure série, gardée comme une série.
+        //
+        // Le poids et les répétitions étaient suivis chacun de leur côté, si
+        // bien que la liste annonçait la charge d'une série avec les
+        // répétitions d'une autre : « 80 kg × 20 » pour quelqu'un qui avait
+        // fait 80 kg × 5 puis 40 kg × 20. Une série qui n'a jamais eu lieu.
+        //
+        // La plus lourde gagne ; à charge égale, celle qui a duré le plus.
         final weight = (row['weight'] as num?)?.toDouble() ?? 0.0;
         final reps = (row['reps'] as int?) ?? 0;
-        
-        if (weight > (exerciseStats[localizedName]!['maxWeight'] as double)) {
-          exerciseStats[localizedName]!['maxWeight'] = weight;
-        }
-        if (reps > (exerciseStats[localizedName]!['maxReps'] as int)) {
-          exerciseStats[localizedName]!['maxReps'] = reps;
+
+        final bestWeight = exerciseStats[groupKey]!['maxWeight'] as double;
+        final bestReps = exerciseStats[groupKey]!['maxReps'] as int;
+
+        if (weight > bestWeight || (weight == bestWeight && reps > bestReps)) {
+          exerciseStats[groupKey]!['maxWeight'] = weight;
+          exerciseStats[groupKey]!['maxReps'] = reps;
         }
       }
 
@@ -349,64 +381,6 @@ class WorkoutCacheService {
     }
   }
 
-  /// Localise les noms d'exercices dans une liste de résultats
-  static Future<List<dynamic>> _localizeExerciseList(List<dynamic> exerciseList) async {
-    if (exerciseList.isEmpty) return exerciseList;
-    
-    final locService = LocalizationService.instance;
-    final suffix = locService.getColumnSuffix();
-    
-    // Récupérer tous les exercices système avec noms localisés
-    final exercisesMap = <String, String>{};
-    final exerciseRows = await _client
-        .from('exercises')
-        .select('id, name$suffix');
-    for (final row in exerciseRows) {
-      exercisesMap[row['id']] = row['name$suffix'] ?? '';
-    }
-
-    // Récupérer tous les exercices custom
-    final customExercisesMap = <String, String>{};
-    final customRows = await _client
-        .from('custom_exercises')
-        .select('id, name');
-    for (final row in customRows) {
-      customExercisesMap[row['id']] = row['name'] ?? '';
-    }
-
-    // Localiser chaque exercice
-    return exerciseList.map((exercise) {
-      if (exercise is Map<String, dynamic>) {
-        String localizedName = exercise['name']?.toString() ?? '';
-        
-        // Tenter de trouver le nom localisé en cherchant par nom dans les exercices système
-        final matchingExercises = exercisesMap.entries
-            .where((entry) => entry.value.toLowerCase() == localizedName.toLowerCase())
-            .map((entry) => entry.key);
-            
-        if (matchingExercises.isNotEmpty) {
-          final exerciseId = matchingExercises.first;
-          localizedName = exercisesMap[exerciseId]!;
-        } else {
-          // Chercher dans les exercices custom
-          final matchingCustom = customExercisesMap.entries
-              .where((entry) => entry.value.toLowerCase() == localizedName.toLowerCase())
-              .map((entry) => entry.key);
-              
-          if (matchingCustom.isNotEmpty) {
-            final customId = matchingCustom.first;
-            localizedName = customExercisesMap[customId]!;
-          }
-        }
-        
-        return {
-          ...exercise,
-          'localized_name': localizedName,
-        };
-      }
-      return exercise;
-    }).toList();
-  }
   
   /// Récupère les détails d'un exercice spécifique (pour ExerciseDetailPage)
   static Future<Map<String, dynamic>> getExerciseDetails(String userId, String exerciseName) async {
@@ -424,157 +398,44 @@ class WorkoutCacheService {
     
     // Forcer la suppression du cache pour cet exercice pour tester le fix
     _cache.remove(key);
-    
+
     try {
-      // Utiliser les IDs pour récupérer l'historique au lieu des noms pour éviter les problèmes de traduction
-      final locService = LocalizationService.instance;
-      final suffix = locService.getColumnSuffix();
-      
-      // Récupérer l'ID de l'exercice basé sur son nom localisé
-      String? exerciseId;
-      String? customExerciseId;
-      
-      // Chercher dans les exercices système
-      if (kDebugMode) debugPrint('🔍 Recherche exercice: "$exerciseName" avec suffix: $suffix');
-      if (kDebugMode) debugPrint('🔍 Requête: exercises table, colonne: name$suffix, valeur: "$exerciseName"');
-      
-      final systemExercises = await _client
-          .from('exercises')
-          .select('id, name$suffix, name_fr, name_en, name_de')
-          .eq('name$suffix', exerciseName);
-      
-      if (kDebugMode) debugPrint('🏋️ Exercices système trouvés: ${systemExercises.length}');
-      
-      // Debug: Afficher quelques exercices pour comparaison si aucun trouvé
-      if (systemExercises.isEmpty) {
-        if (kDebugMode) debugPrint('❌ Aucun exercice système trouvé avec le nom "$exerciseName"');
-        if (kDebugMode) debugPrint('🔍 Recherche d\'exercices similaires...');
-        final similarExercises = await _client
-            .from('exercises')
-            .select('id, name_fr, name_en, name_de')
-            .ilike('name$suffix', '%squat%')
-            .limit(5);
-        if (kDebugMode) debugPrint('🔍 Exercices avec "squat" trouvés: $similarExercises');
-      } else {
-        if (kDebugMode) debugPrint('✅ Exercice système trouvé: ${systemExercises.first}');
+      // Toutes les séries de cet exercice, quelle que soit l'orthographe sous
+      // laquelle elles ont été écrites.
+      //
+      // Cette lecture cherchait auparavant un identifiant d'exercice, puis
+      // retombait sur le nom exact, puis essayait les autres langues une par
+      // une en passant par le catalogue. Elle ne trouvait donc rien pour un
+      // exercice absent du catalogue, et rien non plus quand deux séances
+      // avaient été écrites « Développé couché » et « developpe-couche ».
+      //
+      // La base porte maintenant le nom normalisé de chaque série. Une seule
+      // requête, sur toutes les variantes connues de cet exercice, rassemble
+      // ce qui appartient au même mouvement.
+      final aliases = await ExerciseResolver.aliasesFor(exerciseName);
+      if (aliases.isEmpty) {
+        final empty = _processExerciseData(const [], exerciseName);
+        _cache[key] = _CacheEntry(empty, DateTime.now(), _exerciseDetailTTL);
+        return empty;
       }
-      if (systemExercises.isNotEmpty) {
-        exerciseId = systemExercises.first['id'];
-        if (kDebugMode) debugPrint('✅ Exercise ID trouvé: $exerciseId');
-      } else {
-        // Chercher dans les exercices custom
-        final customExercises = await _client
-            .from('custom_exercises')
-            .select('id, name')
-            .eq('name', exerciseName);
-        
-        if (kDebugMode) debugPrint('🏋️ Exercices custom trouvés: ${customExercises.length}');
-        if (customExercises.isNotEmpty) {
-          customExerciseId = customExercises.first['id'];
-          if (kDebugMode) debugPrint('✅ Custom Exercise ID trouvé: $customExerciseId');
-        }
-      }
-      
-      // Construire la requête basée sur les IDs trouvés
-      // Utiliser la même période que getTopExercises() pour la cohérence (6 derniers mois)
+
+      // Même fenêtre que la liste des exercices, pour que les deux écrans
+      // racontent la même chose.
       final dateFilter = DateTime.now().subtract(const Duration(days: 180)).toIso8601String();
-      
-      List<dynamic> rows;
-      if (exerciseId != null) {
-        if (kDebugMode) debugPrint('🔍 Recherche historique avec exercise_id: $exerciseId pour user: $userId');
-        if (kDebugMode) debugPrint('🔍 Date filter: $dateFilter');
-        
-        rows = await _client
-            .from('workout_set_history')
-            .select('history_session_id, performed_at, weight, reps, best_set, set_order, exercise_name')
-            .eq('user_id', userId)
-            .eq('exercise_id', exerciseId)
-            .gte('performed_at', dateFilter)
-            .order('performed_at', ascending: true)
-            .order('set_order', ascending: true);
-        
-        if (kDebugMode) debugPrint('🏋️ Historique trouvé: ${rows.length} lignes');
-        if (rows.isNotEmpty) {
-          if (kDebugMode) debugPrint('📊 Premier résultat: ${rows.first}');
-        } else {
-          if (kDebugMode) debugPrint('❌ Aucune donnée avec cet exercise_id, essai du fallback par nom...');
-          
-          // Si aucune donnée trouvée avec l'exercise_id, essayer le fallback par nom
-          var fallbackRows = await _client
-              .from('workout_set_history')
-              .select('history_session_id, performed_at, weight, reps, best_set, set_order, exercise_name')
-              .eq('user_id', userId)
-              .eq('exercise_name', exerciseName)
-              .gte('performed_at', dateFilter)
-              .order('performed_at', ascending: true)
-              .order('set_order', ascending: true);
-          
-          if (kDebugMode) debugPrint('🔍 Recherche fallback par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
-          rows = fallbackRows;
-        }
-      } else if (customExerciseId != null) {
-        rows = await _client
-            .from('workout_set_history')
-            .select('history_session_id, performed_at, weight, reps, best_set, set_order, exercise_name')
-            .eq('user_id', userId)
-            .eq('custom_exercise_id', customExerciseId)
-            .gte('performed_at', dateFilter)
-            .order('performed_at', ascending: true)
-            .order('set_order', ascending: true);
-      } else {
-        if (kDebugMode) debugPrint('❌ Aucun ID d\'exercice trouvé, utilisation du fallback par nom');
-        
-        // Fallback : utiliser la même logique que getTopExercises()
-        // D'abord, essayer avec le nom tel que reçu
-        var fallbackRows = await _client
-            .from('workout_set_history')
-            .select('history_session_id, performed_at, weight, reps, best_set, set_order, exercise_name')
-            .eq('user_id', userId)
-            .eq('exercise_name', exerciseName)
-            .gte('performed_at', dateFilter)
-            .order('performed_at', ascending: true)
-            .order('set_order', ascending: true);
-        
-        if (kDebugMode) debugPrint('🔍 Recherche par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
-        
-        if (fallbackRows.isEmpty) {
-          // Essayer avec le nom dans une autre langue (FR, EN, DE)
-          final possibleExercises = await _client
-              .from('exercises')
-              .select('name_fr, name_en, name_de')
-              .eq('name$suffix', exerciseName);
 
-          if (possibleExercises.isNotEmpty) {
-            // Essayer avec chaque langue alternative
-            final exercise = possibleExercises.first;
-            final alternativeNames = [
-              exercise['name_fr'],
-              exercise['name_en'],
-              exercise['name_de'],
-            ].where((n) => n != null && n != exerciseName).toList();
+      final rows = await _client
+          .from('workout_set_history')
+          .select('history_session_id, performed_at, weight, reps, best_set, set_order, exercise_name')
+          .eq('user_id', userId)
+          .inFilter('normalized_exercise_name', aliases)
+          .gte('performed_at', dateFilter)
+          .order('performed_at', ascending: true)
+          .order('set_order', ascending: true);
 
-            for (final rawName in alternativeNames) {
-              if (kDebugMode) debugPrint('🔍 Essai avec nom dans autre langue: "$rawName"');
-              fallbackRows = await _client
-                  .from('workout_set_history')
-                  .select('history_session_id, performed_at, weight, reps, best_set, set_order, exercise_name')
-                  .eq('user_id', userId)
-                  .eq('exercise_name', rawName)
-                  .gte('performed_at', dateFilter)
-                  .order('performed_at', ascending: true)
-                  .order('set_order', ascending: true);
-              if (fallbackRows.isNotEmpty) break;
-            }
-          }
-        }
-        
-        rows = fallbackRows;
-        if (kDebugMode) debugPrint('🔍 Fallback terminé: ${fallbackRows.length} résultats trouvés au total');
+      if (kDebugMode) {
+        debugPrint('🏋️ "$exerciseName" : ${rows.length} séries sur ${aliases.length} variante(s)');
       }
-      
-      if (kDebugMode) debugPrint('🔍 Données finales pour traitement: ${rows.length} lignes');
-      
-      // Traitement côté client (inchangé pour compatibilité)
+
       final processedData = _processExerciseData(rows, exerciseName);
       
       _cache[key] = _CacheEntry(processedData, DateTime.now(), _exerciseDetailTTL);

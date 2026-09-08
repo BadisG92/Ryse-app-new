@@ -12,6 +12,7 @@ import 'progress_service_v2.dart';
 import 'recipe_service.dart';
 import 'sport_dashboard_service.dart';
 import 'widget_sync_service.dart';
+import 'exercise_resolver.dart';
 import 'workout_cache_service.dart';
 import 'ai_notification_service.dart';
 import 'notification_service.dart';
@@ -83,6 +84,8 @@ class LocalizationService extends ChangeNotifier {
       SportDashboardService.invalidateCache();
       HeaderCacheService.clearCache();
       AIWorkoutGenerationService.invalidateCache();
+      // Les noms d'exercices sont mémorisés dans la langue de l'utilisateur.
+      ExerciseResolver.clearCache();
       ProgressServiceV2.forceRefresh();
       GlobalStateManager.instance.invalidateWeeklyData();
       await OfflineWorkoutService().clearAllCache();
