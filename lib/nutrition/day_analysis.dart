@@ -150,7 +150,7 @@ class DayAnalysis {
   /// Ryze réfléchit se traite comme le viseur ou la séance en direct — plein
   /// cadre sur l'encre, une seule chose au centre, et elle respire.
   static OverlayEntry _showBusy(BuildContext context, String lang) {
-    final entry = OverlayEntry(builder: (_) => RyzeBusy(message: 'day_analysis_running'.tr(lang)));
+    final entry = OverlayEntry(builder: (_) => RyzeBusy(message: 'day_analysis_running'.tr(lang), background: RyzeColors.ink));
     Overlay.of(context, rootOverlay: true).insert(entry);
     return entry;
   }

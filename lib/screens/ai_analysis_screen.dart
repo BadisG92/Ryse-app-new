@@ -46,6 +46,12 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
   bool _isLoading = true;
   bool _isSaving = false;
 
+  /// Le vol de la photo : plein cadre pendant l'attente, puis elle rejoint sa
+  /// place en haut du résultat. À 1, elle y est, et c'est la vignette de la
+  /// liste qui la porte.
+  late final AnimationController _land = AnimationController(vsync: this, duration: const Duration(milliseconds: 620));
+  bool _landed = false;
+
   // Valeurs animées pour le repas détecté uniquement
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -74,6 +80,8 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
       _analysisResult = widget.analysisResult!;
       _mealNameController.text = _analysisResult.mealName ?? 'Repas';
       _isLoading = false;
+      _land.value = 1;
+      _landed = true;
       // Démarrer l'animation
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) _startAnimation();
@@ -84,6 +92,8 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     } else {
       // Erreur : ni texte ni image
       _isLoading = false;
+      _land.value = 1;
+      _landed = true;
     }
   }
 
@@ -91,6 +101,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
   void dispose() {
     _mealNameController.dispose();
     _animationController.dispose();
+    _land.dispose();
     super.dispose();
   }
 
@@ -137,6 +148,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
           _mealNameController.text = result.mealName ?? 'Plat';
           _isLoading = false;
         });
+        _startLanding();
         // Démarrer l'animation des barres
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) _startAnimation();
@@ -151,6 +163,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
           );
           _isLoading = false;
         });
+        _startLanding();
       }
     }
   }
@@ -343,61 +356,119 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     await _addToMeal(mealName, mealId ?? '');
   }
 
+  /// La photo rejoint sa place. Sans photo, il n'y a rien à faire voler :
+  /// l'écran s'ouvre directement sur le résultat.
+  void _startLanding() {
+    if (!mounted) return;
+    if (widget.imagePath == null) {
+      _land.value = 1;
+      setState(() => _landed = true);
+      return;
+    }
+    _land.forward().whenComplete(() {
+      if (mounted) setState(() => _landed = true);
+    });
+  }
+
+  /// La photo pendant l'attente, puis en vol.
+  ///
+  /// Elle tient l'écran entier, et c'est elle qui porte la ligne d'attente :
+  /// un carré d'encre par-dessus le plat valait moins que le plat. Quand la
+  /// réponse arrive, elle va se poser exactement où le résultat la montre —
+  /// même rectangle, même rayon — puis la vignette de la liste prend le relais.
+  Widget _flight(BuildContext context, String lang, double gutter) {
+    final size = MediaQuery.sizeOf(context);
+    final safeTop = MediaQuery.paddingOf(context).top;
+    // Sa place dans le résultat : sous l'en-tête, en haut de la liste.
+    final target = Rect.fromLTWH(
+      gutter,
+      safeTop + context.vw(2.1) + context.vw(9.7) + context.vw(2.6) + context.vw(2.1),
+      size.width - gutter * 2,
+      context.vw(46),
+    );
+    final full = Rect.fromLTWH(0, 0, size.width, size.height);
+
+    return Positioned.fill(
+      child: AnimatedBuilder(
+        animation: _land,
+        builder: (context, _) {
+          final t = Curves.easeInOutCubic.transform(_land.value);
+          final rect = Rect.lerp(full, target, t)!;
+          final veil = 1 - t;
+          return Stack(
+            children: [
+              Positioned.fromRect(
+                rect: rect,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(RyzeRadius.md * t),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.file(File(widget.imagePath!), fit: BoxFit.cover),
+                      if (veil > 0.02)
+                        Opacity(
+                          opacity: veil,
+                          child: RyzeBusy(
+                            message: 'ai_reading_plate'.tr(lang),
+                            background: RyzeColors.ink.withValues(alpha: 0.62),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LocalizationService>().currentLanguageCode;
     final gutter = context.vw(5.1);
+    final flying = widget.imagePath != null && !_landed;
 
-    // L'attente prend tout l'ecran, comme celle de l'analyse de la journee et
-    // comme le viseur : la photo, la marque qui respire, une ligne. Elle etait
-    // une roulette de vingt pixels au milieu d'un ecran clair et vide, et elle
-    // se lisait comme une page grise le temps que Ryze reponde.
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: RyzeColors.ink,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: RyzeBusy(
-                message: 'ai_reading_plate'.tr(lang),
-                subject: widget.imagePath == null
-                    ? null
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(RyzeRadius.md),
-                        child: Image.file(
-                          File(widget.imagePath!),
-                          width: context.vw(46),
-                          height: context.vw(46),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-              ),
-            ),
+    return Scaffold(
+      backgroundColor: _isLoading ? RyzeColors.ink : RyzeColors.paper,
+      body: Stack(
+        children: [
+          if (!_isLoading) Positioned.fill(child: _results(context, lang, gutter)),
+          if (flying) _flight(context, lang, gutter),
+          // Sans photo, l'attente n'a rien sur quoi s'incruster : elle reprend
+          // le plein cadre sur l'encre.
+          if (_isLoading && widget.imagePath == null)
+            Positioned.fill(child: RyzeBusy(message: 'ai_reading_plate'.tr(lang), background: RyzeColors.ink)),
+          if (_isLoading)
             SafeArea(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, 0),
-                child: Pressable(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: context.vw(9.7),
-                    height: context.vw(9.7),
-                    decoration: BoxDecoration(
-                      color: RyzeColors.surf.withValues(alpha: 0.14),
-                      shape: BoxShape.circle,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Pressable(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: context.vw(9.7),
+                      height: context.vw(9.7),
+                      decoration: BoxDecoration(
+                        color: RyzeColors.ink.withValues(alpha: 0.45),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(LucideIcons.chevronLeft, size: context.vw(4.6), color: RyzeColors.surf),
                     ),
-                    child: Icon(LucideIcons.chevronLeft, size: context.vw(4.6), color: RyzeColors.surf),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
-      );
-    }
+        ],
+      ),
+    );
+  }
 
-    return Scaffold(
-      backgroundColor: RyzeColors.paper,
-      body: SafeArea(
+  /// Le résultat : l'en-tête, la vignette à sa place, puis ce que Ryze a lu.
+  Widget _results(BuildContext context, String lang, double gutter) {
+    return SafeArea(
         bottom: false,
         child: Column(
           children: [
@@ -437,7 +508,9 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
                           padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, context.vw(6)),
                           children: [
                             if (widget.imagePath != null) ...[
-                              _buildImagePreview(),
+                              // Tant que la photo vole, sa place est gardée vide :
+                              // c'est elle qui vient s'y poser.
+                              _landed ? _buildImagePreview() : SizedBox(height: context.vw(46)),
                               SizedBox(height: context.vw(4.6)),
                             ],
                             if (widget.isFromTextInput && widget.note != null) ...[
@@ -452,7 +525,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
                           ],
                         ),
             ),
-            if (_analysisResult.success && !_isLoading)
+            if (_analysisResult.success)
               Container(
                 padding: EdgeInsets.fromLTRB(gutter, context.vw(3.1), gutter, context.vw(4.6)),
                 decoration: BoxDecoration(
@@ -484,7 +557,6 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
               ),
           ],
         ),
-      ),
     );
   }
 

@@ -16,7 +16,7 @@ import 'type.dart';
 /// côté — l'une avec cette onde, l'autre avec une roulette de 20 pixels au
 /// milieu d'un écran vide, qui se lisait comme une page grise.
 class RyzeBusy extends StatefulWidget {
-  const RyzeBusy({super.key, required this.message, this.subject, this.trailing});
+  const RyzeBusy({super.key, required this.message, this.subject, this.trailing, this.background});
 
   /// Ce que Ryze est en train de faire, en une ligne.
   final String message;
@@ -28,6 +28,11 @@ class RyzeBusy extends StatefulWidget {
   /// Sous le message : de quoi sortir, quand l'attente n'est pas un passage
   /// obligé.
   final Widget? trailing;
+
+  /// Le sol de l'attente. Nul quand elle s'incruste sur autre chose — la
+  /// photo qu'on est en train de lire, par exemple, qui vaut mieux qu'un
+  /// carré d'encre par-dessus elle.
+  final Color? background;
 
   @override
   State<RyzeBusy> createState() => _RyzeBusyState();
@@ -47,9 +52,7 @@ class _RyzeBusyState extends State<RyzeBusy> with SingleTickerProviderStateMixin
     final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final ring = context.vw(34);
 
-    return ColoredBox(
-      color: RyzeColors.ink,
-      child: Center(
+    final content = Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -106,7 +109,9 @@ class _RyzeBusyState extends State<RyzeBusy> with SingleTickerProviderStateMixin
             ],
           ],
         ),
-      ),
     );
+
+    final ground = widget.background;
+    return ground == null ? content : ColoredBox(color: ground, child: content);
   }
 }
