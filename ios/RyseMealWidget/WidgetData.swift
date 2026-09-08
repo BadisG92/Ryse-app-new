@@ -35,10 +35,12 @@ struct WidgetSnapshot {
         let kind: String?
     }
 
-    /// The coach's line from a given hour on.
+    /// The coach's line from a given hour on. `restates` marks a line that
+    /// only repeats what is left of the goal, which the figure already says.
     struct Line {
         let from: Int
         let text: String
+        let restates: Bool
     }
 
     let day: String
@@ -114,10 +116,17 @@ struct WidgetSnapshot {
     var glassesOf: String { fill("glasses_of_tpl", ["n": integer(glasses), "g": integer(goalGlasses)]) }
 
     /// The coach's line for that moment: the last band that has started.
-    func line(at date: Date) -> String? {
+    func line(at date: Date) -> Line? {
         let hour = Calendar.current.component(.hour, from: date)
         let started = lines.filter { $0.from <= hour }
-        return started.max(by: { $0.from < $1.from })?.text ?? lines.first?.text
+        return started.max(by: { $0.from < $1.from }) ?? lines.first
+    }
+
+    /// What the lock screen says under the gauge: the coach's line, unless
+    /// it would only repeat the figure, in which case the water.
+    func caption(at date: Date) -> String? {
+        guard let line = line(at: date) else { return nil }
+        return line.restates ? glassesOf : line.text
     }
 
     // MARK: Parsing
@@ -159,7 +168,7 @@ struct WidgetSnapshot {
         let lines = isToday
             ? (json["lines"] as? [[String: Any]] ?? []).compactMap { item -> Line? in
                 guard let text = item["text"] as? String, !text.isEmpty else { return nil }
-                return Line(from: int(item["from"]), text: text)
+                return Line(from: int(item["from"]), text: text, restates: item["restates"] as? Bool ?? false)
             }
             : []
 
@@ -192,7 +201,7 @@ struct WidgetSnapshot {
                 Slot(id: "dinner", state: .planned, label: word("slot_dinner"), word: word("slot_planned"), kind: nil),
                 Slot(id: "sport", state: .planned, label: word("slot_sport"), word: word("slot_planned"), kind: "strength"),
             ],
-            lines: [Line(from: 0, text: word("sample_line"))],
+            lines: [Line(from: 0, text: word("sample_line"), restates: false)],
             strings: [:],
             palette: .nuit
         )

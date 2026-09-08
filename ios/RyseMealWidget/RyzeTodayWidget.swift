@@ -25,6 +25,9 @@ struct RyzeTodayWidget: Widget {
         .configurationDisplayName(snapshot?.string("title_today") ?? WidgetFallback.string("title_today", lang: lang))
         .description(snapshot?.string("desc_today") ?? WidgetFallback.string("desc_today", lang: lang))
         .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryInline])
+        // the system's margins took the second line of the coach's sentence;
+        // the rectangular view pads itself instead
+        .contentMarginsDisabled()
     }
 }
 
@@ -45,6 +48,7 @@ struct TodayWidgetView: View {
                 TodayRectangularView(entry: entry)
             }
         }
+        .padding(family == .accessoryRectangular ? EdgeInsets(top: 5, leading: 8, bottom: 5, trailing: 8) : EdgeInsets())
         .containerBackground(for: .widget) { AccessoryWidgetBackground() }
         .widgetURL(URL(string: "ryse://dashboard"))
     }
@@ -55,14 +59,16 @@ struct TodayRectangularView: View {
 
     var body: some View {
         if let s = entry.snapshot {
-            VStack(alignment: .leading, spacing: 3) {
+            // the coach's sentence needs two lines: the figure and the gauge
+            // stay compact so the sentence is never cut after one
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(s.figure)
-                        .font(RyzeFont.display(20))
-                        .tracking(RyzeFont.tracking(20))
+                        .font(RyzeFont.display(18))
+                        .tracking(RyzeFont.tracking(18))
                         .monospacedDigit()
                     Text(s.string(s.shortKey))
-                        .font(RyzeFont.body(11.5, weight: 600))
+                        .font(RyzeFont.body(11, weight: 600))
                         .opacity(0.85)
                 }
                 .lineLimit(1)
@@ -70,14 +76,15 @@ struct TodayRectangularView: View {
 
                 LockGauge(fraction: s.fraction)
 
-                if let line = s.line(at: entry.date) {
-                    Text(line)
-                        .font(RyzeFont.body(10.5))
+                if let caption = s.caption(at: entry.date) {
+                    Text(caption)
+                        .font(RyzeFont.body(10))
                         .lineLimit(2)
+                        .minimumScaleFactor(0.9)
                         .opacity(0.82)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Ryze")

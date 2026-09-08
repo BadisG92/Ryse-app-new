@@ -342,14 +342,14 @@ class AppTranslations {
       'de': 'Snack',
     },
     'widget_meals_title': {
-      'fr': 'Mes Repas',
-      'en': 'My Meals',
-      'de': 'Meine Mahlzeiten',
+      'fr': 'Repas',
+      'en': 'Meals',
+      'de': 'Mahlzeiten',
     },
     'widget_meals_description': {
-      'fr': 'Voir vos repas et calories du jour',
-      'en': 'See today\'s meals and calories',
-      'de': 'Mahlzeiten und Kalorien von heute anzeigen',
+      'fr': 'Ce qu\'il te reste, et les repas du jour',
+      'en': 'What is left, and today\'s meals',
+      'de': 'Was dir bleibt, und die Mahlzeiten des Tages',
     },
     'widget_placeholder_meal': {
       'fr': 'Repas',
@@ -406,6 +406,69 @@ class AppTranslations {
       'fr': 'Suivi calories avec conseils personnalisés',
       'en': 'Calorie tracking with personalized tips',
       'de': 'Kalorienverfolgung mit personalisierten Tipps',
+    },
+    // Widgets iOS et Android (WIDGET.md). Chaque mot qu'un widget affiche,
+    // dans la langue de l'app : le natif ne porte aucun texte à lui, hormis
+    // les noms de la galerie dont il a besoin avant la première écriture.
+    'widget_water_title': {
+      'fr': 'Eau',
+      'en': 'Water',
+      'de': 'Wasser',
+    },
+    'widget_water_description': {
+      'fr': 'Tes verres du jour, et un de plus d\'un tap',
+      'en': 'Today\'s glasses, and one more in a tap',
+      'de': 'Deine Gläser heute, und eins mehr mit einem Tipp',
+    },
+    'widget_today_title': {
+      'fr': 'Aujourd\'hui',
+      'en': 'Today',
+      'de': 'Heute',
+    },
+    'widget_today_description': {
+      'fr': 'Ce qu\'il te reste, et un mot du coach',
+      'en': 'What is left, and a word from the coach',
+      'de': 'Was dir bleibt, und ein Wort vom Coach',
+    },
+    'widget_glass_one': {
+      'fr': '+ 1 verre',
+      'en': '+ 1 glass',
+      'de': '+ 1 Glas',
+    },
+    'widget_glass_two': {
+      'fr': '+ 2',
+      'en': '+ 2',
+      'de': '+ 2',
+    },
+    'widget_left_short': {
+      'fr': 'kcal restantes',
+      'en': 'kcal left',
+      'de': 'kcal übrig',
+    },
+    'widget_over_short': {
+      'fr': 'kcal au-dessus',
+      'en': 'kcal over',
+      'de': 'kcal darüber',
+    },
+    'widget_reached_short': {
+      'fr': 'objectif atteint',
+      'en': 'goal reached',
+      'de': 'Ziel erreicht',
+    },
+    'widget_water_goal': {
+      'fr': '/ {g} L',
+      'en': '/ {g} L',
+      'de': '/ {g} L',
+    },
+    'widget_glasses_of': {
+      'fr': '{n} verres sur {g}',
+      'en': '{n} of {g} glasses',
+      'de': '{n} von {g} Gläsern',
+    },
+    'widget_open_app': {
+      'fr': 'Ouvre Ryze',
+      'en': 'Open Ryze',
+      'de': 'Ryze öffnen',
     },
     // Coach Messages - Morning (before breakfast)
     'coach_morning_no_breakfast': {

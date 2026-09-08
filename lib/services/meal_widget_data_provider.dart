@@ -150,9 +150,8 @@ class MealWidgetDataProvider {
 
     final lines = <Map<String, dynamic>>[
       for (final hour in _bands)
-        {
-          'from': hour,
-          'text': HomeSuggestion.build(
+        () {
+          final suggestion = HomeSuggestion.build(
             lang: lang,
             name: '',
             today: today,
@@ -161,8 +160,16 @@ class MealWidgetDataProvider {
             calories: eaten,
             calorieGoal: goal,
             now: DateTime(date.year, date.month, date.day, hour),
-          ).line,
-        },
+          );
+          return {
+            'from': hour,
+            'text': suggestion.line,
+            // a line that only restates what is left of the goal says nothing
+            // the figure above it does not; the lock screen shows the water
+            // instead of the same number twice
+            'restates': suggestion.action == HomeAction.logMeal || suggestion.action == HomeAction.viewDay,
+          };
+        }(),
     ];
 
     return {
