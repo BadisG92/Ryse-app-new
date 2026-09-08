@@ -89,9 +89,15 @@ class _Slot extends StatelessWidget {
 
     return Pressable(
       onTap: onTap,
-      child: AnimatedContainer(
+      // Le carre du creneau se pose quand il devient fait : c'est la marque la
+      // plus regardee de l'application, et elle changeait de couleur sans qu'on
+      // sente rien.
+      child: RyzeLanding(
+        on: done,
+        amount: 0.06,
+        child: AnimatedContainer(
         duration: RyzeDurations.fill,
-        curve: RyzeCurves.out,
+        curve: RyzeCurves.spring,
         padding: EdgeInsets.symmetric(vertical: context.vw(2.3)),
         decoration: BoxDecoration(
           color: done ? RyzeColors.ink : RyzeColors.surf,
@@ -117,6 +123,7 @@ class _Slot extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
