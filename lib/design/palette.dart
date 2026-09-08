@@ -46,7 +46,6 @@ class RyzePalette {
     required this.accLight,
     required this.accTint,
     required this.accInk,
-    required this.glowWarm,
   });
 
   /// La clé du dictionnaire qui la nomme.
@@ -72,8 +71,10 @@ class RyzePalette {
   /// Le secondaire assombri jusqu'à porter du petit texte sur le papier.
   final Color accInk;
 
-  /// L'auréole chaude en haut à droite de chaque écran.
-  final Color glowWarm;
+  /// L'auréole chaude en haut à droite de chaque écran n'est pas un champ :
+  /// c'est le secondaire éclairci. Elle était déclarée à la main, et sur une
+  /// palette elle avait pris la teinte de la marque au lieu de celle du
+  /// retour — une incohérence qu'une dérivation rend impossible.
 }
 
 /// Les cinq, et rien d'autre.
@@ -91,7 +92,6 @@ class RyzePalettes {
     accLight: Color(0xFFFFC766),
     accTint: Color(0xFFFDF1DC),
     accInk: Color(0xFF9A5F0C),
-    glowWarm: Color(0xFFFFC478),
   );
 
   /// Magenta et turquoise. Le rose franc est sur les surfaces, pas seulement
@@ -106,7 +106,6 @@ class RyzePalettes {
     accLight: Color(0xFFA8F2EB),
     accTint: Color(0xFFE0FAF7),
     accInk: Color(0xFF0F6E67),
-    glowWarm: Color(0xFFFFB3D9),
   );
 
   /// Violet et citron vert.
@@ -120,7 +119,6 @@ class RyzePalettes {
     accLight: Color(0xFFD9F585),
     accTint: Color(0xFFF2FBDD),
     accInk: Color(0xFF5A7A0C),
-    glowWarm: Color(0xFFD5A8F5),
   );
 
   /// Turquoise profond et corail.
@@ -134,7 +132,6 @@ class RyzePalettes {
     accLight: Color(0xFFFFC7B5),
     accTint: Color(0xFFFFEDE7),
     accInk: Color(0xFFA83A1C),
-    glowWarm: Color(0xFF8FE0EA),
   );
 
   /// Vert forêt et rose vif.
@@ -148,7 +145,6 @@ class RyzePalettes {
     accLight: Color(0xFFFF9DC4),
     accTint: Color(0xFFFFE8F0),
     accInk: Color(0xFFA82C5B),
-    glowWarm: Color(0xFFA8E5C4),
   );
 
   static const List<RyzePalette> all = [nuit, rose, prune, ocean, foret];

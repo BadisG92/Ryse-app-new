@@ -86,7 +86,9 @@ class RyzeColors {
   /// a gauche. Elles sont de la palette et non du decor - un theme qui change
   /// la couleur de l'application doit changer le fond avec, sans quoi l'ambre
   /// resterait seul derriere une interface devenue rose.
-  static Color get glowWarm => _palette.glowWarm;
+  /// L'auréole chaude est le secondaire éclairci : elle suit ce que Ryze
+  /// rend, jamais la marque.
+  static Color get glowWarm => _palette.accLight;
   static Color get glowCool => _palette.ink2;
 
   /// Warm light of the gym scene, top right of every screen.
