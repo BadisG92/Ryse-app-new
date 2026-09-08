@@ -1681,8 +1681,15 @@ class WeeklyPlannerService {
         return null;
       }
 
-      // Chercher si un cardio planifié existe déjà pour ce jour
-      final existingCardio = await findPlannedCardioForDate(sessionDate);
+      // Chercher un cardio planifié du même type ce jour-là.
+      //
+      // Le type n'était pas transmis : une course terminée consommait le vélo
+      // prévu le même jour, puis le renommait. Deux cardios dans une journée
+      // et le plan racontait autre chose que ce qui avait été fait.
+      final existingCardio = await findPlannedCardioForDate(
+        sessionDate,
+        activityType: activityType,
+      );
 
       if (existingCardio != null) {
         // Mettre à jour le statut existant
@@ -1910,11 +1917,13 @@ class WeeklyPlannerService {
       }
 
       // 2. Nettoyer les doublons dans planned_activities (cardio uniquement)
-      // Note: linked_session_id peut ne pas exister, on utilise activity_data
+      //
+      // La colonne comparée n'était pas demandée : elle valait donc toujours
+      // null, et aucun doublon cardio n'a jamais été supprimé.
       try {
         final activities = await _client
             .from('planned_activities')
-            .select('id, activity_type, activity_data, created_at')
+            .select('id, activity_type, activity_data, created_at, linked_session_id')
             .eq('user_id', userId)
             .eq('activity_type', 'cardio')
             .order('created_at', ascending: true);
@@ -1923,13 +1932,7 @@ class WeeklyPlannerService {
         final activityIdsToDelete = <String>[];
 
         for (final activity in activities) {
-          // Essayer de récupérer linked_session_id depuis activity_data ou directement
-          String? linkedId;
-          try {
-            linkedId = activity['linked_session_id'] as String?;
-          } catch (_) {
-            // La colonne n'existe peut-être pas
-          }
+          final linkedId = activity['linked_session_id'] as String?;
 
           if (linkedId != null) {
             if (seenActivitySessionIds.contains(linkedId)) {
@@ -2144,10 +2147,14 @@ class WeeklyPlannerService {
       }
 
       // 2. Nettoyer les cardios "completed" orphelins
-      // Note: linked_session_id peut ne pas exister, on vérifie par date
+      //
+      // Le lien est demandé explicitement. Il ne l'était pas, et le ménage
+      // retombait sur la date avec un `.maybeSingle()` : dès qu'une journée
+      // portait deux cardios, la requête levait, tout le nettoyage était
+      // abandonné, et personne ne le voyait.
       final completedCardios = await _client
           .from('planned_activities')
-          .select('id, planned_date, activity_data')
+          .select('id, planned_date, activity_data, linked_session_id')
           .eq('user_id', userId)
           .eq('activity_type', 'cardio')
           .eq('status', 'completed')
@@ -2167,21 +2174,34 @@ class WeeklyPlannerService {
           continue;
         }
 
-        // Vérifier si une session cardio existe pour cette date dans l'historique
-        final historySession = await _client
-            .from('cardio_sessions')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('is_completed', true)
-            .gte('start_time', '${plannedDate}T00:00:00')
-            .lt('start_time', '${plannedDate}T23:59:59')
-            .maybeSingle();
+        // La séance liée existe-t-elle encore ? C'est la question exacte, et
+        // elle se pose sur un identifiant, pas sur une journée entière.
+        final linkedSessionId = cardio['linked_session_id'] as String?;
 
-        if (historySession == null) {
-          // Pas de session cardio pour cette date → orphelin, supprimer
+        final List<dynamic> history;
+        if (linkedSessionId != null) {
+          history = await _client
+              .from('cardio_sessions')
+              .select('id')
+              .eq('id', linkedSessionId)
+              .limit(1);
+        } else {
+          // Une vieille ligne sans lien : on retombe sur la journée, mais en
+          // acceptant qu'elle en porte plusieurs.
+          history = await _client
+              .from('cardio_sessions')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('is_completed', true)
+              .gte('start_time', '${plannedDate}T00:00:00')
+              .lt('start_time', '${plannedDate}T23:59:59')
+              .limit(1);
+        }
+
+        if (history.isEmpty) {
           await _client.from('planned_activities').delete().eq('id', cardio['id']);
           cardiosRemoved++;
-          debugPrint('  🗑️ Cardio orphelin supprimé: $cardioName (pas de session historique pour $plannedDate)');
+          debugPrint('  🗑️ Cardio orphelin supprimé: $cardioName (plus de séance pour $plannedDate)');
         }
       }
 
