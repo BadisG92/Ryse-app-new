@@ -64,6 +64,7 @@ abstract class PersonaStrings {
 /// Déclarées ici plutôt que dispersées : c'est sur cette liste que le test
 /// vérifie qu'aucune langue n'a de trou.
 const List<String> personaLabelKeys = [
+  'section_now',
   'section_memory',
   'section_today',
   'section_meals',

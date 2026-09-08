@@ -55,10 +55,20 @@ class PlanTools {
         final session = pendingWorkout != null
             ? PendingSession.fromWorkout(pendingWorkout)
             : PendingSession.fromCardio(pendingCardio!);
+
+        // Le contenu réel de la séance repart au modèle. Sans lui, il ne
+        // pouvait que deviner ce qu'il venait de créer, et il devinait à voix
+        // haute : la liste annoncée n'était pas celle enregistrée.
+        final lines = exerciseLines(pendingWorkout);
+
         return RyzeToolResult(
           ok: true,
           summary: session.displayTitle,
-          data: {'proposed': 'session', 'name': session.displayTitle},
+          data: {
+            'proposed': 'session',
+            'name': session.displayTitle,
+            if (lines.isNotEmpty) 'exercises': lines,
+          },
           payload: session,
         );
       }
@@ -103,14 +113,45 @@ class PlanTools {
     }
   }
 
+  /// Ce que la séance contient, une ligne par exercice.
+  ///
+  /// « Développé couché · 4 × 8 · 60 kg ». La même liste sert deux fois : au
+  /// modèle, pour qu'il n'annonce que ce qui existe, et à la carte, pour que
+  /// l'utilisateur voie la séance avant de la valider.
+  static List<String> exerciseLines(PendingWorkout? workout) {
+    final exercises = workout?.exercises;
+    if (exercises == null || exercises.isEmpty) return const [];
+
+    return [
+      for (final e in exercises)
+        [
+          e.exercise.name,
+          '${e.sets.length} × ${e.sets.isEmpty ? 0 : e.sets.first.reps}',
+          if (e.sets.isNotEmpty && e.sets.first.weight > 0)
+            '${e.sets.first.weight.toStringAsFixed(e.sets.first.weight % 1 == 0 ? 0 : 1)} kg',
+        ].join(' · '),
+    ];
+  }
+
   /// La carte d'une création : ce qui est proposé, avant que ça existe.
   static Future<RyzePending> _proposal(String toolName, Map<String, dynamic> args) async {
     final built = await _run(toolName, args);
+
+    // La carte porte le détail : les exercices pour une séance, les calories
+    // pour un repas. Elle n'annonçait qu'un titre, et il fallait valider sans
+    // savoir ce qu'on validait.
+    final exercises = built.data['exercises'];
+    final detail = exercises is List && exercises.isNotEmpty
+        ? exercises.join('\n')
+        : built.data['calories'] != null
+            ? '${built.data['calories']} kcal'
+            : null;
+
     return RyzePending(
       id: '$toolName-${DateTime.now().microsecondsSinceEpoch}',
       toolName: toolName,
       title: built.ok ? built.summary : 'ryze_action_failed'.tr(_lang),
-      detail: built.data['calories'] != null ? '${built.data['calories']} kcal' : null,
+      detail: detail,
       commit: () => built.ok ? commit(built.payload) : Future.value(built),
     );
   }
@@ -173,9 +214,12 @@ class PlanTools {
     declaration: toolSchema(
       name: 'plan.create_workout',
       description:
-          'Add a strength session to the weekly plan, with its exercises generated for '
-          'the user. Use it when they want to plan training ahead. Ask for the muscle '
-          'group and the duration first if they did not say; do not guess them.',
+          'Add a strength session to the weekly plan. Use it when they want to plan '
+          'training ahead. Ask for the muscle group and the duration first if they did '
+          'not say; do not guess them. Write the exercises yourself in "exercises": '
+          'they are what goes into the session, so the session is exactly what you '
+          'told the user it would be. Only leave "exercises" out when you truly have '
+          'no idea what to put in it.',
       properties: {
         'day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
         'workout_type': {
@@ -185,6 +229,40 @@ class PlanTools {
         'duration_minutes': {
           'type': 'integer',
           'description': 'Length in minutes, between 15 and 120.',
+        },
+        'exercises': {
+          'type': 'array',
+          'description':
+              'The exercises of the session, in the order they are done. Any exercise '
+              'you can name is allowed, not only the ones you have seen before. Fill '
+              'the duration: about one exercise per six to eight minutes.',
+          'items': {
+            'type': 'object',
+            'properties': {
+              'exercise_name': {
+                'type': 'string',
+                'description': 'The exercise, named in the user language.',
+              },
+              'canonical_name_en': {
+                'type': 'string',
+                'description':
+                    'The same exercise in English, always. It is what keeps one '
+                    'movement from becoming two under two spellings.',
+              },
+              'muscle_group': {
+                'type': 'string',
+                'description': 'Chest, Back, Legs, Shoulders, Arms, Ab, Cardio.',
+              },
+              'equipment': {'type': 'string', 'description': 'Barbell, Dumbbell, Machine, Cable, Bodyweight.'},
+              'sets': {'type': 'integer', 'description': 'Number of sets.'},
+              'target_reps': {'type': 'integer', 'description': 'Reps per set. For a hold, the seconds.'},
+              'suggested_weight_kg': {
+                'type': 'number',
+                'description': 'Load in kilos, a multiple of 2.5. Zero for bodyweight.',
+              },
+            },
+            'required': ['exercise_name', 'canonical_name_en', 'sets', 'target_reps'],
+          },
         },
       },
       required: ['day', 'workout_type', 'duration_minutes'],

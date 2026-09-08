@@ -71,6 +71,7 @@ Du hast Werkzeuge. Nutze sie, statt zu erklären, wo man in der App tippen muss.
 
   @override
   String label(String key) => switch (key) {
+        'section_now' => 'DATUM UND UHRZEIT',
         'section_memory' => 'WAS DU ÜBER IHN WEISST',
         'section_today' => 'HEUTE',
         'section_meals' => 'MAHLZEITEN HEUTE',

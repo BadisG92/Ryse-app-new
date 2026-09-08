@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:ryze_app/ai/prompts/persona_de.dart';
 import 'package:ryze_app/ai/prompts/persona_en.dart';
@@ -15,6 +16,48 @@ void main() {
   const fr = PersonaFr();
   const en = PersonaEn();
   const de = PersonaDe();
+
+  group('Quel jour on est', () {
+    // Les mêmes locales que `main.dart` charge au démarrage.
+    setUpAll(() async {
+      await initializeDateFormatting('fr');
+      await initializeDateFormatting('en');
+      await initializeDateFormatting('de');
+    });
+
+    // Ryze ne le savait pas. « Une séance demain » n'était pas un calcul mais
+    // une devinette, et elle est tombée sur aujourd'hui.
+    final mardi = DateTime(2026, 9, 8, 20, 21);
+
+    test('la date, l\'heure et le fuseau sont dits', () {
+      final bloc = RyzeContext.renderNow(fr, at: mardi);
+
+      expect(bloc, contains('mardi'));
+      expect(bloc, contains('8 septembre 2026'));
+      expect(bloc, contains('20:21'));
+      expect(bloc, contains('UTC'));
+    });
+
+    test('demain est nommé, pas laissé à deviner', () {
+      final bloc = RyzeContext.renderNow(fr, at: mardi);
+      expect(bloc, contains('mercredi 9 septembre'));
+    });
+
+    test('chaque langue a sa date et son mot', () {
+      expect(RyzeContext.renderNow(en, at: mardi), contains('Tuesday'));
+      expect(RyzeContext.renderNow(en, at: mardi), contains('"tomorrow"'));
+      expect(RyzeContext.renderNow(de, at: mardi), contains('Dienstag'));
+      expect(RyzeContext.renderNow(de, at: mardi), contains('morgen'));
+    });
+
+    test('le passage à minuit change le lendemain', () {
+      final veille = RyzeContext.renderNow(fr, at: DateTime(2026, 9, 8, 23, 59));
+      final apres = RyzeContext.renderNow(fr, at: DateTime(2026, 9, 9, 0, 1));
+
+      expect(veille, contains('mercredi 9 septembre'));
+      expect(apres, contains('jeudi 10 septembre'));
+    });
+  });
 
   group('Les repas du jour sont bornés', () {
     test('une journée normale s\'affiche en entier', () {

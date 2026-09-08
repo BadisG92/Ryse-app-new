@@ -185,6 +185,21 @@ void main() {
       expect(activites, isNot(contains('swimming')));
     });
 
+    test('la conversation écrit elle-même les exercices', () {
+      // Un second modèle les choisissait dans son dos : Ryze annonçait une
+      // liste et la base en recevait une autre, sans que rien ne le montre.
+      final props = ((registry.byName('plan.create_workout')!.declaration['parameters'] as Map)
+          ['properties'] as Map).cast<String, dynamic>();
+
+      expect(props.containsKey('exercises'), isTrue);
+      final items = (props['exercises']['items'] as Map).cast<String, dynamic>();
+      final champs = (items['properties'] as Map).keys.toSet();
+
+      expect(champs, containsAll(['exercise_name', 'sets', 'target_reps']));
+      // Le nom anglais est la clé qui empêche un mouvement de devenir deux.
+      expect(List<String>.from(items['required'] as List), contains('canonical_name_en'));
+    });
+
     test('une séance demande son groupe et sa durée', () {
       final requis = List<String>.from(
           (registry.byName('plan.create_workout')!.declaration['parameters'] as Map)['required'] as List);

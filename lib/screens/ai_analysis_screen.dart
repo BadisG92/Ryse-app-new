@@ -8,6 +8,7 @@ import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/gemini_analysis_service_v2.dart';
 import '../models/ai_analysis_models.dart';
+import '../models/nutrition_models.dart' show Meal;
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
@@ -282,12 +283,17 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
         }
       }
 
-      // Sinon, on retombe sur la sélection classique
+      // Sinon, on retombe sur la sélection classique. Les repas déjà notés
+      // aujourd'hui sont chargés : la feuille annonçait qu'il n'y en avait
+      // aucun même quand le petit-déjeuner et le déjeuner étaient là, et ne
+      // proposait donc que d'en créer un nouveau.
+      final existingMeals = await _todayMeals(user.id);
+
       if (!mounted) return;
       MealSelectionBottomSheet.show(
         context,
         foodName: _mealNameController.text,
-        existingMeals: [], // TODO: Charger les repas existants si nécessaire
+        existingMeals: existingMeals,
         onExistingMealSelected: (meal) async {
           await _addToMeal(meal.name, meal.id ?? '');
         },
@@ -313,6 +319,17 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
       if (mounted) {
         setState(() => _isSaving = false);
       }
+    }
+  }
+
+  /// Les repas déjà notés aujourd'hui, ceux qui portent au moins un aliment.
+  Future<List<Meal>> _todayMeals(String userId) async {
+    try {
+      final meals = await FoodEntriesService.getFoodEntriesForDate(userId, DateTime.now());
+      return meals.where((m) => m.items.isNotEmpty).toList();
+    } catch (e) {
+      debugPrint('⚠️ Repas du jour illisibles : $e');
+      return const [];
     }
   }
 

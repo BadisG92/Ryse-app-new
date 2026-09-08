@@ -627,6 +627,25 @@ Generate the workout now as valid JSON:
     return (weight / 2.5).round() * 2.5;
   }
 
+  /// Bâtir une séance à partir d'une liste d'exercices déjà choisie.
+  ///
+  /// La conversation compose elle-même la séance et la dicte : elle sait ce
+  /// qu'elle vient d'annoncer à l'utilisateur, ce qu'un second modèle appelé
+  /// dans son dos ne lui rendait jamais. Ryze énumérait alors des exercices
+  /// qui n'étaient pas ceux enregistrés, et finissait par l'avouer.
+  ///
+  /// Chaque nom passe par le résolveur : le catalogue d'abord, sinon un
+  /// exercice créé pour cet utilisateur, sans doublon possible.
+  static Future<List<WorkoutExercise>> buildExercises(List<dynamic> exercises) async {
+    if (exercises.isEmpty) return const [];
+    final catalogue = await _getExercisesWithCache();
+    return _parseAndValidateWorkout(
+      {'exercises': exercises},
+      catalogue,
+      LocalizationService.instance,
+    );
+  }
+
   /// Parser et valider la séance générée avec poids suggérés
   static Future<List<WorkoutExercise>> _parseAndValidateWorkout(
     Map<String, dynamic> response,

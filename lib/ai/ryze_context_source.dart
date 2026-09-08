@@ -58,7 +58,10 @@ class RyzeContextSource {
       RyzeBlock.memory: await ctx.block(RyzeBlock.memory, () => _memory(s)),
     };
 
-    return RyzeContext.assemble(blocs);
+    // La date n'est jamais mise en cache : c'est la seule chose du contexte
+    // qui change toute seule, et un bloc gardé dix minutes suffirait à faire
+    // basculer « demain » un soir à minuit.
+    return '${RyzeContext.renderNow(s)}\n\n${RyzeContext.assemble(blocs)}';
   }
 
   // ------------------------------------------------------------- les blocs

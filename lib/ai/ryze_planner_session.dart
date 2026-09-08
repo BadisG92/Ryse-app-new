@@ -173,12 +173,18 @@ ${planningMeals ? '''
     final today = DateTime(now.year, now.month, now.day);
 
     const names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    final tomorrow = today.add(const Duration(days: 1));
+
+    // Chaque jour porte sa date et dit s'il est aujourd'hui ou demain : sans
+    // ça, « une séance demain » se devine, et se devine mal.
     final available = <String>[];
     for (var i = 0; i < 7; i++) {
       final day = weekStart.add(Duration(days: i));
-      if (!DateTime(day.year, day.month, day.day).isBefore(today)) {
-        available.add(names[day.weekday - 1]);
-      }
+      final d = DateTime(day.year, day.month, day.day);
+      if (d.isBefore(today)) continue;
+
+      final marque = d == today ? ' (today)' : d == tomorrow ? ' (tomorrow)' : '';
+      available.add('${names[day.weekday - 1]} ${d.day}/${d.month}$marque');
     }
 
     final lines = <String>['AVAILABLE DAYS: ${available.join(', ')}'];

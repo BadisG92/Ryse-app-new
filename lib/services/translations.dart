@@ -4178,6 +4178,16 @@ class AppTranslations {
       'de': 'Einheit beenden',
     },
     // Gemini Error Messages (friendly and playful)
+    'ryze_food_review': {
+      'fr': 'Voir le détail',
+      'en': 'See the detail',
+      'de': 'Details ansehen',
+    },
+    'ryze_food_open_anyway': {
+      'fr': 'Ouvrir quand même',
+      'en': 'Open anyway',
+      'de': 'Trotzdem öffnen',
+    },
     'ai_describe_meal_hint': {
       'fr':
           "Décris un repas avec ses quantités. Par exemple : « 250 ml de jus de carotte », « 150 g de poulet grillé avec 100 g de riz », « 1 pomme et 200 ml de lait ».",

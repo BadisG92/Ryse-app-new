@@ -71,6 +71,7 @@ You have tools. Use them instead of explaining where to tap in the app.
 
   @override
   String label(String key) => switch (key) {
+        'section_now' => 'DATE AND TIME',
         'section_memory' => 'WHAT YOU KNOW ABOUT THEM',
         'section_today' => 'TODAY',
         'section_meals' => 'TODAY\'S MEALS',

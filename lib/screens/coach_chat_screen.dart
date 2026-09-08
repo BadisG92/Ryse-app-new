@@ -614,7 +614,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         key: ValueKey(pending.id),
         title: pending.title,
         detail: pending.detail,
-        confirmLabel: 'ryze_validate'.tr(lang),
+        confirmLabel: pending.confirmLabelKey.tr(lang),
         cancelLabel: 'ryze_cancel'.tr(lang),
         onConfirm: () => _resolveCard(pending, accept: true),
         onCancel: () => _resolveCard(pending, accept: false),

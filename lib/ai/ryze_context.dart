@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 
 import '../services/global_state_manager.dart';
 import 'prompts/persona_strings.dart';
@@ -169,6 +170,50 @@ class RyzeContext {
   }
 
   // ------------------------------------------------- rendus purs, testables
+
+  /// Quel jour on est, et quelle heure il est.
+  ///
+  /// Ryze ne le savait pas. Aucune date, aucune heure ne figurait dans son
+  /// prompt, ni du côté de la conversation ni, après la fusion, du côté du
+  /// planificateur. « Une séance demain » n'était donc pas un calcul mais une
+  /// devinette, et elle tombait volontiers sur aujourd'hui.
+  ///
+  /// L'heure est celle de l'appareil, avec son décalage, parce que c'est
+  /// l'heure que l'utilisateur a sous les yeux en écrivant.
+  static String renderNow(PersonaStrings s, {DateTime? at}) {
+    final now = at ?? DateTime.now();
+    final locale = switch (s.lang) { 'fr' => 'fr_FR', 'de' => 'de_DE', _ => 'en_US' };
+
+    final jour = DateFormat('EEEE', locale).format(now);
+    final date = DateFormat('d MMMM yyyy', locale).format(now);
+    final heure = DateFormat('HH:mm', locale).format(now);
+
+    final minutes = now.timeZoneOffset.inMinutes;
+    final signe = minutes < 0 ? '-' : '+';
+    final abs = minutes.abs();
+    final utc = 'UTC$signe${(abs ~/ 60).toString().padLeft(2, '0')}:${(abs % 60).toString().padLeft(2, '0')}';
+
+    return section(s, 'section_now', [
+      '$jour $date, $heure ($utc)',
+      _relativeDays(s, now),
+    ].join('\n'));
+  }
+
+  /// Les jours nommés, rattachés à une date, pour que « demain » se calcule
+  /// au lieu de se deviner.
+  static String _relativeDays(PersonaStrings s, DateTime now) {
+    final locale = switch (s.lang) { 'fr' => 'fr_FR', 'de' => 'de_DE', _ => 'en_US' };
+    final fmt = DateFormat('EEEE d MMMM', locale);
+
+    final aujourd = fmt.format(now);
+    final demain = fmt.format(now.add(const Duration(days: 1)));
+
+    return switch (s.lang) {
+      'fr' => '« aujourd\'hui » = $aujourd. « demain » = $demain.',
+      'de' => '„heute“ = $aujourd. „morgen“ = $demain.',
+      _ => '"today" = $aujourd. "tomorrow" = $demain.',
+    };
+  }
 
   /// Le bilan du jour.
   static String renderToday(

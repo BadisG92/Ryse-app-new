@@ -72,6 +72,7 @@ Tu as des outils. Sers-t'en au lieu d'expliquer où aller dans l'application.
 
   @override
   String label(String key) => switch (key) {
+        'section_now' => 'DATE ET HEURE',
         'section_memory' => 'CE QUE TU SAIS DE LUI',
         'section_today' => 'AUJOURD\'HUI',
         'section_meals' => 'REPAS DU JOUR',

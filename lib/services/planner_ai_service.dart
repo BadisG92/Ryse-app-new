@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/weekly_planner_models.dart';
+import '../models/sport_models.dart';
 import 'weekly_planner_service.dart';
 import 'planned_cardio_service.dart';
 import 'ai_workout_generation_service.dart';
@@ -831,7 +832,34 @@ class PlannerAIService {
           return {'success': true, 'message': askMsg, 'needs_clarification': true};
         }
 
-        // Générer le workout avec l'IA (avec retry automatique en cas d'échec)
+        PendingWorkout built(List<WorkoutExercise> exercises) => PendingWorkout(
+              plannedDate: day,
+              workoutName: '$workoutType - ${duration}min',
+              workoutType: workoutType,
+              durationMinutes: duration,
+              workoutPrompt: focus,
+              exercises: exercises,
+            );
+
+        // Les exercices dictés par la conversation passent d'abord.
+        //
+        // Sans eux, un second modèle composait la séance sans jamais rendre
+        // son contenu à celui qui parlait : Ryze annonçait une liste, la base
+        // en recevait une autre, et personne ne pouvait le voir. Quand la
+        // conversation les fournit, ce sont eux qui sont posés.
+        final dictated = args['exercises'];
+        if (dictated is List && dictated.isNotEmpty) {
+          final exercises = await AIWorkoutGenerationService.buildExercises(dictated);
+          if (exercises.isNotEmpty) {
+            return {
+              'success': true,
+              'message': 'Workout created for ${args['day']}',
+              'pending_workout': built(exercises),
+            };
+          }
+        }
+
+        // Sinon, le générateur compose, et son contenu repart au modèle.
         const maxRetries = 2;
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
           final result = await AIWorkoutGenerationService.generateWorkout(
@@ -841,18 +869,10 @@ class PlannerAIService {
           );
 
           if (result.success && result.exercises.isNotEmpty) {
-            final pendingWorkout = PendingWorkout(
-              plannedDate: day,
-              workoutName: '$workoutType - ${duration}min',
-              workoutType: workoutType,
-              durationMinutes: duration,
-              workoutPrompt: focus,
-              exercises: result.exercises,
-            );
             return {
               'success': true,
               'message': 'Workout created for ${args['day']}',
-              'pending_workout': pendingWorkout,
+              'pending_workout': built(result.exercises),
             };
           }
 

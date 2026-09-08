@@ -50,6 +50,7 @@ class RyzePending {
     required this.toolName,
     required this.title,
     this.detail,
+    this.confirmLabelKey = 'ryze_validate',
     required this.commit,
   });
 
@@ -61,6 +62,11 @@ class RyzePending {
 
   /// Le détail sous le titre, quand il y en a un.
   final String? detail;
+
+  /// Le mot sur le bouton, quand « valider » ne convient pas.
+  ///
+  /// Un repas à relire ne se valide pas depuis la carte, il s'ouvre.
+  final String confirmLabelKey;
 
   /// Ce qui se produit si l'utilisateur valide.
   final Future<RyzeToolResult> Function() commit;

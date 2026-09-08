@@ -165,51 +165,112 @@ class JournalTools {
       },
       required: ['description'],
     ),
-    execute: (args) async {
+    // Une carte, pas un changement d'écran.
+    //
+    // L'outil ouvrait l'écran de revue au milieu de la phrase de Ryze : la
+    // conversation disparaissait sans prévenir. La carte annonce ce qui a été
+    // compris, avec ses calories, et l'écran ne s'ouvre que si on le demande.
+    needsConfirmation: (_) => true,
+    preview: (args) async {
       final description = '${args['description'] ?? ''}'.trim();
-      if (description.isEmpty) {
-        return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
+      final analysed = await _analyse(description);
+
+      final id = 'journal.log_food_text-${DateTime.now().microsecondsSinceEpoch}';
+
+      if (analysed == null) {
+        return RyzePending(
+          id: id,
+          toolName: 'journal.log_food_text',
+          title: 'ryze_food_not_recognised'.tr(_lang),
+          confirmLabelKey: 'ryze_food_open_anyway',
+          commit: () async => RyzeToolResult(
+            ok: false,
+            summary: 'ryze_food_not_recognised'.tr(_lang),
+            data: {'recognised': false},
+          ),
+        );
       }
 
-      final AIAnalysisResult result;
-      try {
-        result = await GeminiAnalysisServiceV2.analyzeTextDescription(description);
-      } catch (e) {
-        if (kDebugMode) debugPrint('❌ journal.log_food_text : $e');
-        return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
-      }
+      final noms = analysed.detectedFoods.map((f) => f.name).join(', ');
+      final kcal = analysed.detectedFoods.fold<int>(0, (sum, f) => sum + f.calories);
 
-      if (!result.success || result.detectedFoods.isEmpty) {
-        // Ne rien reconnaître n'est pas une panne : Ryze doit pouvoir le dire
-        // et demander une description plus précise.
+      return RyzePending(
+        id: id,
+        toolName: 'journal.log_food_text',
+        title: noms,
+        detail: '$kcal kcal',
+        confirmLabelKey: 'ryze_food_review',
+        commit: () async => _openReview(description, analysed, args['meal_type'] as String?),
+      );
+    },
+    execute: (args) async {
+      // Atteint seulement si la carte est court-circuitée : on ne devine pas.
+      final description = '${args['description'] ?? ''}'.trim();
+      final analysed = await _analyse(description);
+      if (analysed == null) {
         return RyzeToolResult(
           ok: false,
           summary: 'ryze_food_not_recognised'.tr(_lang),
           data: {'recognised': false},
         );
       }
-
-      final navigator = AppNavigator().navigatorState;
-      if (navigator == null) return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
-
-      await navigator.push(MaterialPageRoute(
-        builder: (_) => AIAnalysisScreen(
-          note: description,
-          isFromTextInput: true,
-          isFromDashboard: true,
-          analysisResult: result,
-          mealName: args['meal_type'] as String?,
-        ),
-      ));
-
-      final noms = result.detectedFoods.map((f) => f.name).take(3).join(', ');
-      return RyzeToolResult(
-        ok: true,
-        summary: 'ryze_food_to_review'.tr(_lang).replaceAll('{foods}', noms),
-        data: {'recognised': true, 'foods': result.detectedFoods.length, 'awaiting_review': true},
-      );
+      return _openReview(description, analysed, args['meal_type'] as String?);
     },
   );
+
+  /// Lit une description, ou rend `null` quand rien n'y ressemble à un repas.
+  static Future<AIAnalysisResult?> _analyse(String description) async {
+    if (description.isEmpty) return null;
+    try {
+      final result = await GeminiAnalysisServiceV2.analyzeTextDescription(description);
+      if (!result.success || result.detectedFoods.isEmpty) return null;
+      return result;
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ journal.log_food_text : $e');
+      return null;
+    }
+  }
+
+  /// Ouvre l'écran de revue, qui est la validation du repas.
+  static Future<RyzeToolResult> _openReview(
+    String description,
+    AIAnalysisResult result,
+    String? mealType,
+  ) async {
+    final navigator = AppNavigator().navigatorState;
+    if (navigator == null) return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
+
+    await navigator.push(MaterialPageRoute(
+      builder: (_) => AIAnalysisScreen(
+        note: description,
+        isFromTextInput: true,
+        isFromDashboard: true,
+        analysisResult: result,
+        mealName: _mealLabel(mealType),
+      ),
+    ));
+
+    final noms = result.detectedFoods.map((f) => f.name).take(3).join(', ');
+    return RyzeToolResult(
+      ok: true,
+      summary: 'ryze_food_to_review'.tr(_lang).replaceAll('{foods}', noms),
+      data: {'recognised': true, 'foods': result.detectedFoods.length, 'awaiting_review': true},
+    );
+  }
+
+  /// Le nom du repas tel que le journal le comprend.
+  ///
+  /// Le modèle rend `snack`, l'écran de revue attend « Collation » : la table
+  /// qui relie les deux est indexée par le libellé affiché. Avec la forme
+  /// technique, le repas n'était jamais reconnu, la feuille de choix
+  /// s'ouvrait, et elle annonçait qu'aucun repas n'existait encore.
+  static String? _mealLabel(String? type) {
+    if (type == null || type.trim().isEmpty) return null;
+    const connus = {'breakfast', 'lunch', 'dinner', 'snack'};
+    final t = type.trim().toLowerCase();
+    if (!connus.contains(t)) return null;
+    return 'meal_name_$t'.tr(_lang);
+  }
 
   static List<RyzeTool> get all => [water, weight, food];
 }
