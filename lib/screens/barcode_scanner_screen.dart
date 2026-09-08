@@ -121,7 +121,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       // se décode d'autant mieux qu'il est net.
       _cameraController = CameraController(
         cameras.first,
-        BarcodeStreamService.enabled ? ResolutionPreset.medium : ResolutionPreset.high,
+        // Le declencheur veut le plus de pixels possible : un code-barres lu sur
+        // une photo de 720 lignes ne fait que quelques pixels par barre des que
+        // le paquet n'occupe pas tout le cadre, et ML Kit ne peut rien en tirer.
+        BarcodeStreamService.enabled ? ResolutionPreset.medium : ResolutionPreset.veryHigh,
         enableAudio: false,
         imageFormatGroup: !BarcodeStreamService.enabled
             ? null
@@ -702,15 +705,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           isProcessing = false;
           isLoadingProduct = false;
         });
-        // Afficher un message d'erreur
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('no_barcode_detected'.tr(LocalizationService.instance.currentLanguageCode)),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          RyzeUndo.failed(context, message: 'no_barcode_detected'.tr(LocalizationService.instance.currentLanguageCode));
         }
       }
     } catch (e) {

@@ -7043,10 +7043,10 @@ class AppTranslations {
     },
     'no_barcode_detected': {
       'fr':
-          'Aucun code-barres détecté. Touchez l\'écran pour faire la mise au point et réessayez.',
-      'en': 'No barcode detected. Tap the screen to focus and try again.',
+          "Pas de code-barres lu. Touche le code à l'écran pour faire le point, à une quinzaine de centimètres.",
+      'en': "No barcode read. Tap the code on screen to focus, from about 15 cm away.",
       'de':
-          'Kein Barcode erkannt. Tippe auf den Bildschirm zum Fokussieren und versuche es erneut.',
+          "Kein Barcode gelesen. Tippe den Code auf dem Bildschirm an, aus etwa 15 cm.",
     },
     'error_fetching_product': {
       'fr': 'Erreur lors de la récupération du produit',

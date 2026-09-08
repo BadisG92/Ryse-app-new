@@ -82,11 +82,12 @@ class RyzeCameraShell extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (ready && controller != null)
-            _Preview(controller: controller!)
+            _Focusable(controller: controller!, child: _Preview(controller: controller!))
           else
             ColoredBox(color: RyzeColors.ink),
 
-          if (frame != null) Center(child: frame),
+          // Le cadre est un dessin : il ne doit pas manger le doigt qui vise.
+          if (frame != null) Center(child: IgnorePointer(child: frame!)),
           if (overlay != null) overlay!,
 
           // The scrims are ink, not black: on top of a photograph the
@@ -177,6 +178,106 @@ class _Preview extends StatelessWidget {
         child: FittedBox(
           fit: BoxFit.cover,
           child: SizedBox(width: size.width, height: size.width * ratio, child: CameraPreview(controller)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Le point que la caméra doit regarder.
+///
+/// Le viseur demandait « touchez l'écran pour faire la mise au point » et
+/// personne n'écoutait : l'appareil restait sur son autofocus au centre, et
+/// un code-barres tenu près, en bas du cadre, ne devenait jamais net. Un
+/// appui vise, et le carré blanc dit où.
+class _Focusable extends StatefulWidget {
+  const _Focusable({required this.controller, required this.child});
+
+  final CameraController controller;
+  final Widget child;
+
+  @override
+  State<_Focusable> createState() => _FocusableState();
+}
+
+class _FocusableState extends State<_Focusable> {
+  Offset? _at;
+  int _seq = 0;
+
+  Future<void> _aim(Offset local, Size size) async {
+    final c = widget.controller;
+    if (!c.value.isInitialized) return;
+
+    // L'aperçu couvre l'écran : il déborde en hauteur et on n'en voit qu'une
+    // bande centrale. Le point rendu à la caméra est dans SES coordonnées, pas
+    // dans celles de l'écran — sans cette conversion, viser le bas du cadre
+    // faisait le point ailleurs.
+    final ratio = c.value.aspectRatio;
+    final previewH = ratio > 0 ? size.width * ratio : size.height;
+    final visible = previewH <= 0 ? 1.0 : (size.height / previewH).clamp(0.0, 1.0);
+    final nx = (local.dx / size.width).clamp(0.0, 1.0);
+    final ny = (0.5 + (local.dy / size.height - 0.5) * visible).clamp(0.0, 1.0);
+
+    final seq = ++_seq;
+    setState(() => _at = local);
+    try {
+      await c.setFocusPoint(Offset(nx, ny));
+      await c.setFocusMode(FocusMode.auto);
+      await c.setExposurePoint(Offset(nx, ny));
+    } catch (_) {
+      // L'appareil ne sait pas viser : son autofocus continue de faire ce
+      // qu'il peut, et le carré a au moins dit que le geste avait été reçu.
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (mounted && seq == _seq) setState(() => _at = null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final at = _at;
+    final side = context.vw(18);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (d) => _aim(d.localPosition, size),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          widget.child,
+          if (at != null)
+            Positioned(
+              left: at.dx - side / 2,
+              top: at.dy - side / 2,
+              child: IgnorePointer(child: _Reticle(side: side)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Le carré de visée : il arrive un peu trop grand et se pose. Rien de plus —
+/// c'est un accusé de réception, pas une animation.
+class _Reticle extends StatelessWidget {
+  const _Reticle({required this.side});
+
+  final double side;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 1.35, end: 1),
+      duration: RyzeDurations.tap,
+      curve: RyzeCurves.out,
+      builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+      child: SizedBox(
+        width: side,
+        height: side,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: RyzeColors.surf.withValues(alpha: 0.9), width: 1.4),
+            borderRadius: BorderRadius.circular(RyzeRadius.sm),
+          ),
         ),
       ),
     );
