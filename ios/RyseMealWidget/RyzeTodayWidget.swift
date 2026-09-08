@@ -48,7 +48,7 @@ struct TodayWidgetView: View {
                 TodayRectangularView(entry: entry)
             }
         }
-        .padding(family == .accessoryRectangular ? EdgeInsets(top: 5, leading: 8, bottom: 5, trailing: 8) : EdgeInsets())
+        .padding(family == .accessoryRectangular ? EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8) : EdgeInsets())
         .containerBackground(for: .widget) { AccessoryWidgetBackground() }
         .widgetURL(URL(string: "ryse://dashboard"))
     }
@@ -59,32 +59,40 @@ struct TodayRectangularView: View {
 
     var body: some View {
         if let s = entry.snapshot {
-            // the coach's sentence needs two lines: the figure and the gauge
-            // stay compact so the sentence is never cut after one
-            VStack(alignment: .leading, spacing: 2) {
+            // The case is two of the four slots under the clock, about 160 by
+            // 72 points, and iOS has nothing wider. The coach's sentence is
+            // the one thing here the figure cannot say, so it gets its two
+            // lines first: the figure and the gauge are kept short, and the
+            // sentence wins the height when the layout is tight.
+            VStack(alignment: .leading, spacing: 1) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(s.figure)
-                        .font(RyzeFont.display(18))
-                        .tracking(RyzeFont.tracking(18))
+                        .font(RyzeFont.display(16))
+                        .tracking(RyzeFont.tracking(16))
                         .monospacedDigit()
                     Text(s.string(s.shortKey))
-                        .font(RyzeFont.body(11, weight: 600))
+                        .font(RyzeFont.body(10.5, weight: 600))
                         .opacity(0.85)
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: false, vertical: true)
 
-                LockGauge(fraction: s.fraction)
+                LockGauge(fraction: s.fraction, height: 4)
+                    .padding(.vertical, 1)
 
                 if let caption = s.caption(at: entry.date) {
                     Text(caption)
                         .font(RyzeFont.body(10))
+                        .lineSpacing(0)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.9)
+                        .minimumScaleFactor(0.85)
                         .opacity(0.82)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Ryze")
@@ -142,6 +150,7 @@ struct TodayInlineView: View {
 /// The gauge of the lock screen, white on a quarter of white.
 struct LockGauge: View {
     let fraction: Double
+    var height: CGFloat = 5
 
     var body: some View {
         GeometryReader { geometry in
@@ -152,7 +161,7 @@ struct LockGauge: View {
                     .frame(width: max(0, geometry.size.width * min(max(fraction, 0), 1)))
             }
         }
-        .frame(height: 5)
+        .frame(height: height)
     }
 }
 
