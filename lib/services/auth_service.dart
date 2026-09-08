@@ -53,8 +53,22 @@ class AuthService extends ChangeNotifier {
   }
   bool get isAuthenticated => _currentUser != null;
 
-  /// Initialize the authentication service
-  Future<void> initialize() async {
+  /// L'eveil de l'authentification, fait une seule fois a la fois.
+  ///
+  /// Deux appelants le demandent au lancement — l'initialiseur de l'app et le
+  /// routage — et il charge le profil, l'etat du jour et les widgets. Tant que
+  /// le premier appel court, le second attend le meme travail au lieu de le
+  /// refaire en parallele ; une fois fini, un nouvel appel (apres une
+  /// deconnexion) repart normalement.
+  Future<void>? _initializing;
+
+  Future<void> initialize() {
+    final pending = _initializing;
+    if (pending != null) return pending;
+    return _initializing = _initialize().whenComplete(() => _initializing = null);
+  }
+
+  Future<void> _initialize() async {
     _setLoading(true);
     try {
       if (kDebugMode) debugPrint('🚀 Initializing AuthService...');

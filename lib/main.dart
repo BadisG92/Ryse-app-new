@@ -253,8 +253,7 @@ class AppInitializer extends StatefulWidget {
   State<AppInitializer> createState() => _AppInitializerState();
 }
 
-class _AppInitializerState extends State<AppInitializer> with TickerProviderStateMixin {
-  bool _showSplash = true;
+class _AppInitializerState extends State<AppInitializer> {
 
   @override
   void initState() {
@@ -284,13 +283,11 @@ class _AppInitializerState extends State<AppInitializer> with TickerProviderStat
     }
   }
 
+  /// L'eveil de l'authentification part en arriere-plan : l'ouverture ne se
+  /// retient plus derriere lui. Le routage l'attend lui-meme quand il a besoin
+  /// du profil, et l'appel est mis en commun avec celui-ci.
   Future<void> _initializeApp() async {
-    // The launch screen is only the navy ground: the logo is written by the
-    // app's own opening, over the screen the routing has already resolved.
-    // Drawing it here as well is what played two openings in a row.
     await _performAuthInitialization(Provider.of<AuthService>(context, listen: false));
-    if (!mounted) return;
-    setState(() => _showSplash = false);
   }
 
   Future<void> _performAuthInitialization(AuthService authService) async {
@@ -313,34 +310,13 @@ class _AppInitializerState extends State<AppInitializer> with TickerProviderStat
     }
   }
 
+  /// L'ouverture est l'ecran de chargement : le logo s'ecrit pendant que le
+  /// routage se resout, et ne s'ouvre sur l'ecran qu'une fois qu'il y en a un.
+  ///
+  /// Un sol etait dessine ici en plus, le temps de l'eveil de l'authentification
+  /// puis a chaque fois qu'elle repassait en chargement : deux ouvertures l'une
+  /// sur l'autre, et depuis les editions deux bleus differents — le degrade de
+  /// la marque choisie, puis le navy de l'ouverture. Il n'y a plus qu'une phase.
   @override
-  Widget build(BuildContext context) {
-    // Navy while the auth wakes up, then the app — whose own opening writes
-    // the logo. Same ground on both sides, so nothing shows at the handover.
-    if (_showSplash) return _buildSplashGround(const SizedBox.shrink());
-
-    return Consumer<AuthService>(
-      builder: (context, authService, child) {
-        if (authService.isLoading) return _buildSplashGround(const SizedBox.shrink());
-        return const RyzeApp();
-      },
-    );
-  }
-
-  /// Le sol du lancement : le navy de l'icône, donc aucune coupure entre
-  /// l'écran de lancement natif et la première image de Flutter.
-  Widget _buildSplashGround(Widget child) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [RyzeColors.ink, RyzeColors.ink2],
-          ),
-        ),
-        child: Center(child: child),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const RyzeApp();
 }
