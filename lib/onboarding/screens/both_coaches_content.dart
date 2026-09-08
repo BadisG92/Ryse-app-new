@@ -47,8 +47,6 @@ class BothCoachesContent extends StatefulWidget {
 }
 
 class _BothCoachesContentState extends State<BothCoachesContent> with SingleTickerProviderStateMixin {
-  static const Color _accText = Color(0xFFA8690F);
-
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..forward();
   late final Animation<double> _count = CurvedAnimation(parent: _c, curve: const Interval(0.10, 0.62, curve: Curves.easeOutCubic));
   late final Animation<double> _barHuman = CurvedAnimation(parent: _c, curve: const Interval(0.12, 0.62, curve: Curves.easeOutCubic));
@@ -83,6 +81,18 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
     }
   }
 
+  /// Le prix au mois, avec ses centimes : c'est le chiffre que l'oeil compare
+  /// a une seance a 50 €. Nul tant que le magasin n'a pas repondu.
+  String? _perMonth() {
+    if (widget.annualPrice <= 0) return null;
+    try {
+      final m = NumberFormat.simpleCurrency(locale: _locale, name: widget.currencyCode).format(widget.annualPrice / 12);
+      return widget.s.t('plan_annual_eq', {'p': m});
+    } catch (_) {
+      return null;
+    }
+  }
+
   String _goalLabel() {
     final p = widget.projection;
     if (p == null || widget.answers.goal == 'maintain') return widget.s.t('both_goal_maintain');
@@ -111,22 +121,31 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
         SizedBox(height: context.vw(2)),
         _Line(index: 2, icon: LucideIcons.unlink, text: s.t('both_missing'), amount: '—', missing: true),
         SizedBox(height: context.vh(2.6)),
-        // the ratio, physically
-        _Bar(label: s.t('both_bar_human'), share: 1, color: OnbColors.ink, anim: _barHuman),
-        SizedBox(height: context.vw(2.4)),
-        _Bar(
+        // Les deux prix, l'un sous l'autre, de la meme taille : c'est la
+        // comparaison qui doit sauter aux yeux. Le prix de Ryze etait glisse au
+        // bout de sa barre, en petit, et se lisait comme une legende.
+        _Cost(
+          label: s.t('both_bar_human'),
+          amount: _money(_human),
+          amountColor: OnbColors.ink,
+          share: 1,
+          color: OnbColors.ink,
+          anim: _barHuman,
+        ),
+        SizedBox(height: context.vw(4)),
+        _Cost(
           label: s.t('both_bar_ryze'),
+          amount: widget.annualPriceLabel,
+          amountColor: OnbColors.accInk,
           share: _ryzeShare,
           color: OnbColors.acc,
           anim: _barRyze,
-          trailing: widget.annualPriceLabel,
-          trailingAnim: _ratio,
-          trailingColor: _accText,
+          note: _perMonth(),
         ),
         SizedBox(height: context.vw(2.6)),
         FadeTransition(
           opacity: _ratio,
-          child: Text(s.t('both_ratio_line', {'x': '$_times'}), style: OnbText.body(context, 3.5, weight: FontWeight.w600, color: _accText, height: 1.35)),
+          child: Text(s.t('both_ratio_line', {'x': '$_times'}), style: OnbText.body(context, 3.5, weight: FontWeight.w600, color: OnbColors.accInk, height: 1.35)),
         ),
         SizedBox(height: context.vh(2.4)),
         // what stays in the pocket
@@ -224,64 +243,80 @@ class _Line extends StatelessWidget {
   }
 }
 
-/// Label + horizontal bar that grows to `share` of the track, with an optional
-/// value written right after the bar.
-class _Bar extends StatelessWidget {
-  const _Bar({required this.label, required this.share, required this.color, required this.anim, this.trailing, this.trailingAnim, this.trailingColor});
+/// Un cout de la comparaison : ce que c'est, ce que ca coute, et la barre qui
+/// le montre. Les deux montants s'ecrivent de la meme taille, l'un sous
+/// l'autre — le prix de Ryze vivait au bout de sa barre, en 3,3 vw, et se
+/// lisait comme une legende plutot que comme le prix.
+class _Cost extends StatelessWidget {
+  const _Cost({
+    required this.label,
+    required this.amount,
+    required this.amountColor,
+    required this.share,
+    required this.color,
+    required this.anim,
+    this.note,
+  });
+
   final String label;
+  final String amount;
+  final Color amountColor;
   final double share;
   final Color color;
   final Animation<double> anim;
-  final String? trailing;
-  final Animation<double>? trailingAnim;
-  final Color? trailingColor;
+
+  /// Sous la barre, en petit : « 5,83 € par mois ».
+  final String? note;
 
   @override
   Widget build(BuildContext context) {
-    final h = context.vw(5.6);
-    return Row(
-      children: [
-        SizedBox(width: context.vw(22), child: Text(label, style: OnbText.body(context, 3.3, weight: FontWeight.w600, color: OnbColors.ink, height: 1.2))),
-        SizedBox(width: context.vw(2.4)),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) => SizedBox(
-              height: h,
-              child: Stack(
-                children: [
-                  Container(decoration: BoxDecoration(color: OnbColors.paper2, borderRadius: BorderRadius.circular(context.vw(1.8)))),
-                  AnimatedBuilder(
-                    animation: anim,
-                    builder: (context, _) => Align(
-                      alignment: Alignment.centerLeft,
-                      child: FractionallySizedBox(
-                        widthFactor: (share * anim.value).clamp(0.0, 1.0),
-                        child: Container(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(context.vw(1.8)))),
-                      ),
+    final r = BorderRadius.circular(context.vw(1.6));
+    return FadeTransition(
+      opacity: anim,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(label, style: OnbText.body(context, 3.5, weight: FontWeight.w600, color: OnbColors.mute, height: 1.2)),
+              ),
+              SizedBox(width: context.vw(2)),
+              Text(
+                amount,
+                maxLines: 1,
+                softWrap: false,
+                style: OnbText.display(context, 6.6, color: amountColor, letterSpacingEm: -0.03, height: 1)
+                    .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+              ),
+            ],
+          ),
+          SizedBox(height: context.vw(1.8)),
+          SizedBox(
+            height: context.vw(3.2),
+            child: Stack(
+              children: [
+                Container(decoration: BoxDecoration(color: OnbColors.paper2, borderRadius: r)),
+                AnimatedBuilder(
+                  animation: anim,
+                  builder: (context, _) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: (share * anim.value).clamp(0.0, 1.0),
+                      child: Container(decoration: BoxDecoration(color: color, borderRadius: r)),
                     ),
                   ),
-                  if (trailing != null)
-                    Positioned(
-                      left: constraints.maxWidth * share + context.vw(2),
-                      top: 0,
-                      bottom: 0,
-                      child: FadeTransition(
-                        opacity: trailingAnim ?? const AlwaysStoppedAnimation(1),
-                        child: Center(
-                          child: Text(trailing!,
-                              maxLines: 1,
-                              softWrap: false,
-                              style: OnbText.display(context, 3.3, color: trailingColor ?? OnbColors.ink, weight: FontWeight.w700, letterSpacingEm: -0.01, height: 1)
-                                  .copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          if (note != null) ...[
+            SizedBox(height: context.vw(1.4)),
+            Text(note!, style: OnbText.body(context, 3.2, weight: FontWeight.w500, color: OnbColors.mute)),
+          ],
+        ],
+      ),
     );
   }
 }

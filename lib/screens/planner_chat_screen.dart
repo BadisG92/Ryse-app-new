@@ -2341,13 +2341,15 @@ class _MealDetailPage extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildMacroItem('${meal.calories}', 'kcal', RyzeColors.ink),
+                  // Quatre chiffres nommes, de la meme encre : une macro ne se
+                  // reconnait pas a sa couleur, ici pas plus qu'ailleurs.
+                  _buildMacroItem('${meal.calories}', 'kcal'),
                   _buildDivider(),
-                  _buildMacroItem('${meal.proteins.toInt()}g', 'planner_proteins'.tr(langCode), RyzeColors.protein),
+                  _buildMacroItem('${meal.proteins.toInt()}g', 'planner_proteins'.tr(langCode)),
                   _buildDivider(),
-                  _buildMacroItem('${meal.carbs.toInt()}g', 'planner_carbs'.tr(langCode), RyzeColors.carbs),
+                  _buildMacroItem('${meal.carbs.toInt()}g', 'planner_carbs'.tr(langCode)),
                   _buildDivider(),
-                  _buildMacroItem('${meal.fats.toInt()}g', 'planner_fats'.tr(langCode), RyzeColors.danger),
+                  _buildMacroItem('${meal.fats.toInt()}g', 'planner_fats'.tr(langCode)),
                 ],
               ),
             ),
@@ -2400,16 +2402,16 @@ class _MealDetailPage extends StatelessWidget {
               _buildSectionHeader(
                 icon: LucideIcons.chefHat,
                 title: 'section_recipe'.tr(langCode),
-                color: RyzeColors.protein,
+                color: RyzeColors.ink,
               ),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: RyzeColors.protein.withValues(alpha: 0.05),
+                  color: RyzeColors.paper2,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: RyzeColors.protein.withValues(alpha: 0.2)),
+                  border: Border.all(color: RyzeColors.line),
                 ),
                 child: Text(
                   sections['recipe']!,
@@ -2428,21 +2430,21 @@ class _MealDetailPage extends StatelessWidget {
               _buildSectionHeader(
                 icon: LucideIcons.lightbulb,
                 title: 'section_tip'.tr(langCode),
-                color: RyzeColors.carbs,
+                color: RyzeColors.accInk,
               ),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: RyzeColors.carbs.withValues(alpha: 0.08),
+                  color: RyzeColors.accTint,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: RyzeColors.carbs.withValues(alpha: 0.3)),
+                  border: Border.all(color: RyzeColors.acc.withValues(alpha: 0.35)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(LucideIcons.sparkles, size: 18, color: RyzeColors.carbs),
+                    Icon(LucideIcons.sparkles, size: 18, color: RyzeColors.accInk),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -2507,7 +2509,7 @@ class _MealDetailPage extends StatelessWidget {
     return result;
   }
 
-  Widget _buildMacroItem(String value, String label, Color color) {
+  Widget _buildMacroItem(String value, String label) {
     return Column(
       children: [
         Text(
@@ -2515,7 +2517,7 @@ class _MealDetailPage extends StatelessWidget {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: color,
+            color: RyzeColors.text,
           ),
         ),
         const SizedBox(height: 4),

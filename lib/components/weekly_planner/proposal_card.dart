@@ -15,10 +15,10 @@ final Color _mute = RyzeColors.mute;
 final Color _mute2 = RyzeColors.mute2;
 final Color _line = RyzeColors.line;
 final Color _tile = RyzeColors.paper2;
-final Color _green = RyzeColors.confirm;
-final Color _protein = RyzeColors.protein;
-final Color _carbs = RyzeColors.carbs;
-final Color _fat = RyzeColors.danger;
+// Les macros ne portent pas de couleur : elles sont nommees, et c'est ce qui
+// les distingue partout ailleurs dans l'application (lib/design/macro_rail.dart).
+// Le vert de validation a disparu avec elles : sur la marque, ce qui est
+// valide s'ecrit en blanc, et du blanc sur du vert ne fait que 2,4.
 
 class ProposalCard extends StatelessWidget {
   const ProposalCard({super.key, required this.body, required this.footer, this.margin = const EdgeInsets.fromLTRB(0, 4, 0, 8)});
@@ -196,13 +196,13 @@ class ProposalMealRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Text('$calories kcal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ink, height: 1.2, fontFeatures: [FontFeature.tabularFigures()])),
+                      Text('$calories kcal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ink, height: 1.2, fontFeatures: const [FontFeature.tabularFigures()])),
                       const SizedBox(width: 8),
-                      _MacroDot(color: _protein, value: proteins, letter: macroLetters[0]),
+                      _Macro(value: proteins, letter: macroLetters[0]),
                       const SizedBox(width: 8),
-                      _MacroDot(color: _carbs, value: carbs, letter: macroLetters[1]),
+                      _Macro(value: carbs, letter: macroLetters[1]),
                       const SizedBox(width: 8),
-                      _MacroDot(color: _fat, value: fats, letter: macroLetters[2]),
+                      _Macro(value: fats, letter: macroLetters[2]),
                     ],
                   ),
                 ],
@@ -217,23 +217,16 @@ class ProposalMealRow extends StatelessWidget {
   }
 }
 
-class _MacroDot extends StatelessWidget {
-  const _MacroDot({required this.color, required this.value, required this.letter});
-  final Color color;
+/// Une macro : sa valeur et sa lettre. Elle portait un point de couleur ;
+/// c'est la lettre qui la nomme, ici comme partout ailleurs.
+class _Macro extends StatelessWidget {
+  const _Macro({required this.value, required this.letter});
   final int value;
   final String letter;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 3),
-        Text('$value$letter', style: TextStyle(fontSize: 11.5, color: _mute, height: 1.2, fontFeatures: [FontFeature.tabularFigures()])),
-      ],
-    );
-  }
+  Widget build(BuildContext context) =>
+      Text('$value$letter', style: TextStyle(fontSize: 11.5, color: _mute, height: 1.2, fontFeatures: const [FontFeature.tabularFigures()]));
 }
 
 /// Day totals under the meal rows: calories big, macros with full labels.
@@ -261,11 +254,9 @@ class ProposalDayTotals extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget macro(Color c, int v, String label) => Expanded(
+    Widget macro(int v, String label) => Expanded(
           child: Row(
             children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
-              const SizedBox(width: 6),
               Flexible(
                 child: Text.rich(
                   TextSpan(children: [
@@ -303,9 +294,9 @@ class ProposalDayTotals extends StatelessWidget {
           const SizedBox(width: 14),
           Container(width: 1, height: 30, color: _line),
           const SizedBox(width: 12),
-          macro(_protein, proteins, proteinLabel),
-          macro(_carbs, carbs, carbsLabel),
-          macro(_fat, fats, fatLabel),
+          macro(proteins, proteinLabel),
+          macro(carbs, carbsLabel),
+          macro(fats, fatLabel),
         ],
       ),
     );
@@ -419,7 +410,7 @@ class ProposalActions extends StatelessWidget {
                         ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf))
                         : const Icon(LucideIcons.check, size: 18),
                     label: Text(confirmLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: RyzeColors.surf, elevation: 0, shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(backgroundColor: RyzeColors.ink, foregroundColor: RyzeColors.surf, elevation: 0, shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ),
