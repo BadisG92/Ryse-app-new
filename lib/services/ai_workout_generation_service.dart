@@ -639,11 +639,95 @@ Generate the workout now as valid JSON:
   static Future<List<WorkoutExercise>> buildExercises(List<dynamic> exercises) async {
     if (exercises.isEmpty) return const [];
     final catalogue = await _getExercisesWithCache();
-    return _parseAndValidateWorkout(
+    final construits = await _parseAndValidateWorkout(
       {'exercises': exercises},
       catalogue,
       LocalizationService.instance,
     );
+    return _withHistoryWeights(construits);
+  }
+
+  /// Recale les charges sur ce que l'utilisateur soulève vraiment.
+  ///
+  /// Quand le générateur composait la séance, il recevait l'historique et
+  /// proposait des charges tirées des moyennes. La conversation, elle, écrit
+  /// les exercices sans rien connaître de personne : elle a proposé soixante
+  /// kilos au développé couché sans savoir à qui. Le chiffre du modèle ne sert
+  /// donc que d'ultime repli, derrière ce que la personne a réellement porté.
+  ///
+  /// La règle est celle du générateur : quatre-vingt-dix pour cent de la
+  /// moyenne récente, arrondie aux incréments de salle.
+  static Future<List<WorkoutExercise>> _withHistoryWeights(List<WorkoutExercise> exercises) async {
+    if (exercises.isEmpty) return exercises;
+
+    final suggestions = await _suggestedWeights();
+    if (suggestions.isEmpty) return exercises;
+
+    return [
+      for (final e in exercises)
+        () {
+          // L'identifiant d'abord : « Bench Press » et « Développé couché »
+          // sont le même mouvement, et une moyenne par nom en ferait deux.
+          final connu = suggestions[e.exercise.id] ??
+              suggestions[ExerciseResolver.normalize(e.exercise.name)];
+          if (connu == null || connu <= 0) return e;
+          if (e.sets.isEmpty) return e;
+
+          // Le poids du corps reste au poids du corps.
+          if (e.sets.first.weight <= 0 && connu <= 0) return e;
+
+          return e.copyWith(
+            sets: [for (final s in e.sets) ExerciseSet(reps: s.reps, weight: connu, isCompleted: false)],
+          );
+        }(),
+    ];
+  }
+
+  /// Ce que l'utilisateur porte, par exercice, d'après ses séries passées.
+  static Future<Map<String, double>> _suggestedWeights() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return const {};
+
+    try {
+      final rows = await Supabase.instance.client
+          .from('workout_set_history')
+          .select('exercise_id, exercise_name, weight')
+          .eq('user_id', userId)
+          .order('performed_at', ascending: false)
+          .limit(200);
+
+      final total = <String, double>{};
+      final compte = <String, int>{};
+
+      void ajoute(String? cle, double poids) {
+        if (cle == null || cle.isEmpty) return;
+        total[cle] = (total[cle] ?? 0) + poids;
+        compte[cle] = (compte[cle] ?? 0) + 1;
+      }
+
+      for (final row in rows) {
+        final poids = (row['weight'] as num?)?.toDouble() ?? 0;
+        if (poids <= 0) continue;
+
+        // Deux clés pour la même série : l'identifiant, qui réunit les
+        // langues, et le nom normalisé pour les vieilles lignes qui n'en ont
+        // pas. Chaque clé garde sa propre moyenne.
+        ajoute(row['exercise_id'] as String?, poids);
+
+        final nom = row['exercise_name'] as String?;
+        if (nom != null && nom.trim().isNotEmpty) {
+          ajoute(ExerciseResolver.normalize(nom), poids);
+        }
+      }
+
+      return {
+        for (final cle in total.keys)
+          cle: _roundToGymWeight(total[cle]! / compte[cle]! * 0.9),
+      };
+    } catch (e) {
+      debugPrint('⚠️ _suggestedWeights: $e');
+      return const {};
+    }
   }
 
   /// Parser et valider la séance générée avec poids suggérés

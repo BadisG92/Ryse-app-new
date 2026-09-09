@@ -250,6 +250,26 @@ Rien de prévu.''';
     });
   });
 
+  group('La séance porte ses charges', () {
+    test('chaque exercice a ses séries, ses répétitions et son poids', () async {
+      final tour = await demande('Planifie-moi une séance de pecs de 45 minutes en salle');
+
+      final appel = tour.premier('plan.create_workout');
+      expect(appel, isNotNull);
+
+      final exercices = (appel!.args['exercises'] as List).cast<Map<String, dynamic>>();
+      // ignore: avoid_print
+      print('\n  ${exercices.length} exercices, '
+          'avec poids : ${exercices.where((e) => e['suggested_weight_kg'] != null).length}\n');
+
+      expect(exercices.length, greaterThanOrEqualTo(4));
+      for (final e in exercices) {
+        expect(e['sets'], isNotNull, reason: '${e['exercise_name']} sans séries');
+        expect(e['target_reps'], isNotNull, reason: '${e['exercise_name']} sans répétitions');
+      }
+    });
+  });
+
   group('Le temps de réponse', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
     test('un tour simple aboutit dans un délai tenable', () async {
       // Le nombre est imprimé à chaque passage : c'est lui qui informe, pas le
