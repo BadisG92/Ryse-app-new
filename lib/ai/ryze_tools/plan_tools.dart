@@ -29,6 +29,35 @@ class PlanTools {
     'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
   ];
 
+  /// Ce que le modèle doit comprendre quand aucun jour n'est nommé.
+  ///
+  /// Le jour est obligatoire dans le schéma, donc il en choisissait un.
+  /// « Planifie mon petit-déjeuner », à quatre heures du matin, atterrissait
+  /// jeudi. Sans indication, c'est aujourd'hui.
+  static String _dayHint(String what) =>
+      'Day of the $what. When the user names no day, it is today.';
+
+  /// Le jour, dit dans la langue de l'utilisateur.
+  ///
+  /// Les cartes reprenaient l'argument tel que le modèle l'avait écrit :
+  /// « Retirer ce repas de thursday ? » sur un compte français. Et quand la
+  /// date tombe aujourd'hui ou demain, c'est ce mot-là qui parle le mieux.
+  static String dayLabel(Object? day) {
+    final nom = '$day'.trim().toLowerCase();
+    final index = _days.indexOf(nom);
+    if (index < 0) return '$day';
+
+    final date = PlannerAIService.dateForDayName(nom);
+    if (date != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      if (date == today) return 'today'.tr(_lang).toLowerCase();
+      if (date == today.add(const Duration(days: 1))) return 'tomorrow'.tr(_lang).toLowerCase();
+    }
+
+    return 'day_${index + 1}'.tr(_lang).toLowerCase();
+  }
+
   /// Appelle un outil du planificateur et traduit sa réponse.
   ///
   /// Une création **n'écrit pas** : l'exécuteur bâtit un objet en attente, avec
@@ -182,7 +211,7 @@ class PlanTools {
           'something already eaten. Adding a second entry of the same meal type is '
           'allowed; only replace with plan.modify_meal when they say to replace.',
       properties: {
-        'day': {'type': 'string', 'description': 'Day of the meal.', 'enum': _days},
+        'day': {'type': 'string', 'description': _dayHint('meal'), 'enum': _days},
         'meal_type': {
           'type': 'string',
           'description': 'Which meal of the day.',
@@ -221,7 +250,7 @@ class PlanTools {
           'told the user it would be. Only leave "exercises" out when you truly have '
           'no idea what to put in it.',
       properties: {
-        'day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
+        'day': {'type': 'string', 'description': _dayHint('session'), 'enum': _days},
         'workout_type': {
           'type': 'string',
           'description': 'Muscle group or split: Chest, Back, Legs, Full Body, Arms, Shoulders...',
@@ -282,7 +311,7 @@ class PlanTools {
           'are supported; for intervals use plan.create_hiit. Give at least a duration '
           'or a distance.',
       properties: {
-        'day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
+        'day': {'type': 'string', 'description': _dayHint('session'), 'enum': _days},
         'activity': {
           'type': 'string',
           'description': 'Which activity.',
@@ -349,7 +378,7 @@ class PlanTools {
     preview: (args) => _confirm(
       'modify_workout',
       args,
-      'ryze_confirm_modify'.tr(_lang).replaceAll('{day}', '${args['current_day']}'),
+      'ryze_confirm_modify'.tr(_lang).replaceAll('{day}', dayLabel(args['current_day'])),
     ),
     execute: (args) => _run('modify_workout', args),
   );
@@ -364,7 +393,7 @@ class PlanTools {
           'HIIT, tabata or intervals, rather than plan.create_cardio which is for '
           'steady effort.',
       properties: {
-        'day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
+        'day': {'type': 'string', 'description': _dayHint('session'), 'enum': _days},
         'hiit_type': {
           'type': 'string',
           'description': 'Which format: beginner, classic, tabata, advanced.',
@@ -428,7 +457,7 @@ class PlanTools {
     preview: (args) => _confirm(
       'modify_cardio',
       args,
-      'ryze_confirm_modify'.tr(_lang).replaceAll('{day}', '${args['current_day']}'),
+      'ryze_confirm_modify'.tr(_lang).replaceAll('{day}', dayLabel(args['current_day'])),
     ),
     execute: (args) => _run('modify_cardio', args),
   );
@@ -443,7 +472,7 @@ class PlanTools {
           'change or swap what is planned; to add a second dish to the same meal use '
           'plan.create_meal instead.',
       properties: {
-        'day': {'type': 'string', 'description': 'Day of the meal.', 'enum': _days},
+        'day': {'type': 'string', 'description': _dayHint('meal'), 'enum': _days},
         'meal_type': {
           'type': 'string',
           'description': 'Which meal.',
@@ -485,7 +514,7 @@ class PlanTools {
           'Remove a planned meal. Use it only when the user wants it gone with nothing '
           'in its place; to swap it use plan.modify_meal.',
       properties: {
-        'day': {'type': 'string', 'description': 'Day of the meal.', 'enum': _days},
+        'day': {'type': 'string', 'description': _dayHint('meal'), 'enum': _days},
         'meal_type': {
           'type': 'string',
           'description': 'Which meal.',
@@ -498,7 +527,7 @@ class PlanTools {
     preview: (args) => _confirm(
       'delete_meal',
       args,
-      'ryze_confirm_delete_meal'.tr(_lang).replaceAll('{day}', '${args['day']}'),
+      'ryze_confirm_delete_meal'.tr(_lang).replaceAll('{day}', dayLabel(args['day'])),
     ),
     execute: (args) => _run('delete_meal', args),
   );
@@ -512,7 +541,7 @@ class PlanTools {
           'Remove a planned strength session. Use it only when the user wants that day '
           'emptied; to change the session use plan.modify_workout.',
       properties: {
-        'day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
+        'day': {'type': 'string', 'description': _dayHint('session'), 'enum': _days},
       },
       required: ['day'],
     ),
@@ -520,7 +549,7 @@ class PlanTools {
     preview: (args) => _confirm(
       'delete_workout',
       args,
-      'ryze_confirm_delete_workout'.tr(_lang).replaceAll('{day}', '${args['day']}'),
+      'ryze_confirm_delete_workout'.tr(_lang).replaceAll('{day}', dayLabel(args['day'])),
     ),
     execute: (args) => _run('delete_workout', args),
   );
@@ -534,7 +563,7 @@ class PlanTools {
           'Remove a planned cardio session. Use it only when the user wants it gone '
           'with nothing in its place; to change it use plan.modify_cardio.',
       properties: {
-        'day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
+        'day': {'type': 'string', 'description': _dayHint('session'), 'enum': _days},
         'activity_name': {
           'type': 'string',
           'description': 'Which activity, when the day holds several.',
@@ -546,7 +575,7 @@ class PlanTools {
     preview: (args) => _confirm(
       'delete_cardio',
       args,
-      'ryze_confirm_delete_cardio'.tr(_lang).replaceAll('{day}', '${args['day']}'),
+      'ryze_confirm_delete_cardio'.tr(_lang).replaceAll('{day}', dayLabel(args['day'])),
     ),
     execute: (args) => _run('delete_cardio', args),
   );

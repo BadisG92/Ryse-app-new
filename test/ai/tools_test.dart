@@ -185,6 +185,16 @@ void main() {
       expect(activites, isNot(contains('swimming')));
     });
 
+    test('sans jour nommé, c\'est aujourd\'hui', () {
+      // « Planifie mon petit-déjeuner » à quatre heures du matin atterrissait
+      // jeudi : le jour est obligatoire, donc le modèle en choisissait un.
+      for (final nom in ['plan.create_meal', 'plan.create_workout', 'plan.create_cardio']) {
+        final props = ((registry.byName(nom)!.declaration['parameters'] as Map)
+            ['properties'] as Map).cast<String, dynamic>();
+        expect('${props['day']['description']}'.toLowerCase(), contains('today'), reason: nom);
+      }
+    });
+
     test('la conversation écrit elle-même les exercices', () {
       // Un second modèle les choisissait dans son dos : Ryze annonçait une
       // liste et la base en recevait une autre, sans que rien ne le montre.

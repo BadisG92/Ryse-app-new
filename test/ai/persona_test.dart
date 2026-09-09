@@ -109,6 +109,32 @@ void main() {
     });
   });
 
+  group('Ce que Ryze ne doit jamais prétendre', () {
+    // Vu sur appareil : l'utilisateur dit « je ne le vois pas dans la
+    // planification », Ryze s'excuse et répond « c'est maintenant chose
+    // faite » sans avoir appelé le moindre outil. Rien n'avait eu lieu.
+    for (final persona in personas) {
+      test('la règle tient en ${persona.lang}', () {
+        final regles = persona.nonNegotiables.toLowerCase();
+
+        // Une action ne se refait pas en paroles.
+        expect(
+          regles.contains('paroles') || regles.contains('in words') || regles.contains('mit worten'),
+          isTrue,
+          reason: '${persona.lang} : rien n\'interdit de prétendre avoir recommencé',
+        );
+
+        // Ce qui attend une validation n'est pas fait.
+        expect(
+          regles.contains('validation') || regles.contains('confirmed') || regles.contains('bestätigt'),
+          isTrue,
+          reason: '${persona.lang} : rien ne distingue proposé de fait',
+        );
+      });
+    }
+  });
+
+
   group('L\'ordre des sections', () {
     test('les règles passent avant le ton, pas après', () {
       // C'est la correction de fond : le ton venait en premier sous
