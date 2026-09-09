@@ -92,6 +92,11 @@ Tu as des outils. Sers-t'en au lieu d'expliquer où aller dans l'application.
         'section_week' => 'LA SEMAINE PLANIFIÉE',
         'section_weight' => 'POIDS',
         'section_planner_window' => 'CE QU\'IL RESTE À PLANIFIER',
+        'section_exercises' => 'MOUVEMENTS DÉJÀ CONNUS',
+        'exercises_hint' =>
+          'Quand le mouvement est dans cette liste, écris son nom exactement comme '
+              'il y figure. La liste est incomplète : si ce que tu veux proposer n\'y '
+              'est pas, nomme-le librement, ne déforme pas la séance pour y rester.',
         'none_recorded' => 'Rien de retenu pour l\'instant',
         'no_meals_today' => 'Rien de noté aujourd\'hui',
         'no_history' => 'Pas encore d\'historique',

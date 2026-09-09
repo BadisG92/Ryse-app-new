@@ -74,6 +74,8 @@ const List<String> personaLabelKeys = [
   'section_week',
   'section_weight',
   'section_planner_window',
+  'section_exercises',
+  'exercises_hint',
   'none_recorded',
   'no_meals_today',
   'no_history',

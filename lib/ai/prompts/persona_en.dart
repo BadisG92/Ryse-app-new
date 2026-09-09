@@ -91,6 +91,11 @@ You have tools. Use them instead of explaining where to tap in the app.
         'section_week' => 'THE PLANNED WEEK',
         'section_weight' => 'WEIGHT',
         'section_planner_window' => 'STILL TO PLAN',
+        'section_exercises' => 'MOVEMENTS ALREADY KNOWN',
+        'exercises_hint' =>
+          'When the movement is in this list, write its name exactly as it appears '
+              'there. The list is incomplete: if what you want to suggest is not in '
+              'it, name it freely — never bend the session to stay inside the list.',
         'none_recorded' => 'Nothing remembered yet',
         'no_meals_today' => 'Nothing logged today',
         'no_history' => 'No history yet',

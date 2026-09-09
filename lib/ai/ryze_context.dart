@@ -39,6 +39,12 @@ enum RyzeBlock {
 
   /// Réservé au planificateur : jours disponibles, cibles par repas.
   plannerWindow,
+
+  /// Les mouvements que le catalogue connaît déjà, par groupe musculaire.
+  ///
+  /// En dernier parce que c'est une référence et non une donnée de
+  /// l'utilisateur : ce qui le concerne se lit en premier.
+  exercises,
 }
 
 /// Un bloc rendu, avec l'heure à laquelle il a été calculé.
@@ -318,5 +324,32 @@ class RyzeContext {
   static String renderSessions(PersonaStrings s, List<String> lines) {
     if (lines.isEmpty) return section(s, 'section_sessions', s.label('no_sessions'));
     return section(s, 'section_sessions', lines.take(maxSessions * 2).map((l) => '- $l').join('\n'));
+  }
+
+  /// Les mouvements que le catalogue connaît, groupe par groupe.
+  ///
+  /// Le générateur de séance a toujours reçu cette liste ; le chat, jamais.
+  /// Il nommait donc les exercices de mémoire, et « bent over row » ne
+  /// rejoignait pas « Rowing barre » : un seul mouvement, deux lignes, deux
+  /// historiques de charge, et une progression coupée en deux.
+  ///
+  /// Ce n'est pas une contrainte. Le catalogue est incomplet et Ryze doit
+  /// pouvoir en sortir ; la consigne qui accompagne la liste le dit. Elle
+  /// fixe l'orthographe de ce qui existe déjà, rien de plus.
+  ///
+  /// Une ligne par groupe, les noms séparés par des virgules : c'est trois
+  /// fois plus court qu'une puce par exercice pour la même information.
+  static String renderExercises(PersonaStrings s, Map<String, List<String>> byGroup) {
+    if (byGroup.isEmpty) return '';
+
+    final lines = <String>[s.label('exercises_hint'), ''];
+    for (final entry in byGroup.entries) {
+      final names = entry.value.where((n) => n.trim().isNotEmpty).toList();
+      if (names.isEmpty) continue;
+      lines.add('${entry.key} : ${names.join(', ')}');
+    }
+    if (lines.length <= 2) return '';
+
+    return section(s, 'section_exercises', lines.join('\n'));
   }
 }

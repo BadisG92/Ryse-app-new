@@ -358,6 +358,28 @@ class AIWorkoutGenerationService {
     }
   }
 
+  /// Les noms du catalogue, groupe musculaire par groupe musculaire.
+  ///
+  /// Le générateur de séance a toujours eu cette liste sous les yeux ; le chat
+  /// ne l'avait jamais vue. Il nommait donc les exercices de mémoire, et
+  /// « bent over row » ne rejoignait pas « Rowing barre » : le même mouvement
+  /// devenait deux lignes, avec deux historiques de charge.
+  ///
+  /// La liste ne restreint pas le choix — le catalogue est incomplet et Ryze
+  /// doit pouvoir en sortir. Elle fixe l'orthographe de ce qui s'y trouve
+  /// déjà, ce qui n'est pas la même chose.
+  static Future<Map<String, List<String>>> catalogueByGroup() async {
+    final exercises = await _getExercisesWithCache();
+    final out = <String, List<String>>{};
+    for (final e in exercises) {
+      final name = e.name.trim();
+      if (name.isEmpty) continue;
+      out.putIfAbsent(e.muscleGroup.trim(), () => []).add(name);
+    }
+    out.remove('');
+    return out;
+  }
+
   /// Construire la liste d'exercices disponibles AVEC IDs pour le prompt
   static String _buildExercisesList(List<Exercise> exercises, LocalizationService locService) {
     final isFrench = locService.isFrench;

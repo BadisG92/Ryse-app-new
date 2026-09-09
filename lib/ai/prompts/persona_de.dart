@@ -91,6 +91,11 @@ Du hast Werkzeuge. Nutze sie, statt zu erklären, wo man in der App tippen muss.
         'section_week' => 'DIE GEPLANTE WOCHE',
         'section_weight' => 'GEWICHT',
         'section_planner_window' => 'NOCH ZU PLANEN',
+        'section_exercises' => 'BEREITS BEKANNTE ÜBUNGEN',
+        'exercises_hint' =>
+          'Steht die Übung in dieser Liste, schreibe ihren Namen genau so, wie er '
+              'dort steht. Die Liste ist unvollständig: Fehlt, was du vorschlagen '
+              'willst, benenne es frei — verbiege die Einheit nicht dafür.',
         'none_recorded' => 'Noch nichts gemerkt',
         'no_meals_today' => 'Heute noch nichts eingetragen',
         'no_history' => 'Noch kein Verlauf',

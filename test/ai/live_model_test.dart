@@ -58,14 +58,14 @@ Eau : 0.0/2.5 L
 Rien de prévu.''';
   }
 
-  Future<_Tour> demande(String phrase, {DateTime? now}) async {
+  Future<_Tour> demande(String phrase, {DateTime? now, String extra = ''}) async {
     final instruction = await RyzePersona.build(
       lang: 'fr',
       surface: RyzeSurface.coach,
       userName: 'Badis',
       gender: 'male',
       age: 30,
-      context: contexteDu(now ?? DateTime.now()),
+      context: contexteDu(now ?? DateTime.now()) + extra,
       tone: 'Tu es un coach chaleureux. Tu tutoies.',
     );
 
@@ -267,6 +267,79 @@ Rien de prévu.''';
         expect(e['sets'], isNotNull, reason: '${e['exercise_name']} sans séries');
         expect(e['target_reps'], isNotNull, reason: '${e['exercise_name']} sans répétitions');
       }
+    });
+  });
+
+  group('Le vocabulaire des mouvements', () {
+    // Le catalogue tel que le bloc de contexte le rend, en plus petit : ce qui
+    // compte est que le modèle le voie, pas qu'il en voie trois cent
+    // soixante-cinq lignes.
+    const vocabulaire = '''
+
+## MOUVEMENTS DÉJÀ CONNUS
+Quand le mouvement est dans cette liste, écris son nom exactement comme il y figure. La liste est incomplète : si ce que tu veux proposer n'y est pas, nomme-le librement, ne déforme pas la séance pour y rester.
+
+Dos : Rowing barre, Tirage vertical, Soulevé de terre
+Pectoraux : Développé couché, Écarté couché, Pompes
+Jambes : Squat, Fentes, Presse à cuisses''';
+
+    List<String> exercicesDe(_Tour tour) {
+      final appel = tour.premier('plan.create_workout');
+      if (appel == null) return const [];
+      final liste = appel.args['exercises'];
+      if (liste is! List) return const [];
+      return liste.map((e) => (e as Map)['exercise_name'].toString()).toList();
+    }
+
+    test('sans la liste, il nomme de mémoire', () async {
+      final tour = await demande('Fais-moi une séance dos et pecs pour demain');
+      // ignore: avoid_print
+      print(tour);
+      // Rien à affirmer : c'est le point de comparaison, imprimé pour être lu.
+      // ignore: avoid_print
+      print('  noms rendus : ${exercicesDe(tour)}');
+      expect(tour.noms, contains('plan.create_workout'));
+    });
+
+    test('avec la liste, il reprend les noms du catalogue', () async {
+      final tour = await demande(
+        'Fais-moi une séance dos et pecs pour demain',
+        extra: vocabulaire,
+      );
+
+      final donnes = exercicesDe(tour);
+      expect(donnes, isNotEmpty, reason: 'aucun exercice dans l\'appel');
+
+      const connus = {
+        'rowing barre', 'tirage vertical', 'soulevé de terre',
+        'développé couché', 'écarté couché', 'pompes',
+      };
+      final repris = donnes.where((n) => connus.contains(n.toLowerCase())).length;
+
+      // ignore: avoid_print
+      print('  noms rendus : $donnes');
+      // ignore: avoid_print
+      print('  repris du catalogue : $repris / ${donnes.length}');
+      expect(repris, greaterThanOrEqualTo(2), reason: 'les noms rendus : $donnes');
+    });
+
+    test('mais il en sort quand la liste ne suffit pas', () async {
+      // Le catalogue montré ne contient aucun mouvement de biceps. Ryze doit
+      // en nommer un quand même, pas répondre qu'il ne peut pas.
+      final tour = await demande(
+        'Une séance biceps pour demain, avec des curls',
+        extra: vocabulaire,
+      );
+
+      final donnes = exercicesDe(tour);
+      // ignore: avoid_print
+      print('  noms rendus : $donnes');
+      expect(donnes, isNotEmpty, reason: 'il a refusé de sortir du catalogue');
+      expect(
+        donnes.any((n) => n.toLowerCase().contains('curl')),
+        isTrue,
+        reason: 'les noms rendus : $donnes',
+      );
     });
   });
 

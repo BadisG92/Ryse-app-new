@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../services/ai_workout_generation_service.dart';
 import '../services/coach_context_builder.dart';
 import '../services/global_state_manager.dart';
 import '../services/weight_service.dart';
@@ -79,6 +80,7 @@ class RyzeContextSource {
       RyzeBlock.recentSessions: await ctx.block(RyzeBlock.recentSessions, () => _sessions(s)),
       RyzeBlock.weightTrend: await ctx.block(RyzeBlock.weightTrend, () => _weight(s)),
       RyzeBlock.memory: await ctx.block(RyzeBlock.memory, () => _memory(s)),
+      RyzeBlock.exercises: await ctx.block(RyzeBlock.exercises, () => _exercises(s)),
     };
 
     // La date n'est jamais mise en cache : c'est la seule chose du contexte
@@ -193,5 +195,15 @@ class RyzeContextSource {
   Future<String> _memory(PersonaStrings s) async {
     final prefs = await RyzeMemory.instance.load();
     return RyzeContext.renderMemory(s, RyzeMemory.promptLines(prefs, s));
+  }
+
+  /// Le vocabulaire des mouvements, dans la langue du compte.
+  ///
+  /// La liste vient du cache du générateur de séance, qui la garde déjà en
+  /// mémoire et la recharge quand la langue change : la lire ici ne coûte
+  /// aucune requête de plus la plupart du temps.
+  Future<String> _exercises(PersonaStrings s) async {
+    final byGroup = await AIWorkoutGenerationService.catalogueByGroup();
+    return RyzeContext.renderExercises(s, byGroup);
   }
 }
