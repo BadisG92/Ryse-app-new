@@ -14,6 +14,7 @@ class DayMeal {
     required this.at,
     required this.plannedName,
     required this.logged,
+    this.plannedCalories,
   });
 
   final WeekSlot slot;
@@ -29,7 +30,16 @@ class DayMeal {
   final DateTime? at;
 
   /// What the planner intends to be eaten, when it says so.
+  ///
+  /// Tous les plats du créneau, pas seulement le premier : deux collations
+  /// prévues n'en montraient qu'une.
   final String? plannedName;
+
+  /// Ce que le plan prévoit pour ce créneau, en calories.
+  ///
+  /// L'accueil les affichait, cette page non : le créneau annonçait « Prévu ·
+  /// Saumon » sans dire ce que ça pesait dans la journée.
+  final int? plannedCalories;
 
   /// The journal block, when there is one. Carries the items, so a row can
   /// open in place without a second query.
@@ -141,11 +151,24 @@ class DayMeals {
         state = SlotState.empty;
       }
 
+      // Le plan appartient au présent et à l'avenir. Un repas prévu et jamais
+      // mangé, trois jours plus tard, n'est plus une information sur laquelle
+      // on agit : la journée passée montre ce qui a eu lieu.
+      final aVenir = plan == null || !plan.isPast;
+      final visibles = aVenir ? planned : const <PlannedActivity>[];
+
+      final noms = [
+        for (final m in visibles)
+          if ((m.mealData?.dishName ?? '').trim().isNotEmpty) m.mealData!.dishName!.trim(),
+      ];
+      final kcal = visibles.fold<int>(0, (n, m) => n + (m.mealData?.calories ?? 0));
+
       out[slot] = DayMeal(
         slot: slot,
         state: state,
         at: hasFood ? block.at : null,
-        plannedName: planned.isEmpty ? null : planned.first.mealData?.dishName,
+        plannedName: noms.isEmpty ? null : noms.join(', '),
+        plannedCalories: kcal <= 0 ? null : kcal,
         logged: hasFood ? block : null,
       );
     }

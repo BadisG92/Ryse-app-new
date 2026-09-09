@@ -125,9 +125,20 @@ class HomeSlots {
     if (day == null) return const [];
     final lines = <PlannedLine>[];
 
+    // Le plan appartient au présent et à l'avenir.
+    //
+    // La bande des jours effaçait déjà le prévu des jours passés ; le panneau,
+    // lui, le gardait. Les deux racontaient donc le même mardi autrement. Un
+    // repas prévu et jamais mangé, trois jours plus tard, n'est pas une
+    // information sur laquelle on agit : la journée passée montre ce qui a eu
+    // lieu, et rien d'autre.
+    bool visible(PlannedStatus status) =>
+        !day.isPast || status == PlannedStatus.completed;
+
     for (final slot in kFoodSlots) {
       for (final meal in day.meals) {
         if (meal.activityType.value != slot.name) continue;
+        if (!visible(meal.status)) continue;
         final data = meal.mealData;
         final name = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : slotLabel(slot);
         final energy = data?.calories;
@@ -167,6 +178,7 @@ class HomeSlots {
     }
 
     for (final w in day.workouts) {
+      if (!visible(w.status)) continue;
       lines.add((
         slot: WeekSlot.sport,
         state: w.status == PlannedStatus.completed ? SlotState.done : SlotState.planned,
@@ -177,6 +189,7 @@ class HomeSlots {
       ));
     }
     for (final c in day.cardios) {
+      if (!visible(c.status)) continue;
       final data = c.cardioData;
       lines.add((
         slot: WeekSlot.sport,

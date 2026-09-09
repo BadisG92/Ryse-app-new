@@ -183,6 +183,20 @@ class _MealRow extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: context.vw(2.6)),
+                      // Ce qui est prévu porte ses calories comme ce qui est
+                      // fait, en plus discret : le créneau annonçait un plat
+                      // sans dire ce qu'il pèse dans la journée.
+                      if (!done && meal.plannedCalories != null)
+                        Text.rich(
+                          TextSpan(
+                            style: RyzeText.body(context, 3.5, color: RyzeColors.mute)
+                                .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                            children: [
+                              TextSpan(text: '${meal.plannedCalories}'),
+                              TextSpan(text: ' kcal', style: RyzeText.body(context, 3.2, color: RyzeColors.mute2)),
+                            ],
+                          ),
+                        ),
                       if (done) ...[
                         Text.rich(
                           TextSpan(
