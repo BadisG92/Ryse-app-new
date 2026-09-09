@@ -147,10 +147,11 @@ void main() async {
   );
 
   // Initialiser le service de notifications (non-bloquant)
+  // La permission ne se demande plus ici : au premier lancement, elle arrive
+  // avant que l'utilisateur ait quoi que ce soit à recevoir, et un refus est
+  // definitif. Elle part apres le premier repas note — voir
+  // NotificationService.requestAfterFirstEntry.
   unawaited(NotificationService().initialize().then((_) async {
-    // Demander les permissions iOS
-    await NotificationService().requestPermissions();
-    // Planifier les notifications selon les préférences
     await NotificationService().scheduleAllNotifications();
     debugPrint('✅ Notification service initialized and scheduled');
   }).catchError((e) {

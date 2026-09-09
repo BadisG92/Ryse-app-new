@@ -63,7 +63,7 @@ class OnboardingFlow extends StatefulWidget {
   State<OnboardingFlow> createState() => _OnboardingFlowState();
 }
 
-class _OnboardingFlowState extends State<OnboardingFlow> {
+class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObserver {
   OnbStrings get s => OnbStrings.current();
   final OnboardingRepository _repo = OnboardingRepository();
 
@@ -76,6 +76,26 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   bool _finishing = false;
   int _idx = 0;
   int _visit = 0;
+
+  // ---------------------------------------------------------- l'instrumentation
+  //
+  // On savait qu'on perdait 83 % des comptes avant le premier repas, sans
+  // savoir OU. Trois choses manquaient : le temps passe sur chaque etape, le
+  // chapitre franchi, et surtout le moment ou quelqu'un s'en va. Une etape
+  // vue ne dit rien ; une etape vue puis quittee, si.
+
+  /// Depuis quand l'etape courante est a l'ecran.
+  DateTime _stepAt = DateTime.now();
+
+  /// Depuis quand l'onboarding a commence.
+  final DateTime _startedAt = DateTime.now();
+
+  /// Le dernier chapitre dont on a annonce la fin. Monotone : revenir en
+  /// arriere ne refait pas franchir un chapitre.
+  int _chapterDone = 0;
+
+  int get _msOnStep => DateTime.now().difference(_stepAt).inMilliseconds;
+  int get _msTotal => DateTime.now().difference(_startedAt).inMilliseconds;
   final List<int> _history = [];
 
   bool _profileSaved = false;
@@ -94,6 +114,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     a = widget.resume?.answers ?? OnbAnswers();
     _motivationCtrl = TextEditingController(text: a.motivationText);
     _nameCtrl = TextEditingController(text: a.firstName ?? '');
@@ -165,10 +186,29 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   void _go(int index) {
     final step = _steps[index];
+    final previous = _idx >= 0 && _idx < _steps.length ? _steps[_idx] : null;
     setState(() {
       _idx = index;
       _visit++;
     });
+
+    // Ce que l'etape qu'on quitte aura coute. C'est ce chiffre qui dit quelle
+    // question fait reflechir et laquelle fait fuir.
+    if (previous != null && previous.id != step.id) {
+      AnalyticsService.logEvent('onb_step_done', parameters: {
+        'step_id': previous.id,
+        'chapter': previous.chapter,
+        'ms': _msOnStep,
+      });
+      if (previous.chapter > _chapterDone && step.chapter > previous.chapter) {
+        _chapterDone = previous.chapter;
+        AnalyticsService.logEvent('onb_chapter_done', parameters: {
+          'chapter': previous.chapter,
+          'ms_total': _msTotal,
+        });
+      }
+    }
+    _stepAt = DateTime.now();
     AnalyticsService.logEvent('onb_step_view', parameters: {
       'step_id': step.id,
       'chapter': step.chapter,
@@ -193,6 +233,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   bool get _canGoBack => _history.any((h) => !_steps[h].card && !(_steps[h].id == 'planner' && _demoPlanSaved));
 
   void _back() {
+    // Un retour en arriere est un signal a lui seul : l'etape n'etait pas
+    // claire, ou la reponse precedente etait fausse.
+    if (_idx >= 0 && _idx < _steps.length) {
+      AnalyticsService.logEvent('onb_back', parameters: {'step_id': _steps[_idx].id, 'chapter': _steps[_idx].chapter});
+    }
     while (_history.isNotEmpty) {
       final p = _history.removeLast();
       if (_steps[p].id == 'planner' && _demoPlanSaved) continue;
@@ -290,8 +335,26 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
+  /// Quelqu'un vient de quitter l'application en plein onboarding. C'est la
+  /// mesure de l'abandon : l'etape ou il s'est arrete, et le temps qu'il y
+  /// avait passe. Rien d'autre ne la donne — une etape vue sans suite se lit
+  /// comme une etape en cours de lecture.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state != AppLifecycleState.paused && state != AppLifecycleState.detached) return;
+    if (_finishing || _idx < 0 || _idx >= _steps.length) return;
+    AnalyticsService.logEvent('onb_left', parameters: {
+      'step_id': _steps[_idx].id,
+      'chapter': _steps[_idx].chapter,
+      'ms_on_step': _msOnStep,
+      'ms_total': _msTotal,
+    });
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _motivationCtrl.dispose();
     _nameCtrl.dispose();
     _nameFocus.dispose();
@@ -319,7 +382,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       }
     }
     final synced = await _repo.markCompleted();
+    AnalyticsService.logEvent('onb_chapter_done', parameters: {
+      'chapter': _steps.isEmpty ? 0 : _steps.last.chapter,
+      'ms_total': _msTotal,
+    });
     AnalyticsService.logEvent('onb_completed', parameters: {
+      'ms_total': _msTotal,
       'mode': widget.mode == OnbMode.full ? 'full' : 'coach_only',
       'demo_plan_saved': demoSaved ? 1 : 0,
       'server_synced': synced ? 1 : 0,

@@ -106,6 +106,31 @@ class NotificationService {
     return false;
   }
 
+  /// La permission, demandée au bon moment : après le premier repas noté.
+  ///
+  /// Elle partait au lancement, à la seconde où l'application s'ouvrait pour
+  /// la première fois — le moment où l'utilisateur n'a encore rien à recevoir
+  /// et où la question ne veut rien dire. Un refus est définitif : iOS ne
+  /// repose jamais la question, il faut aller dans les réglages du système.
+  /// Demandée juste après un premier repas noté, elle a du sens et se dit
+  /// oui.
+  ///
+  /// Une seule fois dans la vie de l'installation, quoi qu'il arrive.
+  static const String _askedKey = 'notif_permission_asked_v1';
+
+  Future<void> requestAfterFirstEntry() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_askedKey) ?? false) return;
+      await prefs.setBool(_askedKey, true);
+      final granted = await requestPermissions();
+      if (granted) await scheduleAllNotifications(force: true);
+      if (kDebugMode) debugPrint('🔔 Permission demandée après le premier repas : $granted');
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ Permission après premier repas : $e');
+    }
+  }
+
   /// Charger les préférences depuis SharedPreferences
   Future<void> _loadPreferences() async {
     try {

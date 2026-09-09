@@ -652,6 +652,11 @@ class FoodEntriesService {
       // Mettre à jour l'activité pour les notifications de réengagement
       unawaited(NotificationService().updateLastActivity());
 
+      // Le premier repas note est le moment ou la permission de notifier a un
+      // sens : il y a desormais quelque chose a rappeler. Elle ne part qu une
+      // fois, et ne fait rien si elle a deja ete demandee.
+      unawaited(NotificationService().requestAfterFirstEntry());
+
       // Annuler la notification de rappel pour ce type de repas
       // (évite de recevoir "N'oublie pas ton déjeuner" après l'avoir loggé)
       unawaited(NotificationService().cancelMealReminderForType(mealType));
