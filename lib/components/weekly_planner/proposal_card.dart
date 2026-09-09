@@ -442,3 +442,35 @@ class ProposalActions extends StatelessWidget {
     );
   }
 }
+
+/// Le cadre d'une feuille de proposition : fond opaque, coins arrondis en
+/// haut, poignée.
+///
+/// Il vivait en privé dans l'écran du planificateur. La conversation ouvrait
+/// donc la même feuille sans lui, sur un fond transparent : l'en-tête du
+/// détail — le nom de la séance, sa date, ses trois chiffres — se lisait
+/// par-dessus la discussion, et ne se lisait pas.
+Widget ryzeSheetFrame(BuildContext context, {required Widget child}) {
+  return Container(
+    height: MediaQuery.of(context).size.height * 0.88,
+    decoration: BoxDecoration(
+      color: RyzeColors.surf,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 2),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(2)),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    ),
+  );
+}

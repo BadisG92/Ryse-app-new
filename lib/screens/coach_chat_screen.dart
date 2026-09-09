@@ -587,6 +587,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             lang: lang,
             pendings: sessions,
             onConfirmAll: () => _resolveGroup(sessions, accept: true),
+            onConfirmOne: (p) => _resolveCard(p, accept: true),
             onCancel: () => _resolveGroup(sessions, accept: false),
           ),
         if (meals.isNotEmpty)

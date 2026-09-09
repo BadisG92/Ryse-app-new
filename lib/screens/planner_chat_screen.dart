@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../components/ui/motion.dart';
 import '../components/weekly_planner/meal_proposal_page.dart';
+import '../components/weekly_planner/session_proposal_sheet.dart';
 import '../components/weekly_planner/proposal_card.dart';
 import '../components/weekly_planner/week_strip.dart';
 import 'package:flutter/services.dart';
@@ -1711,49 +1712,16 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => _SessionProposalSheet(
+      builder: (sheetContext) => SessionProposalSheet(
         version: _proposalVersion,
         langCode: langCode,
         sessions: () => _pendingSessions,
         currentIndex: () => _currentSessionIndex,
         dayName: (d) => _formatDayName(DateTime(d.year, d.month, d.day), langCode),
-        cardBuilder: (session) => _buildSessionCard(session, langCode),
         isConfirming: () => _isConfirming,
         onConfirm: _confirmCurrentSession,
         onCancel: _cancelSessionsPreview,
         onIndexChanged: (i) => setState(() => _currentSessionIndex = i),
-      ),
-    );
-  }
-
-  Widget _buildSessionCard(PendingSession session, String langCode) {
-    if (session.isWorkout) {
-      return _buildWorkoutSessionCard(session, langCode);
-    } else {
-      return _buildCardioSessionCard(session, langCode);
-    }
-  }
-
-  /// Preview d'un workout en utilisant le même widget que le recap
-  Widget _buildWorkoutSessionCard(PendingSession session, String langCode) {
-    final plannedWorkout = session.workout!.toPlannedWorkout();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: WorkoutRecapBottomSheet(
-        workout: plannedWorkout,
-        isPreview: true,
-      ),
-    );
-  }
-
-  /// Preview d'un cardio en utilisant le même widget que le recap
-  Widget _buildCardioSessionCard(PendingSession session, String langCode) {
-    final plannedActivity = session.cardio!.toPlannedActivity();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: CardioRecapBottomSheet(
-        activity: plannedActivity,
-        isPreview: true,
       ),
     );
   }
@@ -2059,23 +2027,6 @@ class _ChatAction {
 // state through getters and rebuild when the screen calls setState.
 // ═══════════════════════════════════════════════════════════════════════════
 
-Widget _sheetFrame(BuildContext context, {required Widget child}) {
-  return Container(
-    height: MediaQuery.of(context).size.height * 0.88,
-    decoration: BoxDecoration(color: RyzeColors.surf, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-    clipBehavior: Clip.antiAlias,
-    child: SafeArea(
-      top: false,
-      child: Column(
-        children: [
-          Container(margin: const EdgeInsets.only(top: 10, bottom: 2), width: 40, height: 4, decoration: BoxDecoration(color: RyzeColors.line, borderRadius: BorderRadius.circular(2))),
-          Expanded(child: child),
-        ],
-      ),
-    ),
-  );
-}
-
 class _MealsProposalSheet extends StatefulWidget {
   const _MealsProposalSheet({
     required this.version,
@@ -2159,7 +2110,7 @@ class _MealsProposalSheetState extends State<_MealsProposalSheet> {
         final validate = 'planner_validate'.tr(lang);
         final confirmLabel = several ? (lang == 'de' ? '${widget.dayShort(day)} $validate'.toLowerCase() : '$validate ${widget.dayShort(day)}') : validate;
 
-        return _sheetFrame(
+        return ryzeSheetFrame(
           context,
           child: Column(
             children: [
@@ -2224,93 +2175,6 @@ class _MealsProposalSheetState extends State<_MealsProposalSheet> {
                 busy: widget.isConfirming(),
                 secondaryLabel: several ? '${'planner_confirm_all_days'.tr(lang)} · ${days.length} ${'planner_days_count'.tr(lang)}' : null,
                 onSecondary: several ? widget.onConfirmAll : null,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SessionProposalSheet extends StatefulWidget {
-  const _SessionProposalSheet({
-    required this.version,
-    required this.langCode,
-    required this.sessions,
-    required this.currentIndex,
-    required this.dayName,
-    required this.cardBuilder,
-    required this.isConfirming,
-    required this.onConfirm,
-    required this.onCancel,
-    required this.onIndexChanged,
-  });
-
-  final ValueListenable<int> version;
-  final String langCode;
-  final List<PendingSession>? Function() sessions;
-  final int Function() currentIndex;
-  final String Function(DateTime) dayName;
-  final Widget Function(PendingSession) cardBuilder;
-  final bool Function() isConfirming;
-  final VoidCallback onConfirm;
-  final VoidCallback onCancel;
-  final ValueChanged<int> onIndexChanged;
-
-  @override
-  State<_SessionProposalSheet> createState() => _SessionProposalSheetState();
-}
-
-class _SessionProposalSheetState extends State<_SessionProposalSheet> {
-  bool _popping = false;
-
-  void _pop() {
-    if (_popping) return;
-    _popping = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Navigator.of(context).maybePop();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: widget.version,
-      builder: (context, _) {
-        final sessions = widget.sessions();
-        if (sessions == null || sessions.isEmpty) {
-          _pop();
-          return const SizedBox.shrink();
-        }
-        final n = sessions.length;
-        final index = widget.currentIndex().clamp(0, n - 1);
-        final session = sessions[index];
-        final lang = widget.langCode;
-        final sessionWord = 'planner_session_word'.tr(lang);
-        final thisOne = 'planner_this_session'.tr(lang);
-        return _sheetFrame(
-          context,
-          child: Column(
-            children: [
-              ProposalHeader(
-                icon: session.isWorkout ? LucideIcons.dumbbell : LucideIcons.activity,
-                title: widget.dayName(session.plannedDate),
-                subtitle: n > 1 ? '$sessionWord ${index + 1}/$n · ${session.displayTitle}' : session.displayTitle,
-                paged: n > 1,
-                canPrev: index > 0,
-                canNext: index < n - 1,
-                onPrev: () => widget.onIndexChanged(index - 1),
-                onNext: () => widget.onIndexChanged(index + 1),
-              ),
-              Expanded(child: SingleChildScrollView(padding: const EdgeInsets.only(bottom: 8), child: widget.cardBuilder(session))),
-              if (n > 1) ProposalPagerDots(count: n, index: index),
-              ProposalActions(
-                cancelLabel: 'planner_cancel'.tr(lang),
-                confirmLabel: '${'planner_validate'.tr(lang)} $thisOne',
-                onCancel: widget.onCancel,
-                onConfirm: widget.onConfirm,
-                busy: widget.isConfirming(),
               ),
             ],
           ),

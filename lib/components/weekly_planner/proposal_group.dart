@@ -3,8 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/ryze_tools/ryze_tool.dart';
-import 'cardio_recap_bottom_sheet.dart';
-import 'workout_recap_bottom_sheet.dart';
+import 'session_proposal_sheet.dart';
 import '../../models/weekly_planner_models.dart';
 import '../../services/translations.dart';
 import 'meal_proposal_page.dart';
@@ -28,6 +27,7 @@ class SessionProposalGroup extends StatelessWidget {
     required this.lang,
     required this.pendings,
     required this.onConfirmAll,
+    required this.onConfirmOne,
     required this.onCancel,
     this.busy = false,
   });
@@ -38,6 +38,10 @@ class SessionProposalGroup extends StatelessWidget {
   final List<RyzePending> pendings;
 
   final VoidCallback onConfirmAll;
+
+  /// Valider une seule séance, depuis sa feuille.
+  final void Function(RyzePending) onConfirmOne;
+
   final VoidCallback onCancel;
   final bool busy;
 
@@ -52,24 +56,38 @@ class SessionProposalGroup extends StatelessWidget {
     return court.isEmpty ? '' : court[0].toUpperCase() + court.substring(1);
   }
 
-  void _showDetail(BuildContext context, PendingSession session) {
+  /// Le détail d'une séance : la feuille du planificateur, la sienne.
+  ///
+  /// Elle s'ouvrait ici sans son cadre — fond transparent, donc l'en-tête se
+  /// lisait par-dessus la discussion — sans hauteur bornée, donc rien ne
+  /// défilait, et sans boutons, donc on ne pouvait que la balayer. Il ne
+  /// fallait pas la refaire : il fallait la partager.
+  void _showDetail(BuildContext context, int depart) {
+    final sessions = sessionsOf(pendings);
+    final index = ValueNotifier<int>(depart);
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: session.isWorkout
-            ? WorkoutRecapBottomSheet(
-                workout: session.workout!.toPlannedWorkout(),
-                isPreview: true,
-              )
-            : CardioRecapBottomSheet(
-                activity: session.cardio!.toPlannedActivity(),
-                isPreview: true,
-              ),
+      builder: (sheet) => SessionProposalSheet(
+        version: index,
+        langCode: lang,
+        sessions: () => sessions,
+        currentIndex: () => index.value,
+        dayName: (d) => sessions
+            .firstWhere((s) => s.plannedDate == d, orElse: () => sessions[index.value])
+            .dateLabel(lang),
+        isConfirming: () => busy,
+        onIndexChanged: (i) => index.value = i,
+        onCancel: () => Navigator.of(sheet).pop(),
+        onConfirm: () {
+          final session = sessions[index.value.clamp(0, sessions.length - 1)];
+          Navigator.of(sheet).pop();
+          onConfirmOne(pendings.firstWhere((p) => identical(p.payload, session)));
+        },
       ),
-    );
+    ).whenComplete(index.dispose);
   }
 
   @override
@@ -96,7 +114,7 @@ class SessionProposalGroup extends StatelessWidget {
               title: session.displayTitle,
               subtitle: session.dateLabel(lang),
               last: i == n - 1,
-              onTap: () => _showDetail(context, session),
+              onTap: () => _showDetail(context, i),
             ),
         ],
       ),
