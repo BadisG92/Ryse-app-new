@@ -272,6 +272,41 @@ void main() {
     });
   });
 
+  group('L\'historique ne grandit pas sans fin', () {
+    // Rien ne le rognait : une longue conversation renvoyait tout, deux fois
+    // par message, et finissait par peser plus que la persona et les outils.
+    test('il s\'arrête au plafond', () {
+      final agent = RyzeAgent(config: RyzeGenerationConfig.coach);
+      for (var i = 0; i < 200; i++) {
+        agent.addUserText('message $i');
+      }
+      expect(agent.historyLength, lessThanOrEqualTo(RyzeAgent.maxHistoryTurns));
+    });
+
+    test('il garde les derniers, pas les premiers', () {
+      final agent = RyzeAgent(config: RyzeGenerationConfig.coach);
+      for (var i = 0; i < 100; i++) {
+        agent.addUserText('message $i');
+      }
+      final dernier = agent.history.last['parts'] as List;
+      expect((dernier.first as Map)['text'], 'message 99');
+    });
+
+    test('il ne commence jamais sur une réponse d\'outil orpheline', () {
+      // Un `functionResponse` séparé de son `functionCall` fait refuser la
+      // requête entière.
+      final agent = RyzeAgent(config: RyzeGenerationConfig.coach);
+      for (var i = 0; i < 60; i++) {
+        agent.addUserText('message $i');
+        agent.addToolResults([(name: 'journal.log_water', response: const {'ok': true})]);
+      }
+
+      final premier = agent.history.first['parts'] as List;
+      expect((premier.first as Map).containsKey('functionResponse'), isFalse);
+    });
+  });
+
+
   group('L\'historique', () {
     test('se remplit à partir de messages déjà échangés', () {
       final agent = agentAvec(const []);

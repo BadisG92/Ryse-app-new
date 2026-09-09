@@ -117,6 +117,39 @@ class RyzeAgent {
   /// Combien de tours d'outils au maximum pour un seul message.
   static const int maxToolRounds = 4;
 
+  /// Combien de tours l'historique garde.
+  ///
+  /// L'écran en seme trente à l'ouverture, mais rien ne les rognait ensuite :
+  /// une conversation longue renvoyait tout, à chaque message, et deux fois
+  /// par message puisqu'un appel d'outil demande un second tour. Ce qui part
+  /// au modèle finissait par peser plus que la persona et les outils réunis.
+  static const int maxHistoryTurns = 40;
+
+  /// Rogne l'historique par le début, sans couper un appel de sa réponse.
+  ///
+  /// Un tour `model` porteur d'un `functionCall` doit rester collé au tour
+  /// `user` qui porte sa `functionResponse` : les séparer fait refuser la
+  /// requête entière.
+  void _trimHistory() {
+    if (_history.length <= maxHistoryTurns) return;
+
+    var from = _history.length - maxHistoryTurns;
+
+    // On ne commence jamais sur une réponse d'outil orpheline.
+    while (from < _history.length && _startsWithToolResponse(_history[from])) {
+      from++;
+    }
+    if (from <= 0) return;
+    _history.removeRange(0, from);
+  }
+
+  static bool _startsWithToolResponse(Map<String, dynamic> turn) {
+    final parts = turn['parts'];
+    if (parts is! List || parts.isEmpty) return false;
+    final first = parts.first;
+    return first is Map && first.containsKey('functionResponse');
+  }
+
   RyzeUsage _sessionUsage = const RyzeUsage();
   RyzeUsage get sessionUsage => _sessionUsage;
 
@@ -141,12 +174,15 @@ class RyzeAgent {
     }
   }
 
-  void addUserText(String text) => _history.add({
-        'role': 'user',
-        'parts': [
-          {'text': text}
-        ],
-      });
+  void addUserText(String text) {
+    _history.add({
+      'role': 'user',
+      'parts': [
+        {'text': text}
+      ],
+    });
+    _trimHistory();
+  }
 
   void addModelParts(List<Map<String, dynamic>> parts) {
     if (parts.isEmpty) return;

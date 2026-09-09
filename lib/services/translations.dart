@@ -4192,6 +4192,11 @@ class AppTranslations {
       'de': 'Einheit beenden',
     },
     // Gemini Error Messages (friendly and playful)
+    'ryze_food_logged': {
+      'fr': '{foods} — noté',
+      'en': '{foods} — logged',
+      'de': '{foods} — eingetragen',
+    },
     'ryze_food_review': {
       'fr': 'Voir le détail',
       'en': 'See the detail',

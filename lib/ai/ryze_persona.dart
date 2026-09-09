@@ -52,12 +52,15 @@ class RyzePersona {
     int? age,
     String context = '',
     String surfaceRules = '',
+    String? tone,
   }) async {
-    final s = of(lang);
-
     // Le ton choisi par l'utilisateur, réutilisé tel quel : ce texte existe
     // déjà dans les trois langues et il est bon.
-    final tone = await CoachPersonalityService.instance
+    //
+    // Il peut être fourni : le banc d'essai monte le prompt exact hors de
+    // l'application, où le service de personnalité n'a ni base ni compte.
+    final s = of(lang);
+    tone ??= await CoachPersonalityService.instance
         .buildPersonalityInstruction(lang, gender: gender);
 
     final parts = <String>[

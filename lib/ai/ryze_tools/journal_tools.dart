@@ -148,8 +148,11 @@ class JournalTools {
       description:
           'Log a meal the user describes in words, by reading its foods and macros from '
           'their description. Use it when they say what they ate, only for food already '
-          'eaten. Pass their words as they said them, in their language. For a meal '
-          'that was planned and eaten as planned, use plan.mark_meal_eaten instead.',
+          'eaten. Pass their words as they said them, in their language. When they '
+          'describe several meals in one message, call this once per meal, each with '
+          'its own description and its own meal_type: one call cannot hold a breakfast '
+          'and a lunch. For a meal that was planned and eaten as planned, use '
+          'plan.mark_meal_eaten instead.',
       properties: {
         'description': {
           'type': 'string',
@@ -240,17 +243,31 @@ class JournalTools {
     final navigator = AppNavigator().navigatorState;
     if (navigator == null) return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
 
-    await navigator.push(MaterialPageRoute(
+    // `returnOnDone` : l'écran rend la main à la conversation au lieu de
+    // remonter à l'accueil. Valider son repas éjectait du chat.
+    final saved = await navigator.push<bool>(MaterialPageRoute(
       builder: (_) => AIAnalysisScreen(
         note: description,
         isFromTextInput: true,
         isFromDashboard: true,
         analysisResult: result,
         mealName: _mealLabel(mealType),
+        returnOnDone: true,
       ),
     ));
 
     final noms = result.detectedFoods.map((f) => f.name).take(3).join(', ');
+
+    // Ce que l'écran a rendu décide de ce que Ryze peut dire. Il annonçait
+    // « à vérifier » même quand l'utilisateur venait d'enregistrer.
+    if (saved == true) {
+      return RyzeToolResult(
+        ok: true,
+        summary: 'ryze_food_logged'.tr(_lang).replaceAll('{foods}', noms),
+        data: {'logged': true, 'foods': result.detectedFoods.length},
+      );
+    }
+
     return RyzeToolResult(
       ok: true,
       summary: 'ryze_food_to_review'.tr(_lang).replaceAll('{foods}', noms),

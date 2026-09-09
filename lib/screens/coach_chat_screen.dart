@@ -199,6 +199,15 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       String displayedText = '';
       bool typing = false;
 
+      /// Où la bulle en cours s'écrit.
+      ///
+      /// La frappe visait « le dernier message », et elle laisse la main entre
+      /// deux caractères. Quand une action s'intercalait pendant ce temps, la
+      /// suite de la phrase allait s'écrire dans la ligne d'action : la bulle
+      /// restait coupée au milieu d'un mot, et le texte du coach s'affichait
+      /// une seconde fois, en ambre, à la place de ce que l'outil avait fait.
+      int bubbleAt = -1;
+
       /// Ouvre une bulle de frappe si aucune n'attend le texte.
       void openBubble() {
         if (typing) return;
@@ -210,15 +219,17 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             conversationId: widget.conversation.id,
             userId: '',
           ));
+          bubbleAt = _messages.length - 1;
         });
       }
 
       /// Ferme la bulle en cours : ce qui suit est d'une autre nature.
       void closeBubble() {
         typing = false;
-        if (_messages.isNotEmpty && _messages.last.content.trim().isEmpty) {
-          setState(() => _messages.removeLast());
+        if (bubbleAt >= 0 && bubbleAt < _messages.length && _messages[bubbleAt].content.trim().isEmpty) {
+          setState(() => _messages.removeAt(bubbleAt));
         }
+        bubbleAt = -1;
       }
 
       await for (final event in CoachChatService.instance.streamMessage(text)) {
@@ -229,15 +240,15 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             openBubble();
             fullResponse += text;
 
-            // L'effet de frappe : quelques caractères à la fois.
-            while (displayedText.length < fullResponse.length && mounted) {
+            // L'effet de frappe : quelques caractères à la fois, dans la
+            // bulle ouverte pour ce texte et dans aucune autre.
+            while (displayedText.length < fullResponse.length && mounted && typing) {
               final charsToAdd = (fullResponse.length - displayedText.length).clamp(1, 3);
               displayedText = fullResponse.substring(0, displayedText.length + charsToAdd);
 
               setState(() {
-                if (_messages.isNotEmpty) {
-                  final last = _messages.length - 1;
-                  _messages[last] = _messages[last].copyWith(content: displayedText);
+                if (bubbleAt >= 0 && bubbleAt < _messages.length) {
+                  _messages[bubbleAt] = _messages[bubbleAt].copyWith(content: displayedText);
                 }
               });
               await Future.delayed(const Duration(milliseconds: 15));

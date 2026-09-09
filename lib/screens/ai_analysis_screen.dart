@@ -23,6 +23,13 @@ class AIAnalysisScreen extends StatefulWidget {
   final bool isFromDashboard;
   final String? mealName;
   final String? mealId;
+
+  /// Rendre la main à l'écran qui a ouvert celui-ci, au lieu de remonter à
+  /// l'accueil.
+  ///
+  /// Ryze ouvre cette page depuis la conversation : remonter jusqu'à la racine
+  /// éjectait l'utilisateur du chat au moment même où il validait son repas.
+  final bool returnOnDone;
   final bool isFromTextInput; // Nouveau flag
   final AIAnalysisResult? analysisResult; // Résultats pré-calculés pour le mode texte
 
@@ -33,6 +40,7 @@ class AIAnalysisScreen extends StatefulWidget {
     this.isFromDashboard = false,
     this.mealName,
     this.mealId,
+    this.returnOnDone = false,
     this.isFromTextInput = false,
     this.analysisResult,
   });
@@ -153,7 +161,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
 
     // Si plus d'aliments, rediriger vers l'accueil
     if (_analysisResult.detectedFoods.isEmpty) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      _leave(saved: false);
       final locService = LocalizationService.instance;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -234,6 +242,18 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     }
   }
 
+  /// Quitter cet écran.
+  ///
+  /// Depuis le scanner, on remonte à l'accueil comme avant. Depuis la
+  /// conversation, on y retourne : c'est de là qu'on vient.
+  void _leave({required bool saved}) {
+    if (widget.returnOnDone) {
+      Navigator.pop(context, saved);
+    } else {
+      Navigator.popUntil(context, (route) => route.isFirst);
+    }
+  }
+
   /// Les repas déjà notés aujourd'hui, ceux qui portent au moins un aliment.
   Future<List<Meal>> _todayMeals(String userId) async {
     try {
@@ -261,13 +281,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     await GlobalStateManager.instance.refreshMealsCount();
     await DashboardService.invalidateAndRefreshGoals();
 
-    if (mounted) {
-      // Retourner au dashboard
-      Navigator.popUntil(context, (route) => route.isFirst);
-      final detectedMealName = _analysisResult.mealName?.isNotEmpty == true
-          ? _analysisResult.mealName!
-          : (_mealNameController.text.isNotEmpty ? _mealNameController.text : null);
-    }
+    if (mounted) _leave(saved: true);
   }
 
   Future<void> _createNewMealAndAdd(String mealType, String time) async {

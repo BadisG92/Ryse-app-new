@@ -1,0 +1,8 @@
+# Le banc d'essai contre le vrai modèle ne tourne pas avec la suite ordinaire :
+# il dépend du réseau, il coûte des jetons, et une panne de Google ne dit rien
+# de l'application.
+#
+#   flutter test test/ai/live_model_test.dart --tags live
+tags:
+  live:
+    skip: "banc d'essai en ligne : lancer avec --tags live"
