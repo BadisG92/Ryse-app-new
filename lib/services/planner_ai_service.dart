@@ -393,8 +393,33 @@ class PlannerAIService {
   }
 
   /// Parser un jour unique
+  /// Le jour que le modèle a écrit, lu comme une date.
+  ///
+  /// Public pour les tests : c'est la lecture qui a produit
+  /// « Invalid days » à l'écran, et elle mérite d'être tenue.
+  @visibleForTesting
+  static DateTime? parseDay(String dayStr) => _parseSingleDay(dayStr);
+
   static DateTime? _parseSingleDay(String dayStr) {
     final weekStart = planningWindowStart;
+
+    // « aujourd'hui » et « demain » d'abord.
+    //
+    // Le schéma n'accepte que les sept jours, mais quand l'utilisateur dit
+    // « c'est pour aujourd'hui », le modèle écrit « today » et la lecture
+    // échouait sur « Invalid days ». Ces mots-là désignent une date aussi
+    // clairement qu'un nom de jour.
+    const relatifs = {
+      'today': 0, "aujourd'hui": 0, 'aujourdhui': 0, 'heute': 0,
+      'tomorrow': 1, 'demain': 1, 'morgen': 1,
+      'yesterday': -1, 'hier': -1, 'gestern': -1,
+    };
+    final decalage = relatifs[dayStr.toLowerCase().trim()];
+    if (decalage != null) {
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day).add(Duration(days: decalage));
+    }
+
     final dayMap = {
       'monday': 0, 'lundi': 0, 'montag': 0,
       'tuesday': 1, 'mardi': 1, 'dienstag': 1,
@@ -548,7 +573,7 @@ class PlannerAIService {
 
       case 'delete_workout':
         final day = _parseSingleDay(args['day'] as String? ?? '');
-        if (day == null) return {'success': false, 'message': 'Invalid day'};
+        if (day == null) return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
         final workoutName = args['workout_name'] as String?;
 
         // Utiliser la méthode avec filtre par nom si fourni
@@ -598,7 +623,7 @@ class PlannerAIService {
 
       case 'delete_cardio':
         final day = _parseSingleDay(args['day'] as String? ?? '');
-        if (day == null) return {'success': false, 'message': 'Invalid day'};
+        if (day == null) return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
         final activityName = args['activity_name'] as String?;
 
         // Utiliser la méthode avec filtre par nom si fourni
@@ -649,7 +674,7 @@ class PlannerAIService {
       case 'delete_day_sessions':
         // Supprimer toutes les séances (workout + cardio) d'un jour spécifique
         final day = _parseSingleDay(args['day'] as String? ?? '');
-        if (day == null) return {'success': false, 'message': 'Invalid day'};
+        if (day == null) return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
 
         // Trouver tous les workouts et cardios de ce jour
         final allWorkoutsWeek = await WeeklyPlannerService.getAllWorkoutsThisWeek();
@@ -810,7 +835,7 @@ class PlannerAIService {
         final focus = args['focus'] as String? ?? workoutType ?? '';
 
         final day = _parseSingleDay(dayStr);
-        if (day == null) return {'success': false, 'message': 'Invalid day'};
+        if (day == null) return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
 
         // Vérifier que le type est fourni
         if (workoutType == null || workoutType.isEmpty) {
@@ -890,7 +915,7 @@ class PlannerAIService {
         final fromDay = _parseSingleDay(args['from_day'] as String? ?? '');
         final toDay = _parseSingleDay(args['to_day'] as String? ?? '');
         if (fromDay == null || toDay == null) {
-          return {'success': false, 'message': 'Invalid days'};
+          return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
         }
         final workout = await WeeklyPlannerService.findPlannedWorkoutForDate(fromDay);
         if (workout != null) {
@@ -932,7 +957,7 @@ class PlannerAIService {
         final fromDayCardio = _parseSingleDay(args['from_day'] as String? ?? '');
         final toDayCardio = _parseSingleDay(args['to_day'] as String? ?? '');
         if (fromDayCardio == null || toDayCardio == null) {
-          return {'success': false, 'message': 'Invalid days'};
+          return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
         }
         final cardioToMove = await WeeklyPlannerService.findPlannedCardioForDate(fromDayCardio);
         if (cardioToMove != null) {
@@ -1209,7 +1234,7 @@ class PlannerAIService {
       case 'modify_cardio':
         final currentDayCardio = _parseSingleDay(args['current_day'] as String? ?? '');
         if (currentDayCardio == null) {
-          return {'success': false, 'message': 'Invalid day'};
+          return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
         }
 
         // Trouver le cardio existant
@@ -1277,7 +1302,7 @@ class PlannerAIService {
         final rounds = args['rounds'] as int?;
 
         final day = _parseSingleDay(dayStr);
-        if (day == null) return {'success': false, 'message': 'Invalid day'};
+        if (day == null) return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
 
         // Si pas de type spécifié, proposer les options via le service
         if (hiitType == null || hiitType.isEmpty) {
@@ -1359,7 +1384,7 @@ class PlannerAIService {
         final targetKm = args['target_km'] as num?;
 
         final day = _parseSingleDay(dayStr);
-        if (day == null) return {'success': false, 'message': 'Invalid day'};
+        if (day == null) return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
 
         // Utiliser le service partagé pour détecter et rediriger HIIT
         if (PlannedCardioService.isHiitType(activityKey)) {
@@ -1626,7 +1651,7 @@ class PlannerAIService {
       // Parser le jour
       final date = _parseSingleDay(dayStr);
       if (date == null) {
-        return {'success': false, 'message': 'Invalid day: $dayStr'};
+        return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
       }
 
       // Vérifier que le jour n'est pas dans le passé
@@ -1688,7 +1713,7 @@ class PlannerAIService {
 
       final date = _parseSingleDay(dayStr);
       if (date == null) {
-        return {'success': false, 'message': 'Invalid day'};
+        return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
       }
 
       final mealType = _parseMealType(mealTypeStr);
@@ -1756,12 +1781,7 @@ class PlannerAIService {
 
       final date = _parseSingleDay(dayStr);
       if (date == null) {
-        final msg = langCode == 'fr'
-            ? '⚠️ Jour invalide: $dayStr'
-            : langCode == 'de'
-                ? '⚠️ Ungültiger Tag: $dayStr'
-                : '⚠️ Invalid day: $dayStr';
-        return {'success': false, 'message': msg};
+        return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
       }
 
       final mealType = _parseMealType(mealTypeStr);
@@ -2082,6 +2102,11 @@ class PlannerAIService {
 
   static String _getMessage(String langCode, String key) {
     final messages = {
+      'day_not_understood': {
+        'fr': "Je n'ai pas compris de quel jour tu parles. Dis-le-moi autrement ?",
+        'en': "I did not catch which day you mean. Say it another way?",
+        'de': 'Ich habe nicht verstanden, welchen Tag du meinst. Sag es anders?',
+      },
       'workouts_created': {
         'fr': 'Parfait ! J\'ai créé {count} séances pour {days} 💪',
         'en': 'Perfect! I created {count} sessions for {days} 💪',

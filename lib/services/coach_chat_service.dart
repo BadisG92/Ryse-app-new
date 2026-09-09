@@ -379,8 +379,27 @@ class CoachChatService {
 
       // « en attente » et non « fait » : c'est ce qui empêche Ryze d'annoncer
       // une action que l'utilisateur n'a pas encore validée.
+      //
+      // Il faut aussi lui dire ce que la carte montre, et qu'elle porte déjà
+      // les deux boutons. Sans ça il ne voyait qu'un refus, redemandait la
+      // permission en toutes lettres, et l'utilisateur validait trois fois la
+      // même chose : une fois dans la phrase, une fois sur la carte, une fois
+      // dans la phrase suivante.
       _agent!.addToolResults([
-        (name: call.name, response: {'ok': false, 'status': 'awaiting_user_validation'})
+        (
+          name: call.name,
+          response: {
+            'ok': false,
+            'status': 'awaiting_user_validation',
+            'card_shown_to_user': pending.detail == null
+                ? pending.title
+                : '${pending.title}\n${pending.detail}',
+            'note': 'The app is showing this to the user right now, with a '
+                'confirm and a cancel button. Do not ask them to confirm, the '
+                'buttons already do. Say one short sentence about what you are '
+                'offering, then stop.',
+          },
+        )
       ]);
 
       yield CoachAsk(pending);

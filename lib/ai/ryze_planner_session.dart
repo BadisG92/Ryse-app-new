@@ -114,8 +114,24 @@ class RyzePlannerSession {
 
     if (tool.needsConfirmation(call.args) && tool.preview != null) {
       final pending = await tool.preview!(call.args);
+
+      // La carte est déjà à l'écran, avec ses deux boutons : le modèle doit le
+      // savoir, sinon il redemande la permission en toutes lettres.
       _agent.addToolResults([
-        (name: call.name, response: {'ok': false, 'status': 'awaiting_user_validation'})
+        (
+          name: call.name,
+          response: {
+            'ok': false,
+            'status': 'awaiting_user_validation',
+            'card_shown_to_user': pending.detail == null
+                ? pending.title
+                : '${pending.title}\n${pending.detail}',
+            'note': 'The app is showing this to the user right now, with a '
+                'confirm and a cancel button. Do not ask them to confirm, the '
+                'buttons already do. Say one short sentence about what you are '
+                'offering, then stop.',
+          },
+        )
       ]);
       yield CoachAsk(pending);
       return;

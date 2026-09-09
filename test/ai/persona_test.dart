@@ -109,6 +109,32 @@ void main() {
     });
   });
 
+  group('La carte pose la question, pas Ryze', () {
+    // Vu sur appareil : Ryze demande « veux-tu que je l'ajoute ? », la carte
+    // s'affiche et l'utilisateur valide, puis Ryze redemande « est-ce que je
+    // valide définitivement ? ». Trois oui pour une seule séance.
+    for (final persona in personas) {
+      test('la règle tient en ${persona.lang}', () {
+        final guide = persona.toolGuidance.toLowerCase();
+
+        // Ne pas demander la permission d'appeler l'outil.
+        expect(
+          guide.contains('permission') || guide.contains('erlaubnis'),
+          isTrue,
+          reason: '${persona.lang} : rien n\'interdit de demander avant d\'agir',
+        );
+
+        // La carte et ses deux boutons sont nommés, donc connus du modèle.
+        expect(
+          guide.contains('carte') || guide.contains('card') || guide.contains('karte'),
+          isTrue,
+          reason: '${persona.lang} : le modèle ignore que l\'application demande',
+        );
+      });
+    }
+  });
+
+
   group('Ce que Ryze ne doit jamais prétendre', () {
     // Vu sur appareil : l'utilisateur dit « je ne le vois pas dans la
     // planification », Ryze s'excuse et répond « c'est maintenant chose
