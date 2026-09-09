@@ -27,6 +27,7 @@ import 'widgets/today_row.dart';
 import 'widgets/water_tile.dart';
 import '../nutrition/day_analysis.dart';
 import '../nutrition/add_food_sheet.dart';
+import '../nutrition/meal_sheet.dart';
 import 'widgets/home_week.dart';
 
 /// The home: the coach's brief of the day.
@@ -458,6 +459,13 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   /// mêmes feuilles que partout ailleurs - la séance et le cardio les avaient
   /// déjà, le repas prévu vient d'avoir la sienne.
   Future<void> _onWeekLineTap(DateTime day, PlannedLine line) async {
+    // Une ligne du journal ne porte ni seance ni repas prevu : c'est ce qui a
+    // ete mange, et ca s'ouvre comme le reste.
+    if (line.workout == null && line.activity == null) {
+      await MealSheet.show(context, day: day, slot: line.slot);
+      if (mounted) _loadWeek(force: true);
+      return;
+    }
     if (line.workout != null) {
       await WorkoutRecapBottomSheet.show(context, workout: line.workout!);
     } else if (line.slot == WeekSlot.sport && line.activity != null) {
@@ -471,16 +479,28 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   /// A slot that is already done opens what is in it, in the Nutrition tab.
   /// Offering to add food on top of a logged meal was the app answering a
   /// question the user did not ask.
-  void _onSlotTap(WeekSlot slot) {
+  Future<void> _onSlotTap(WeekSlot slot) async {
     if (slot == WeekSlot.sport) {
       _openSession();
       return;
     }
-    if (HomeSlots.ofDay(_todayPlan).state(slot) == SlotState.done) {
-      widget.onTabChange?.call('nutrition');
+    final state = HomeSlots.ofDay(_todayPlan).state(slot);
+    // Un creneau vide se remplit d'un tap : c'est le geste courant, il ne
+    // passe par aucune feuille intermediaire.
+    if (state == SlotState.empty) {
+      _logMealOf(slot);
       return;
     }
-    _logMealOf(slot);
+    // Un creneau deja note, ou prevu, s'ouvre : ce qu'il contient, aliment
+    // par aliment. Il renvoyait vers l'onglet Nutrition, ce qui est un saut,
+    // pas une reponse.
+    await MealSheet.show(
+      context,
+      day: DateTime.now(),
+      slot: slot,
+      planned: HomeSlots.plannedMeal(_todayPlan, slot),
+      onAdd: () => _logMealOf(slot),
+    );
   }
 
     /// Good morning, good afternoon, good evening. Said once a day.

@@ -32,6 +32,16 @@ typedef PlannedLine = ({
 class HomeSlots {
   HomeSlots._();
 
+  /// Le repas prevu d'un creneau, quand il y en a un : la feuille de detail
+  /// en a besoin pour montrer le plat de Ryze a cote de ce qui a ete mange.
+  static PlannedActivity? plannedMeal(DayPlanData? day, WeekSlot slot) {
+    if (day == null) return null;
+    for (final meal in day.meals) {
+      if (meal.activityType.value == slot.name) return meal;
+    }
+    return null;
+  }
+
   static HomeSession? session(DayPlanData? day) {
     if (day == null) return null;
     final items = <HomeSession>[

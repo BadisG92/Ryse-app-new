@@ -151,12 +151,7 @@ class _SlotRow extends StatelessWidget {
                   for (final line in lines)
                     Padding(
                       padding: EdgeInsets.only(top: context.vw(0.5)),
-                      // Un repas note au journal n'a pas de feuille a ouvrir : pas
-                      // de chevron, pas de tap qui ne fait rien.
-                      child: _LineText(
-                        line: line,
-                        onTap: line.workout == null && line.activity == null ? null : () => onLineTap(line),
-                      ),
+                      child: _LineText(line: line, onTap: () => onLineTap(line)),
                     ),
               ],
             ),

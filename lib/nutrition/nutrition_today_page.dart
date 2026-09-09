@@ -7,6 +7,7 @@ import '../design/design.dart';
 import '../models/nutrition_models.dart' as nutrition;
 import '../models/notification_models.dart';
 import 'add_food_sheet.dart';
+import 'meal_sheet.dart';
 import '../services/day_meals.dart';
 import '../services/food_add_flow.dart';
 import '../services/food_entries_service.dart';
@@ -78,6 +79,20 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
       default:
         break;
     }
+  }
+
+  /// Un creneau vide se remplit d'un tap. Un creneau qui porte un repas prevu
+  /// s'ouvre d'abord : le plat que Ryze a prevu se lisait nulle part dans le
+  /// journal, le tap proposait seulement d'ajouter un aliment par-dessus.
+  Future<void> _openOrAdd(WeekSlot slot) async {
+    final meal = _day?[slot];
+    final planned = meal?.plannedName;
+    if (planned == null || planned.isEmpty) {
+      await _add(slot);
+      return;
+    }
+    await MealSheet.show(context, day: _date, slot: slot, onAdd: () => _add(slot));
+    if (mounted) await _load();
   }
 
   Future<void> _load() async {
@@ -440,7 +455,7 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
                     addLabel: 'nutri_add_food'.tr(lang),
                     open: _open,
                     onToggle: (slot) => setState(() => _open.contains(slot) ? _open.remove(slot) : _open.add(slot)),
-                    onAdd: _add,
+                    onAdd: _openOrAdd,
                     onRemoveItem: _removeItem,
                     onEditItem: _editItem,
                   ),
