@@ -2,7 +2,7 @@
 # il dépend du réseau, il coûte des jetons, et une panne de Google ne dit rien
 # de l'application.
 #
-#   flutter test test/ai/live_model_test.dart --tags live
+#   flutter test test/ai/live_model_test.dart --run-skipped --tags live
 tags:
   live:
     skip: "banc d'essai en ligne : lancer avec --tags live"

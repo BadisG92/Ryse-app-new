@@ -192,11 +192,24 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     });
     _scrollToBottom();
 
+    // Les cartes de validation attendent la fin de la phrase. Le modèle
+    // appelle l'outil avant de parler, donc la carte arrivait la première et
+    // le texte qui l'explique venait dessous, à l'envers de ce qu'on lit
+    // partout ailleurs : d'abord ce qu'on propose, puis de quoi le valider.
+    final held = <RyzePending>[];
+
+    void reveal() {
+      if (held.isEmpty || !mounted) return;
+      RyzeFeedback.tap();
+      setState(() => _pendingCards.addAll(held));
+      held.clear();
+      _scrollToBottom();
+    }
+
     try {
       // La réponse n'est plus seulement du texte : Ryze peut agir au milieu
       // d'une phrase. Chaque nature d'événement a sa place à l'écran.
       String fullResponse = '';
-      String displayedText = '';
       bool typing = false;
 
       /// Où la bulle en cours s'écrit.
@@ -213,7 +226,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         if (typing) return;
         typing = true;
         fullResponse = '';
-        displayedText = '';
         setState(() {
           _messages.add(CoachMessage.streaming(
             conversationId: widget.conversation.id,
@@ -240,19 +252,15 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             openBubble();
             fullResponse += text;
 
-            // L'effet de frappe : quelques caractères à la fois, dans la
-            // bulle ouverte pour ce texte et dans aucune autre.
-            while (displayedText.length < fullResponse.length && mounted && typing) {
-              final charsToAdd = (fullResponse.length - displayedText.length).clamp(1, 3);
-              displayedText = fullResponse.substring(0, displayedText.length + charsToAdd);
-
-              setState(() {
-                if (bubbleAt >= 0 && bubbleAt < _messages.length) {
-                  _messages[bubbleAt] = _messages[bubbleAt].copyWith(content: displayedText);
-                }
-              });
-              await Future.delayed(const Duration(milliseconds: 15));
-            }
+            // Le texte s'affiche au rythme où il arrive. Il y avait une
+            // machine à écrire par-dessus le flux, trois caractères toutes
+            // les quinze millisecondes : une réponse de trois cents signes
+            // prenait une seconde et demie de plus que sa propre génération.
+            setState(() {
+              if (bubbleAt >= 0 && bubbleAt < _messages.length) {
+                _messages[bubbleAt] = _messages[bubbleAt].copyWith(content: fullResponse);
+              }
+            });
             _scrollToBottom();
 
           case CoachAction(:final summary, :final ok, :final toolName, :final undo):
@@ -289,10 +297,8 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             }
 
           case CoachAsk(:final pending):
-            closeBubble();
-            RyzeFeedback.tap();
-            setState(() => _pendingCards.add(pending));
-            _scrollToBottom();
+            // Elle se posera sous la phrase, pas avant.
+            held.add(pending);
 
           case CoachProposals():
             // Une fournée de propositions se feuillette par jour : c'est la
@@ -314,7 +320,11 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       }
 
       closeBubble();
+      reveal();
     } catch (e) {
+      // Une carte retenue ne doit pas disparaître avec la phrase qui a
+      // échoué : ce qu'elle propose est déjà prêt.
+      reveal();
       if (mounted) {
         RyzeUndo.failed(context, message: 'error_generic'.tr(LocalizationService.instance.currentLanguageCode));
       }

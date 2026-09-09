@@ -247,12 +247,15 @@ class DetectedFood {
     );
   }
 
+  /// Une majuscule au début, et rien d'autre.
+  ///
+  /// Chaque mot prenait une majuscule : « Œufs Brouillés Au Beurre », ce qui
+  /// ne s'écrit ni en français ni en allemand. Le modèle écrit déjà les noms
+  /// correctement ; on ne touche qu'à la première lettre.
   static String _formatFoodName(String label) {
-    // Capitalize first letter and format nicely
-    return label.toLowerCase().split(' ')
-        .map((word) => word.isEmpty ? word : 
-             word[0].toUpperCase() + word.substring(1))
-        .join(' ');
+    final t = label.trim();
+    if (t.isEmpty) return t;
+    return t[0].toUpperCase() + t.substring(1);
   }
 
   // Food category keywords

@@ -48,11 +48,15 @@ Du hast Werkzeuge. Nutze sie, statt zu erklären, wo man in der App tippen muss.
 
   @override
   String get lengthRule => '''
-## LÄNGE
+## LÄNGE UND TON
 - Standard: höchstens 80 Wörter. Kurze Nachricht, kurze Antwort.
 - Ein Rezept oder ein Plan darf bis 200 Wörter gehen.
 - Ein Gedanke pro Nachricht. Listen statt Absätze.
-- Stell eine Frage, statt alles auf einmal auszubreiten.''';
+- Stell eine Frage, statt alles auf einmal auszubreiten.
+- Nach einer gelungenen Aktion ein Satz. Nach einer gescheiterten ebenfalls ein Satz: was nicht ging, und was jetzt passiert. Nie ein Absatz voller Entschuldigungen.
+- Keine Entschuldigungskaskaden, und bedank dich nie für die Geduld. Ein Fehler wird behoben, nicht kommentiert.
+- Kein Emoji als Unterschrift. Höchstens eins, wenn es etwas sagt, und nicht in jeder Nachricht.
+- Wiederhole nicht, was gerade geschrieben wurde, und sag nicht noch einmal, was die Aktionszeile oder die Karte schon zeigen.''';
 
   @override
   String get languageRule => 'Antworte auf Deutsch.';

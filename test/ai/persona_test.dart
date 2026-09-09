@@ -109,6 +109,40 @@ void main() {
     });
   });
 
+  group('Le registre', () {
+    // Vu sur appareil : « Oh, quelle étourderie de ma part, je m'en excuse
+    // sincèrement ! Je te remercie infiniment pour ta patience. » Puis un
+    // panda en signature de chaque message. Personne ne parle comme ça à
+    // ChatGPT, et personne ne l'accepterait de lui.
+    for (final persona in personas) {
+      test('la règle tient en ${persona.lang}', () {
+        final regle = persona.lengthRule.toLowerCase();
+
+        // Pas d'excuses en cascade, pas de merci pour la patience.
+        expect(
+          regle.contains('patience') || regle.contains('geduld'),
+          isTrue,
+          reason: '${persona.lang} : rien n\'interdit de remercier pour la patience',
+        );
+
+        // Pas d'émoji en signature.
+        expect(
+          regle.contains('emoji') || regle.contains('émoji'),
+          isTrue,
+          reason: '${persona.lang} : rien ne borne les émojis',
+        );
+
+        // Après un échec, une phrase.
+        expect(
+          regle.contains('échou') || regle.contains('failed') || regle.contains('gescheitert'),
+          isTrue,
+          reason: '${persona.lang} : rien ne borne la réponse après un échec',
+        );
+      });
+    }
+  });
+
+
   group('La carte pose la question, pas Ryze', () {
     // Vu sur appareil : Ryze demande « veux-tu que je l'ajoute ? », la carte
     // s'affiche et l'utilisateur valide, puis Ryze redemande « est-ce que je

@@ -499,9 +499,13 @@ class PlannerAIService {
         );
       }
 
-      final message = langCode == 'fr'
-          ? '✅ ${createdItems.length} repas ajoutés au planificateur !'
-          : '✅ ${createdItems.length} meals added to planner!';
+      // « 1 repas ajoutés » : le pluriel se décide, il ne se colle pas.
+      final n = createdItems.length;
+      final message = switch (langCode) {
+        'fr' => n == 1 ? 'Repas ajouté au planificateur' : '$n repas ajoutés au planificateur',
+        'de' => n == 1 ? 'Mahlzeit zum Planer hinzugefügt' : '$n Mahlzeiten zum Planer hinzugefügt',
+        _ => n == 1 ? 'Meal added to the planner' : '$n meals added to the planner',
+      };
 
       return PlannerActionResult.success(message, items: createdItems);
     } catch (e) {

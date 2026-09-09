@@ -166,21 +166,27 @@ class PlanTools {
   static Future<RyzePending> _proposal(String toolName, Map<String, dynamic> args) async {
     final built = await _run(toolName, args);
 
-    // La carte porte le détail : les exercices pour une séance, les calories
-    // pour un repas. Elle n'annonçait qu'un titre, et il fallait valider sans
-    // savoir ce qu'on validait.
+    // La carte dit où ça atterrit, puis ce que ça contient : « jeudi ·
+    // petit-déjeuner · 150 kcal », ou « jeudi · 45 min » suivi des exercices.
+    // Elle n'annonçait qu'un titre, et il fallait valider sans savoir ni
+    // quoi ni quand.
+    final where = <String>[
+      if (args['day'] != null) dayLabel(args['day']),
+      if (args['meal_type'] != null) 'meal_name_${args['meal_type']}'.tr(_lang).toLowerCase(),
+      if (args['duration_minutes'] != null) '${args['duration_minutes']} min',
+      if (built.data['calories'] != null) '${built.data['calories']} kcal',
+    ];
     final exercises = built.data['exercises'];
-    final detail = exercises is List && exercises.isNotEmpty
-        ? exercises.join('\n')
-        : built.data['calories'] != null
-            ? '${built.data['calories']} kcal'
-            : null;
+    final detail = [
+      if (where.isNotEmpty) where.join(' · '),
+      if (exercises is List && exercises.isNotEmpty) ...exercises.map((e) => '$e'),
+    ].join('\n');
 
     return RyzePending(
       id: '$toolName-${DateTime.now().microsecondsSinceEpoch}',
       toolName: toolName,
       title: built.ok ? built.summary : 'ryze_action_failed'.tr(_lang),
-      detail: detail,
+      detail: detail.isEmpty ? null : detail,
       commit: () => built.ok ? commit(built.payload) : Future.value(built),
     );
   }

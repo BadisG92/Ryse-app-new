@@ -202,15 +202,33 @@ class RyzeBubble extends StatelessWidget {
   /// la bulle afficherait les astérisques.
   static final RegExp _bold = RegExp(r'\*\*(.+?)\*\*', dotAll: true);
 
+  /// Une puce en début de ligne : `* `, `- `, ou déjà `• `, avec ou sans
+  /// espaces devant. Le modèle écrit ses listes en Markdown, et la bulle
+  /// affichait l'astérisque tel quel devant chaque exercice.
+  static final RegExp _bullet = RegExp(r'^\s*(?:[*\-•]|\d+[.)])\s+', multiLine: true);
+
+  /// Le texte du modèle, prêt pour la bulle : les listes en puces, le reste
+  /// tel quel.
+  @visibleForTesting
+  static String tidy(String raw) {
+    // Les listes numérotées gardent leur numéro, les autres prennent une puce.
+    return raw.replaceAllMapped(_bullet, (m) {
+      final marque = m.group(0)!.trim();
+      final numero = RegExp(r'^\d+').firstMatch(marque);
+      return numero == null ? '•  ' : '${numero.group(0)}.  ';
+    });
+  }
+
   static List<InlineSpan> _spans(String raw) {
+    final text = tidy(raw);
     final out = <InlineSpan>[];
     var at = 0;
-    for (final m in _bold.allMatches(raw)) {
-      if (m.start > at) out.add(TextSpan(text: raw.substring(at, m.start)));
+    for (final m in _bold.allMatches(text)) {
+      if (m.start > at) out.add(TextSpan(text: text.substring(at, m.start)));
       out.add(TextSpan(text: m.group(1), style: const TextStyle(fontWeight: FontWeight.w700)));
       at = m.end;
     }
-    if (at < raw.length) out.add(TextSpan(text: raw.substring(at)));
+    if (at < text.length) out.add(TextSpan(text: text.substring(at)));
     return out;
   }
 
@@ -334,9 +352,24 @@ class RyzeToolLine extends StatelessWidget {
   /// L'action n'a pas abouti : la ligne le dit sans dramatiser.
   final bool failed;
 
+  /// Le message tel que l'exécuteur l'a écrit, moins ce que la ligne dit
+  /// déjà. Les exécuteurs commencent par « ✅ » ou « ❌ » et finissent par un
+  /// point d'exclamation ; la ligne porte sa propre coche, on lisait
+  /// « ✓ ✅ 1 repas ajoutés ! ».
+  static final RegExp _lead = RegExp(r'^[\s✅❌⚠️✓✔️🗑️🏃🍽️💪]+');
+
+  @visibleForTesting
+  static String clean(String raw) {
+    var t = raw.replaceFirst(_lead, '').trim();
+    if (t.endsWith(' !')) t = t.substring(0, t.length - 2);
+    if (t.endsWith('!')) t = t.substring(0, t.length - 1);
+    return t.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = failed ? RyzeColors.mute : RyzeColors.accInk;
+    final label = clean(this.label);
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.vw(1.3), horizontal: context.vw(1.0)),
       child: Row(

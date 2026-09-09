@@ -22,7 +22,7 @@ import 'package:ryze_app/ai/ryze_tools/ryze_tools.dart';
 /// Ne tourne pas avec la suite ordinaire : il coûte des jetons et il dépend du
 /// réseau. Pour le lancer :
 ///
-///   flutter test test/ai/live_model_test.dart --tags live --dart-define-from-file=.env.local
+///   flutter test test/ai/live_model_test.dart --run-skipped --tags live --dart-define-from-file=.env.local
 ///
 /// Sans clé, tout est ignoré plutôt que rouge : un test d'intégration qui
 /// échoue faute de secret ne dit rien de l'application.
