@@ -880,27 +880,6 @@ class PendingMeal {
     };
   }
 
-  /// Nom du jour formaté
-  String get dayName {
-    const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-    return days[plannedDate.weekday - 1];
-  }
-
-  /// Nom du type de repas
-  String get mealTypeName {
-    switch (mealType) {
-      case PlannedActivityType.breakfast:
-        return 'Petit-déjeuner';
-      case PlannedActivityType.lunch:
-        return 'Déjeuner';
-      case PlannedActivityType.dinner:
-        return 'Dîner';
-      case PlannedActivityType.snack:
-        return 'Collation';
-      default:
-        return 'Repas';
-    }
-  }
 }
 
 // ============================================================================

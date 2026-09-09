@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/weekly_planner_models.dart';
@@ -490,7 +491,7 @@ class PlannerAIService {
         );
 
         if (activity != null) {
-          createdItems.add('${meal.dayName} - ${meal.mealTypeName}');
+          createdItems.add(_placeLabel(langCode, meal.plannedDate, meal.mealType));
         }
       }
 
@@ -1418,7 +1419,7 @@ class PlannerAIService {
           // Utiliser le service partagé pour valider et créer le preset
           final preset = PlannedCardioService.validateHiitType(hiitType);
           if (preset == null) {
-            return {'success': false, 'message': 'Unknown HIIT type: $hiitType'};
+            return {'success': false, 'message': _getMessage(langCode, 'workout_generation_failed')};
           }
 
           createdHiit = await PlannedCardioService.createPlannedHiit(
@@ -1693,7 +1694,7 @@ class PlannerAIService {
         return await _executeDeleteAllMeals(langCode);
 
       default:
-        return {'success': false, 'message': 'Unknown function: $functionName'};
+        return {'success': false, 'message': _getErrorMessage(langCode, 'unknown_intent')};
     }
   }
 
@@ -1705,7 +1706,7 @@ class PlannerAIService {
     try {
       final user = AuthService().currentUser;
       if (user == null) {
-        return {'success': false, 'message': 'User not logged in'};
+        return {'success': false, 'message': _getErrorMessage(langCode, 'api_error')};
       }
 
       final dayStr = args['day'] as String? ?? '';
@@ -1765,7 +1766,7 @@ class PlannerAIService {
       };
     } catch (e) {
       debugPrint('❌ Create meal error: $e');
-      return {'success': false, 'message': 'Error creating meal: $e'};
+      return {'success': false, 'message': _getMessage(langCode, 'meal_creation_failed')};
     }
   }
 
@@ -1777,7 +1778,7 @@ class PlannerAIService {
     try {
       final user = AuthService().currentUser;
       if (user == null) {
-        return {'success': false, 'message': 'User not logged in'};
+        return {'success': false, 'message': _getErrorMessage(langCode, 'api_error')};
       }
 
       final dayStr = args['day'] as String? ?? '';
@@ -1862,7 +1863,7 @@ class PlannerAIService {
       return {'success': true, 'message': msg};
     } catch (e) {
       debugPrint('❌ Delete meal error: $e');
-      return {'success': false, 'message': 'Error deleting meal: $e'};
+      return {'success': false, 'message': _getErrorMessage(langCode, 'api_error')};
     }
   }
 
@@ -1874,7 +1875,7 @@ class PlannerAIService {
     try {
       final user = AuthService().currentUser;
       if (user == null) {
-        return {'success': false, 'message': 'User not logged in'};
+        return {'success': false, 'message': _getErrorMessage(langCode, 'api_error')};
       }
 
       final dayStr = args['day'] as String? ?? '';
@@ -1975,7 +1976,7 @@ class PlannerAIService {
       return {'success': true, 'message': msg};
     } catch (e) {
       debugPrint('❌ Modify meal error: $e');
-      return {'success': false, 'message': 'Error modifying meal: $e'};
+      return {'success': false, 'message': _getErrorMessage(langCode, 'api_error')};
     }
   }
 
@@ -1984,7 +1985,7 @@ class PlannerAIService {
     try {
       final user = AuthService().currentUser;
       if (user == null) {
-        return {'success': false, 'message': 'User not logged in'};
+        return {'success': false, 'message': _getErrorMessage(langCode, 'api_error')};
       }
 
       // La fenêtre affichée à l'écran, comme partout ailleurs dans le service.
@@ -2016,7 +2017,7 @@ class PlannerAIService {
       return {'success': true, 'message': msg};
     } catch (e) {
       debugPrint('❌ Delete all meals error: $e');
-      return {'success': false, 'message': 'Error deleting meals: $e'};
+      return {'success': false, 'message': _getErrorMessage(langCode, 'api_error')};
     }
   }
 
@@ -2210,6 +2211,19 @@ class PlannerAIService {
     return days[date.weekday - 1];
   }
 
+  /// « Jeudi - Déjeuner », dans la langue du compte.
+  ///
+  /// Le message de validation disait bien « added to the plan » en anglais,
+  /// mais les deux mots qu'il encadre venaient de deux getters français écrits
+  /// en dur dans le modèle : un compte anglais lisait « Mercredi -
+  /// Petit-déjeuner added to the plan ».
+  static String _placeLabel(String langCode, DateTime date, PlannedActivityType type) {
+    final locale = switch (langCode) { 'fr' => 'fr_FR', 'de' => 'de_DE', _ => 'en_US' };
+    final jour = DateFormat('EEEE', locale).format(date);
+    final moment = 'meal_name_${type.value}'.tr(langCode);
+    return '${jour[0].toUpperCase()}${jour.substring(1)} - $moment';
+  }
+
   static String _getMessage(String langCode, String key) {
     final messages = {
       'day_already_past': {
@@ -2327,7 +2341,7 @@ class PlannerAIService {
       if (session.isWorkout && session.workout != null) {
         final workout = session.workout!;
         if (workout.exercises == null || workout.exercises!.isEmpty) {
-          return PlannerActionResult.error('No exercises to save');
+          return PlannerActionResult.error(_getMessage(langCode, 'workout_generation_failed'));
         }
 
         final savedWorkout = await WeeklyPlannerService.addPlannedWorkout(
@@ -2363,7 +2377,7 @@ class PlannerAIService {
       return PlannerActionResult.error(_getMessage(langCode, 'session_save_failed'));
     } catch (e) {
       debugPrint('❌ confirmSingleSession error: $e');
-      return PlannerActionResult.error('Error saving session: $e');
+      return PlannerActionResult.error(_getMessage(langCode, 'session_save_failed'));
     }
   }
 
