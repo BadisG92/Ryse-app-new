@@ -188,27 +188,38 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     );
   }
 
+  /// Retirer un aliment de ce que Ryze a lu.
+  ///
+  /// Le geste existait — un balayage — mais rien ne le disait, et la seule
+  /// autre porte, la feuille de correction, n'a pas de retrait : on ne pouvait
+  /// pas enlever un aliment. La rangée porte maintenant la même croix que la
+  /// liste de la journée, et le retrait se dit comme partout ailleurs, avec la
+  /// barre d'annulation — plus de snackbar Material à deux langues en dur.
+  ///
+  /// Le dernier aliment retiré ne ferme plus l'écran : il ne resterait rien à
+  /// annuler, et on peut vouloir tout remplacer par un ingrédient ajouté à la
+  /// main. C'est le bouton d'enregistrement qui s'éteint tant que la liste est
+  /// vide.
   void _deleteFood(DetectedFood food) {
-    setState(() {
-      _analysisResult.detectedFoods.remove(food);
-    });
+    final index = _analysisResult.detectedFoods.indexOf(food);
+    if (index < 0) return;
+    final lang = LocalizationService.instance.currentLanguageCode;
 
-    // Si plus d'aliments, rediriger vers l'accueil
-    if (_analysisResult.detectedFoods.isEmpty) {
-      _leave(saved: false);
-      final locService = LocalizationService.instance;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            locService.currentLanguageCode == 'fr'
-              ? 'Tous les aliments ont été supprimés'
-              : 'All foods have been removed'
-          ),
-          backgroundColor: RyzeColors.mute2,
-        ),
-      );
-    } else {
-    }
+    RyzeFeedback.removed();
+    setState(() => _analysisResult.detectedFoods.removeAt(index));
+
+    RyzeUndo.show(
+      context,
+      message: 'undo_item_removed'.tr(lang).replaceAll('{name}', food.name),
+      undoLabel: 'undo'.tr(lang),
+      onUndo: () {
+        if (!mounted) return;
+        setState(() {
+          final at = index.clamp(0, _analysisResult.detectedFoods.length);
+          _analysisResult.detectedFoods.insert(at, food);
+        });
+      },
+    );
   }
 
   Future<void> _saveAllFoods() async {
@@ -531,14 +542,14 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
                   border: Border(top: BorderSide(color: RyzeColors.line)),
                 ),
                 child: Pressable(
-                  onTap: _isSaving ? null : _saveAllFoods,
+                  onTap: (_isSaving || _analysisResult.detectedFoods.isEmpty) ? null : _saveAllFoods,
                   child: Container(
                     height: context.vw(13.3),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: RyzeColors.ink,
+                      color: _analysisResult.detectedFoods.isEmpty ? RyzeColors.idle : RyzeColors.ink,
                       borderRadius: BorderRadius.circular(RyzeRadius.sm),
-                      boxShadow: RyzeShadow.soft,
+                      boxShadow: _analysisResult.detectedFoods.isEmpty ? null : RyzeShadow.soft,
                     ),
                     child: _isSaving
                         ? SizedBox(
@@ -624,8 +635,8 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     );
   }
 
-  /// Ce qui compose le repas. Une ligne se tape pour la corriger, se balaie
-  /// pour la retirer : plus de menu à trois points sur chacune.
+  /// Ce qui compose le repas. Une ligne se tape pour la corriger, sa croix la
+  /// retire — et le balayage reste, pour qui va vite.
   Widget _buildFoodsList() {
     final lang = LocalizationService.instance.currentLanguageCode;
     final foods = _analysisResult.detectedFoods;
@@ -754,8 +765,16 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
                   ],
                 ),
               ),
-              SizedBox(width: context.vw(1.5)),
-              Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
+              // La même croix qu'ailleurs dans l'app : c'est elle qui dit
+              // qu'un aliment peut partir.
+              Pressable(
+                onTap: () => _deleteFood(food),
+                child: SizedBox(
+                  width: 34,
+                  height: 34,
+                  child: Icon(LucideIcons.x, size: 15, color: RyzeColors.mute2),
+                ),
+              ),
             ],
           ),
         ),
