@@ -179,6 +179,18 @@ class _MealRow extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: RyzeText.body(context, 3.2, color: RyzeColors.mute),
                             ),
+                            // Ce qui etait prevu ne disparait pas parce qu'on a
+                            // mange : c'est ce qui permet de voir si on l'a suivi,
+                            // et c'est ce que l'accueil montre deja.
+                            if (done && (meal.plannedName?.isNotEmpty ?? false)) ...[
+                              SizedBox(height: context.vw(0.5)),
+                              Text(
+                                '$plannedPrefix · ${meal.plannedName}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: RyzeText.body(context, 3.1, color: RyzeColors.mute2),
+                              ),
+                            ],
                           ],
                         ),
                       ),

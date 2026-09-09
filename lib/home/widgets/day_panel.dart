@@ -247,14 +247,26 @@ class _LineText extends StatelessWidget {
               ? Icon(LucideIcons.check, size: context.vw(3.4), color: RyzeColors.accInk)
               : null,
         ),
+        // Le nom cede, le chiffre jamais. Ecrits dans le meme texte, deux
+        // aliments aux noms longs poussaient les calories hors de l'ecran :
+        // la ligne du journal n'affichait plus rien de chiffre, alors que
+        // Nutrition annoncait 690 kcal pour le meme repas.
         Expanded(
           child: Text(
-            line.detail.isEmpty ? line.title : '${line.title} · ${line.detail}',
+            line.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: RyzeText.body(context, 3.1, color: done ? RyzeColors.ink : RyzeColors.mute),
           ),
         ),
+        if (line.detail.isNotEmpty) ...[
+          SizedBox(width: context.vw(2.1)),
+          Text(
+            line.detail,
+            style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: done ? RyzeColors.ink : RyzeColors.mute)
+                .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+          ),
+        ],
         if (onTap != null) Icon(LucideIcons.chevronRight, size: context.vw(3.9), color: RyzeColors.mute2),
       ],
     );

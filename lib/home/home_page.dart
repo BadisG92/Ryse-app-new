@@ -532,6 +532,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
           slotLabel: (s) => 'slot_${s.name}'.tr(lang),
           kcal: 'nutri_kcal'.tr(lang),
           exercises: 'planner_exercises'.tr(lang),
+          plannedPrefix: 'nutri_planned_prefix'.tr(lang),
         ),
     ];
     final now = DateTime.now();

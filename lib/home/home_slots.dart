@@ -121,6 +121,7 @@ class HomeSlots {
     required String Function(WeekSlot) slotLabel,
     required String kcal,
     required String exercises,
+    String? plannedPrefix,
   }) {
     if (day == null) return const [];
     final lines = <PlannedLine>[];
@@ -140,11 +141,15 @@ class HomeSlots {
         if (meal.activityType.value != slot.name) continue;
         if (!visible(meal.status)) continue;
         final data = meal.mealData;
-        final name = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : slotLabel(slot);
+        final dish = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : slotLabel(slot);
+        final waiting = meal.status != PlannedStatus.completed;
+        // « Prevu · Bol fromage blanc » : sans ce mot, la ligne du plan et
+        // celle du journal se lisent comme deux repas contradictoires.
+        final name = waiting && plannedPrefix != null ? '$plannedPrefix · $dish' : dish;
         final energy = data?.calories;
         lines.add((
           slot: slot,
-          state: meal.status == PlannedStatus.completed ? SlotState.done : SlotState.planned,
+          state: waiting ? SlotState.planned : SlotState.done,
           title: name,
           detail: energy == null || energy <= 0 ? '' : '$energy $kcal',
           workout: null,
