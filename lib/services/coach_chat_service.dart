@@ -376,6 +376,17 @@ class CoachChatService {
 
     if (tool.needsConfirmation(call.args) && tool.preview != null) {
       final pending = await tool.preview!(call.args);
+
+      // La proposition n'a pas pu être construite. Montrer une carte
+      // « ça n'est pas passé » avec un bouton Valider dessous n'aurait aucun
+      // sens : on dit le motif, et le modèle le reçoit pour se reprendre.
+      final blocked = pending.blocked;
+      if (blocked != null) {
+        _agent!.addToolResults([(name: call.name, response: blocked.toResponse())]);
+        yield CoachAction(blocked.summary, ok: false, toolName: call.name);
+        return;
+      }
+
       _pending[pending.id] = pending;
 
       // « en attente » et non « fait » : c'est ce qui empêche Ryze d'annoncer

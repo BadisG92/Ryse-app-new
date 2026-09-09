@@ -202,7 +202,48 @@ class RyzeContext {
     return section(s, 'section_now', [
       '$jour $date, $heure ($utc)',
       _relativeDays(s, now),
+      _daysLeft(s, now),
     ].join('\n'));
+  }
+
+  /// Les jours de cette semaine qui restent à remplir.
+  ///
+  /// L'écran du planificateur avait ce bloc, la conversation ne l'avait pas.
+  /// Le même modèle, avec les mêmes outils, plaçait donc trois séances lundi,
+  /// mardi et jeudi un mercredi soir : il savait la date, il n'avait jamais
+  /// fait la soustraction. Le planificateur, lui, répondait jeudi, vendredi,
+  /// samedi.
+  ///
+  /// Le garde-fou côté base refuse bien ces jours, mais refuser après coup
+  /// n'est pas comprendre : l'utilisateur voyait trois cartes en erreur au
+  /// lieu de trois séances.
+  static String _daysLeft(PersonaStrings s, DateTime now) {
+    final locale = switch (s.lang) { 'fr' => 'fr_FR', 'de' => 'de_DE', _ => 'en_US' };
+    final fmt = DateFormat('EEEE', locale);
+
+    // La semaine se termine dimanche : ce qui reste va d'aujourd'hui à là.
+    final restants = <String>[
+      for (var i = 0; i <= DateTime.sunday - now.weekday; i++)
+        fmt.format(now.add(Duration(days: i))),
+    ];
+
+    if (restants.length <= 1) {
+      return switch (s.lang) {
+        'fr' => 'Cette semaine, il ne reste qu\'aujourd\'hui.',
+        'de' => 'Diese Woche bleibt nur noch heute.',
+        _ => 'Only today is left this week.',
+      };
+    }
+
+    final liste = restants.join(', ');
+    return switch (s.lang) {
+      'fr' => 'Il reste $liste. Les autres jours de la semaine sont passés : '
+          'n\'y place rien.',
+      'de' => 'Es bleiben $liste. Die anderen Tage der Woche sind vorbei: '
+          'plane nichts darauf.',
+      _ => '$liste are left. The other days of this week are behind us: '
+          'do not plan anything on them.',
+    };
   }
 
   /// Les jours nommés, rattachés à une date, pour que « demain » se calcule

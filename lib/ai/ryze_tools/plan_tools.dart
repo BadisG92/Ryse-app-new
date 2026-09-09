@@ -202,6 +202,19 @@ class PlanTools {
   static Future<RyzePending> _proposal(String toolName, Map<String, dynamic> args) async {
     final built = await _run(toolName, args);
 
+    // Rien n'a pu être proposé : le jour est passé, la journée est pleine, le
+    // générateur n'a rien rendu. Il n'y a pas de carte à montrer, seulement un
+    // motif à dire — et à rendre au modèle pour qu'il propose autre chose.
+    if (!built.ok) {
+      return RyzePending(
+        id: '$toolName-${DateTime.now().microsecondsSinceEpoch}',
+        toolName: toolName,
+        title: built.summary,
+        blocked: built,
+        commit: () => Future.value(built),
+      );
+    }
+
     // La carte dit où ça atterrit, puis ce que ça contient : « jeudi ·
     // petit-déjeuner · 150 kcal », ou « jeudi · 45 min » suivi des exercices.
     // Elle n'annonçait qu'un titre, et il fallait valider sans savoir ni
@@ -221,9 +234,9 @@ class PlanTools {
     return RyzePending(
       id: '$toolName-${DateTime.now().microsecondsSinceEpoch}',
       toolName: toolName,
-      title: built.ok ? built.summary : 'ryze_action_failed'.tr(_lang),
+      title: built.summary,
       detail: detail.isEmpty ? null : detail,
-      commit: () => built.ok ? commit(built.payload) : Future.value(built),
+      commit: () => commit(built.payload),
     );
   }
 

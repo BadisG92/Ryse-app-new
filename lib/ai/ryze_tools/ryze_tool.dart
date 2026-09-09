@@ -51,8 +51,22 @@ class RyzePending {
     required this.title,
     this.detail,
     this.confirmLabelKey = 'ryze_validate',
+    this.blocked,
     required this.commit,
   });
+
+  /// Rien à valider : la proposition n'a pas pu être construite.
+  ///
+  /// Une carte se bâtit en exécutant l'outil à blanc — c'est ce qui permet
+  /// d'annoncer les vrais exercices avant d'écrire quoi que ce soit. Quand
+  /// cette exécution échoue, il n'y a rien à proposer, et la surface montrait
+  /// quand même une carte : « ça n'est pas passé, réessayez » avec un bouton
+  /// **Valider** dessous, et le vrai motif — le jour est déjà passé — perdu
+  /// en route.
+  ///
+  /// Quand ce champ est rempli, la surface n'affiche pas de carte : elle rend
+  /// le motif, et le modèle le reçoit tel quel pour se corriger.
+  final RyzeToolResult? blocked;
 
   final String id;
   final String toolName;

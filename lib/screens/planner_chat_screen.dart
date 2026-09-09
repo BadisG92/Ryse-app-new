@@ -1689,7 +1689,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
               child: ProposalWorkoutRow(
               dayShort: _formatDayNameShort(session.plannedDate, langCode),
               title: session.displayTitle,
-              subtitle: session.displaySubtitle,
+              subtitle: session.dateLabel(langCode),
               selected: n > 1 && i == _currentSessionIndex,
               last: i == n - 1,
               onTap: () {

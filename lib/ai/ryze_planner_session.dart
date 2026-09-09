@@ -115,6 +115,14 @@ class RyzePlannerSession {
     if (tool.needsConfirmation(call.args) && tool.preview != null) {
       final pending = await tool.preview!(call.args);
 
+      // Rien à proposer : on rend le motif plutôt qu'une carte vide à valider.
+      final blocked = pending.blocked;
+      if (blocked != null) {
+        _agent.addToolResults([(name: call.name, response: blocked.toResponse())]);
+        yield CoachAction(blocked.summary, ok: false, toolName: call.name);
+        return;
+      }
+
       // La carte est déjà à l'écran, avec ses deux boutons : le modèle doit le
       // savoir, sinon il redemande la permission en toutes lettres.
       _agent.addToolResults([

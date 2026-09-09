@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../design/tokens.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'sport_models.dart';
@@ -939,13 +940,6 @@ class PendingCardio {
     return activityName;
   }
 
-  /// Sous-titre avec la date
-  String get displaySubtitle {
-    const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-    const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-                    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-    return '${days[plannedDate.weekday - 1]} ${plannedDate.day} ${months[plannedDate.month - 1]}';
-  }
 
   /// Convertir en PlannedCardioData pour insertion
   PlannedCardioData toPlannedCardioData() {
@@ -978,7 +972,6 @@ class PendingSession {
   final PendingSessionType type;
   final DateTime plannedDate;
   final String displayTitle;
-  final String displaySubtitle;
   final PendingWorkout? workout;
   final PendingCardio? cardio;
 
@@ -986,7 +979,6 @@ class PendingSession {
     required this.type,
     required this.plannedDate,
     required this.displayTitle,
-    required this.displaySubtitle,
     this.workout,
     this.cardio,
   });
@@ -995,19 +987,22 @@ class PendingSession {
   bool get isCardio => type == PendingSessionType.cardio;
 
   /// Créer depuis un PendingWorkout
-  factory PendingSession.fromWorkout(PendingWorkout workout) {
-    const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-    const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-                    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-    final subtitle = '${days[workout.plannedDate.weekday - 1]} ${workout.plannedDate.day} ${months[workout.plannedDate.month - 1]}';
+  factory PendingSession.fromWorkout(PendingWorkout workout) => PendingSession(
+        type: PendingSessionType.workout,
+        plannedDate: workout.plannedDate,
+        // Juste le type : workoutName porte déjà la durée.
+        displayTitle: workout.workoutType,
+        workout: workout,
+      );
 
-    return PendingSession(
-      type: PendingSessionType.workout,
-      plannedDate: workout.plannedDate,
-      displayTitle: workout.workoutType, // Juste le type, pas workoutName qui contient déjà la durée
-      displaySubtitle: subtitle,
-      workout: workout,
-    );
+  /// Le jour de la séance, écrit dans la langue du compte.
+  ///
+  /// Il se construisait avec deux tableaux français en dur : la carte du
+  /// planificateur affichait « Jeudi 10 septembre » à un utilisateur anglais,
+  /// juste sous une pastille « Thu » correcte.
+  String dateLabel(String lang) {
+    final locale = switch (lang) { 'fr' => 'fr_FR', 'de' => 'de_DE', _ => 'en_US' };
+    return DateFormat('EEEE d MMMM', locale).format(plannedDate);
   }
 
   /// Créer depuis un PendingCardio
@@ -1016,7 +1011,6 @@ class PendingSession {
       type: PendingSessionType.cardio,
       plannedDate: cardio.plannedDate,
       displayTitle: cardio.displayTitle,
-      displaySubtitle: cardio.displaySubtitle,
       cardio: cardio,
     );
   }
