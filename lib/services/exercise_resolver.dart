@@ -137,12 +137,36 @@ class ExerciseResolver {
     if (loose != null) return loose;
 
     // 4. Rien ne correspond : l'exercice devient une ligne à lui.
+    //
+    // Le nom retenu est celui de la langue du compte. Le modèle est censé
+    // écrire dans cette langue, mais il mélange : un compte anglais s'est
+    // retrouvé avec « Rowing buste penché » et « Développé épaules » à côté de
+    // « Bench Press ». Le nom canonique, lui, est anglais par définition.
     return _createOwnExercise(
-      name: trimmed,
+      name: _nameForAccount(trimmed, canonicalEnglishName),
       muscleGroup: muscleGroup,
       equipment: equipment,
       description: description,
     );
+  }
+
+  /// Le nom sous lequel un exercice sur mesure doit vivre.
+  ///
+  /// En anglais, le nom canonique fait foi puisqu'il est anglais par
+  /// construction. Dans les autres langues, c'est le nom localisé que le
+  /// modèle a écrit — il n'existe pas de nom canonique français ou allemand.
+  static String _nameForAccount(String given, String? canonicalEnglishName) {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    if (lang != 'en') return given;
+
+    final canonical = canonicalEnglishName?.trim() ?? '';
+    if (canonical.isEmpty) return given;
+
+    // Une majuscule par mot, comme le catalogue anglais l'écrit.
+    return canonical
+        .split(RegExp(r'\s+'))
+        .map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1))
+        .join(' ');
   }
 
   /// Rapproche un nom du catalogue, en tranchant les ex æquo.

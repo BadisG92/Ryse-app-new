@@ -35,7 +35,10 @@ class PlanTools {
   /// « Planifie mon petit-déjeuner », à quatre heures du matin, atterrissait
   /// jeudi. Sans indication, c'est aujourd'hui.
   static String _dayHint(String what) =>
-      'Day of the $what. When the user names no day, it is today.';
+      'Day of the $what. When the user names no day, it is today. Never a day '
+      'already behind us: the date block says which day it is, so this one is '
+      'today or later. Asked for several days in this week, take them among '
+      'those that remain.';
 
   /// Le jour, dit dans la langue de l'utilisateur.
   ///
@@ -171,6 +174,10 @@ class PlanTools {
     };
   }
 
+  /// Une majuscule en tête, puisque c'est le début de la ligne.
+  static String _capitalise(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
   /// Ce que la séance contient, une ligne par exercice.
   ///
   /// « Développé couché · 4 × 8 · 60 kg ». La même liste sert deux fois : au
@@ -200,7 +207,7 @@ class PlanTools {
     // Elle n'annonçait qu'un titre, et il fallait valider sans savoir ni
     // quoi ni quand.
     final where = <String>[
-      if (args['day'] != null) dayLabel(args['day']),
+      if (args['day'] != null) _capitalise(dayLabel(args['day'])),
       if (args['meal_type'] != null) 'meal_name_${args['meal_type']}'.tr(_lang).toLowerCase(),
       if (args['duration_minutes'] != null) '${args['duration_minutes']} min',
       if (built.data['calories'] != null) '${built.data['calories']} kcal',
@@ -324,7 +331,10 @@ class PlanTools {
             'properties': {
               'exercise_name': {
                 'type': 'string',
-                'description': 'The exercise, named in the user language.',
+                'description':
+                    'The exercise, named in the user language and in that language '
+                    'only. Never mix: an English conversation gets English names for '
+                    'every exercise of the session, a French one gets French names.',
               },
               'canonical_name_en': {
                 'type': 'string',

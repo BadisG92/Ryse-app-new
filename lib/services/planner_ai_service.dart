@@ -548,6 +548,22 @@ class PlannerAIService {
     Map<String, dynamic> args,
     String langCode,
   ) async {
+    // On ne planifie pas dans le passé.
+    //
+    // Le garde-fou n'existait que pour les repas. « Trois séances cette
+    // semaine, pas mercredi », demandé un mercredi soir, revenait avec lundi
+    // et mardi : le modèle connaît la date, mais rien ne lui interdisait un
+    // jour révolu, et rien ne l'arrêtait derrière.
+    final passe = _pastDayIn(args);
+    if (passe != null) {
+      return {
+        'success': false,
+        'message': _getMessage(langCode, 'day_already_past')
+            .replaceAll('{day}', _formatDayName(passe, langCode)),
+        'is_past_day': true,
+      };
+    }
+
     final out = await _execute(functionName, args, langCode);
 
     // Tout ce qui a changé le plan le fait savoir.
@@ -567,6 +583,26 @@ class PlannerAIService {
 
   /// Les outils qui ne touchent à rien.
   static const Set<String> _readOnlyTools = {'ask_clarification'};
+
+  /// Le jour visé, s'il est déjà passé.
+  ///
+  /// Rend `null` quand la demande ne porte aucune date, ou qu'elle vise
+  /// aujourd'hui ou plus tard. Aujourd'hui reste permis : une séance du soir
+  /// se planifie encore à vingt-deux heures.
+  static DateTime? _pastDayIn(Map<String, dynamic> args) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (final cle in const ['day', 'to_day', 'new_day']) {
+      final brut = args[cle] as String?;
+      if (brut == null || brut.trim().isEmpty) continue;
+
+      final jour = _parseSingleDay(brut);
+      if (jour == null) continue;
+      if (DateTime(jour.year, jour.month, jour.day).isBefore(today)) return jour;
+    }
+    return null;
+  }
 
   static Future<Map<String, dynamic>> _execute(
     String functionName,
@@ -2176,6 +2212,11 @@ class PlannerAIService {
 
   static String _getMessage(String langCode, String key) {
     final messages = {
+      'day_already_past': {
+        'fr': "{day} est déjà passé. Je peux planifier à partir d'aujourd'hui.",
+        'en': '{day} is already behind us. I can plan from today onwards.',
+        'de': '{day} ist schon vorbei. Ich kann ab heute planen.',
+      },
       'day_not_understood': {
         'fr': "Je n'ai pas compris de quel jour tu parles. Dis-le-moi autrement ?",
         'en': "I did not catch which day you mean. Say it another way?",
