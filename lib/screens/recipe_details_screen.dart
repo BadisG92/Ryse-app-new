@@ -768,17 +768,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (mounted) {
         Navigator.pop(context);
 
+        // Trois phrases ecrites en dur, une par langue, dans une snackbar
+        // Material : le dictionnaire porte deja cette phrase, et la pilule est
+        // la facon dont l'application accuse reception.
         final lang = LocalizationService.instance.currentLanguageCode;
-        String snackText;
-        if (lang == 'fr') {
-          snackText = '${foodItem.name} ajouté au ${meal.name}';
-        } else if (lang == 'de') {
-          snackText = '${foodItem.name} zu ${meal.name} hinzugefügt';
-        } else {
-          snackText = '${foodItem.name} added to ${meal.name}';
-        }
-
-        SnackBarUtils.show(context, message: snackText);
+        RyzeFeedback.success();
+        RyzeUndo.note(
+          context,
+          message: 'food_added_to_meal_name'.tr(lang)
+              .replaceAll('{foodName}', foodItem.name)
+              .replaceAll('{mealName}', meal.name),
+        );
       }
 
     } catch (e) {
@@ -813,16 +813,13 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         Navigator.pop(context);
 
         final lang = LocalizationService.instance.currentLanguageCode;
-        String snackText;
-        if (lang == 'fr') {
-          snackText = '${foodItem.name} ajouté au nouveau $mealType';
-        } else if (lang == 'de') {
-          snackText = '${foodItem.name} zu neuem $mealType hinzugefügt';
-        } else {
-          snackText = '${foodItem.name} added to new $mealType';
-        }
-
-        SnackBarUtils.show(context, message: snackText);
+        RyzeFeedback.success();
+        RyzeUndo.note(
+          context,
+          message: 'food_added_to_new_meal'.tr(lang)
+              .replaceAll('{foodName}', foodItem.name)
+              .replaceAll('{mealType}', mealType),
+        );
       }
 
     } catch (e) {

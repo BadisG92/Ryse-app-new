@@ -1261,16 +1261,15 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
               if (currentContext.mounted) {
                 if (success) {
-
-                  ScaffoldMessenger.of(currentContext).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'food_added_to_meal_name'.tr(LocalizationService.instance.currentLanguageCode)
-                          .replaceAll('{foodName}', foodItem.name)
-                          .replaceAll('{mealName}', meal.name)
-                      ),
-                      backgroundColor: const Color(0xFF0B132B),
-                    ),
+                  // Deux battements et la pilule de l'application : une snackbar
+                  // Material sur un encre code en dur n'etait ni la langue de
+                  // Ryze, ni sensible sous le doigt.
+                  RyzeFeedback.success();
+                  RyzeUndo.note(
+                    currentContext,
+                    message: 'food_added_to_meal_name'.tr(LocalizationService.instance.currentLanguageCode)
+                        .replaceAll('{foodName}', foodItem.name)
+                        .replaceAll('{mealName}', meal.name),
                   );
                 } else {
                   ScaffoldMessenger.of(currentContext).showSnackBar(
@@ -1317,16 +1316,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
                     if (currentContext.mounted) {
                       if (success) {
-
-                        ScaffoldMessenger.of(currentContext).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'food_added_to_new_meal'.tr(LocalizationService.instance.currentLanguageCode)
-                                .replaceAll('{foodName}', foodItem.name)
-                                .replaceAll('{mealType}', mealType)
-                            ),
-                            backgroundColor: const Color(0xFF0B132B),
-                          ),
+                        RyzeFeedback.success();
+                        RyzeUndo.note(
+                          currentContext,
+                          message: 'food_added_to_new_meal'.tr(LocalizationService.instance.currentLanguageCode)
+                              .replaceAll('{foodName}', foodItem.name)
+                              .replaceAll('{mealType}', mealType),
                         );
                       } else {
                         ScaffoldMessenger.of(currentContext).showSnackBar(
