@@ -91,15 +91,18 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     final today = '${now.year}-${now.month}-${now.day}';
     _greet = _greetedOn != today;
     _greetedOn = today;
-    _shown = !_first;
+    // L'instrument s'ouvre a zero et monte a CHAQUE visite, comme celui de
+    // Nutrition. Il ne le faisait qu'au tout premier affichage de la journee :
+    // le meme chiffre, sur deux ecrans, n'arrivait pas de la meme facon.
+    // L'entree des cartes, elle, reste reservee a la premiere fois — rejouer
+    // toute la choregraphie a chaque retour serait lourd.
+    _shown = false;
     _load();
-    if (_first) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(milliseconds: 260), () {
-          if (mounted) setState(() => _shown = true);
-        });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 260), () {
+        if (mounted) setState(() => _shown = true);
       });
-    }
+    });
   }
 
   @override
