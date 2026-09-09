@@ -17,6 +17,7 @@ import '../services/translations.dart';
 import '../services/ryze_dates.dart';
 import '../services/water_service.dart';
 import '../services/weekly_planner_service.dart';
+import '../sport/sport_data.dart';
 import '../sport/sport_start.dart';
 import 'home_slots.dart';
 import 'home_suggestion.dart';
@@ -71,6 +72,10 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   bool _nightReview = false;
 
   WeeklyPlannerData? _week;
+
+  /// Ce qui a vraiment eu lieu cette semaine, par jour : la bande ne depend
+  /// plus d'une synchronisation qui peut avoir echoue.
+  Map<String, Set<SportKind>> _sportDone = const {};
   bool _syncing = false;
   late final bool _first;
 
@@ -178,9 +183,17 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   }
 
   Future<void> _loadWeek({bool force = false}) async {
+    final days = _days;
     try {
-      final data = await WeeklyPlannerService.getWeekData(forceRefresh: force);
-      if (mounted) setState(() => _week = data);
+      final results = await Future.wait<Object?>([
+        WeeklyPlannerService.getWeekData(forceRefresh: force),
+        SportData.kinds(from: days.first, to: days.last).catchError((_) => const <String, Set<SportKind>>{}),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _week = results[0] as WeeklyPlannerData;
+        _sportDone = results[1] as Map<String, Set<SportKind>>;
+      });
     } catch (_) {
       // the page keeps what it has; the next event or pull tries again
     }
@@ -491,7 +504,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     final shown = _shown || reduce;
 
     final days = _days;
-    final slots = [for (final d in days) HomeSlots.ofDay(_week?.getDayPlan(d))];
+    final slots = [for (final d in days) HomeSlots.ofDay(_week?.getDayPlan(d), done: _sportDone[SportData.dayKey(d)])];
     final lines = [
       for (final d in days)
         HomeSlots.linesOf(

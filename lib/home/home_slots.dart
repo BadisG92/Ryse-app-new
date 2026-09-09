@@ -1,5 +1,6 @@
 import '../components/weekly_planner/week_strip.dart';
 import '../models/weekly_planner_models.dart';
+import '../sport/sport_data.dart';
 
 /// Today's session as one item: the workout or cardio the page talks about,
 /// opens, and draws. The first one still waiting wins; when every session of
@@ -44,8 +45,19 @@ class HomeSlots {
     return items.first;
   }
 
-  static DaySlots ofDay(DayPlanData? day) {
-    if (day == null) return const DaySlots();
+  /// [done] : ce qui a vraiment eu lieu ce jour-la, lu dans l'historique du
+  /// sport et non dans le plan.
+  ///
+  /// Une seance terminee est censee creer sa ligne dans le planificateur,
+  /// mais cette synchronisation echoue en silence — un reseau qui tombe a la
+  /// mauvaise seconde, et la seance existe dans l'historique sans jamais
+  /// apparaitre dans la semaine. La nourriture avait deja ce garde-fou avec
+  /// le journal ; le sport ne l'avait pas.
+  static DaySlots ofDay(DayPlanData? day, {Set<SportKind>? done}) {
+    if (day == null) {
+      if (done == null || done.isEmpty) return const DaySlots();
+      return DaySlots(states: {WeekSlot.sport: SlotState.done});
+    }
     final states = <WeekSlot, SlotState>{};
     final labels = <WeekSlot, String>{};
 
@@ -86,6 +98,8 @@ class HomeSlots {
       states[WeekSlot.sport] = s.status == PlannedStatus.completed ? SlotState.done : SlotState.planned;
       if (s.label.isNotEmpty) labels[WeekSlot.sport] = s.label;
     }
+    // Une seance reellement faite l'emporte sur ce que le plan croit savoir.
+    if (done != null && done.isNotEmpty) states[WeekSlot.sport] = SlotState.done;
     return DaySlots(states: states, labels: labels);
   }
 

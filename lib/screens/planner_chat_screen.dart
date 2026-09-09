@@ -11,6 +11,8 @@ import 'package:provider/provider.dart';
 import '../models/weekly_planner_models.dart';
 import '../services/weekly_planner_service.dart';
 import '../design/design.dart';
+import '../home/home_slots.dart';
+import '../sport/sport_data.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../ai/ryze_access.dart';
@@ -119,6 +121,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   void initState() {
     super.initState();
     _weekData = widget.weekData;
+    // La demo de l'onboarding n'a pas d'historique a lire.
+    if (!widget.demoMode) _loadSportDone();
     if (widget.demoMode) {
       // In demo mode, bypass premium checks
       _isPremium = true;
@@ -214,9 +218,34 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         weekStart: _weekData.weekStart,
         activities: newActivities,
         workouts: _weekData.workouts.toList(),
+        journalEntriesByDate: _journalByDate,
       );
     });
   }
+
+  /// Ce qui a déjà été mangé, jour par jour.
+  ///
+  /// Les trois reconstructions locales de la semaine repartent de zéro avec
+  /// `fromLists`, et elles oubliaient le journal : ajouter un repas au plan
+  /// effaçait de la bande tous les repas réellement notés, jusqu'au prochain
+  /// chargement depuis la base.
+  /// Ce qui a vraiment eu lieu, cote sport : meme garde-fou que l'accueil.
+  Map<String, Set<SportKind>> _sportDone = const {};
+
+  Future<void> _loadSportDone() async {
+    try {
+      final days = List<DateTime>.generate(7, (i) => _weekData.weekStart.add(Duration(days: i)));
+      final done = await SportData.kinds(from: days.first, to: days.last);
+      if (mounted) setState(() => _sportDone = done);
+    } catch (_) {
+      // la bande garde ce qu'elle sait du plan
+    }
+  }
+
+  Map<DateTime, List<JournalFoodEntry>> get _journalByDate => {
+        for (final plan in _weekData.dayPlans.values)
+          if (plan.journalEntries.isNotEmpty) plan.date: plan.journalEntries,
+      };
 
   void _addWorkoutsToWeekDataLocally(List<PendingWorkout> workouts) {
     bool sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
@@ -229,6 +258,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         weekStart: _weekData.weekStart,
         activities: _weekData.activities.toList(),
         workouts: newWorkouts,
+        journalEntriesByDate: _journalByDate,
       );
     });
   }
@@ -244,6 +274,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           weekStart: _weekData.weekStart,
           activities: newActivities,
           workouts: _weekData.workouts.toList(),
+          journalEntriesByDate: _journalByDate,
         );
       });
     }
@@ -931,31 +962,22 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   /// What each day of the shown week holds, in the strip's own vocabulary.
+  /// La bande du planificateur lit la journée exactement comme l'accueil.
+  ///
+  /// Elle ne lisait que le **planifié** : un repas noté hors plan — la plupart
+  /// des repas, donc — ne remplissait pas son créneau. Les deux écrans
+  /// montraient la même journée avec deux jeux de marques différents, et
+  /// c'est l'accueil qui avait raison. Une seule lecture pour les deux :
+  /// [HomeSlots.ofDay], qui sait déjà écarter un repas du journal déjà
+  /// rattaché à un repas prévu.
   List<DaySlots> _weekSlots() {
     return List<DaySlots>.generate(7, (i) {
       final date = _weekData.weekStart.add(Duration(days: i));
-      final plan = _weekData.getDayPlan(date);
-      final states = <WeekSlot, SlotState>{};
-      final labels = <WeekSlot, String>{};
-      void put(WeekSlot slot, bool done, String label) {
-        final current = states[slot];
-        if (current == SlotState.done) return;
-        states[slot] = done ? SlotState.done : SlotState.planned;
-        if (label.isNotEmpty) labels[slot] = label;
-      }
+      final day = HomeSlots.ofDay(_weekData.getDayPlan(date), done: _sportDone[SportData.dayKey(date)]);
+      final states = Map<WeekSlot, SlotState>.from(day.states);
+      // Les tuiles de la bande sont étroites : le libellé y tient en un mot.
+      final labels = {for (final e in day.labels.entries) e.key: _shortLabel(e.value)};
 
-      if (plan != null) {
-        for (final meal in plan.meals) {
-          final slot = _slotOf(meal.activityType);
-          if (slot != null) put(slot, meal.status == PlannedStatus.completed, _shortLabel(meal.mealData?.dishName));
-        }
-        for (final cardio in plan.cardios) {
-          put(WeekSlot.sport, cardio.status == PlannedStatus.completed, _shortLabel(cardio.cardioData?.activityName));
-        }
-        for (final workout in plan.workouts) {
-          put(WeekSlot.sport, workout.status == PlannedStatus.completed, _shortLabel(workout.workoutName));
-        }
-      }
       // while a mark is in the air, its slot shows nothing, whatever the data
       // already says: the tile appears when the mark lands, not before
       for (final slot in WeekSlot.values) {
