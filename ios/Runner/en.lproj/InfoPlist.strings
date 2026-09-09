@@ -11,10 +11,9 @@
 };
 
 /* Microphone */
-"NSMicrophoneUsageDescription" = "This app uses the microphone for voice assistance during nutrition scanning and hands-free recording of your performance during workouts.";
+"NSMicrophoneUsageDescription" = "Ryze does not record sound. The camera module used to scan your meals gives access to the microphone: the permission is never requested.";
 
 /* Speech Recognition */
-"NSSpeechRecognitionUsageDescription" = "This app uses speech recognition to record your reps and weights during strength training, allowing you to stay focused on your workout.";
 
 /* Motion */
 "NSMotionUsageDescription" = "This app uses motion sensors to count your steps during walking sessions and optimize activity tracking.";

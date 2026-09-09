@@ -11,10 +11,9 @@
 };
 
 /* Mikrofon */
-"NSMicrophoneUsageDescription" = "Diese App nutzt das Mikrofon für die Sprachunterstützung beim Ernährungs-Scan und für die freihändige Aufzeichnung deiner Leistung während des Trainings.";
+"NSMicrophoneUsageDescription" = "Ryze nimmt keinen Ton auf. Das Kameramodul für den Scan deiner Mahlzeiten greift auf das Mikrofon zu: Die Berechtigung wird nie angefragt.";
 
 /* Spracherkennung */
-"NSSpeechRecognitionUsageDescription" = "Diese App nutzt Spracherkennung, um deine Wiederholungen und Gewichte beim Krafttraining aufzuzeichnen, damit du dich auf deine Einheit konzentrieren kannst.";
 
 /* Bewegung */
 "NSMotionUsageDescription" = "Diese App nutzt die Bewegungssensoren, um deine Schritte bei Geheinheiten zu zählen und die Aktivitätserfassung zu verbessern.";

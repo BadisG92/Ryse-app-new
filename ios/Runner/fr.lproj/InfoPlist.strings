@@ -11,10 +11,9 @@
 };
 
 /* Microphone */
-"NSMicrophoneUsageDescription" = "Cette application utilise le microphone pour l'assistance vocale lors du scan nutritionnel et l'enregistrement mains-libres de vos performances pendant les entraînements.";
+"NSMicrophoneUsageDescription" = "Ryze ne prend pas le son. Le module de caméra qui sert au scan de vos plats donne accès au microphone : l'autorisation n'est jamais demandée.";
 
 /* Speech Recognition */
-"NSSpeechRecognitionUsageDescription" = "Cette application utilise la reconnaissance vocale pour enregistrer vos répétitions et poids pendant l'entraînement musculation, vous permettant de rester concentré sur votre séance.";
 
 /* Motion */
 "NSMotionUsageDescription" = "Cette application utilise les capteurs de mouvement pour compter vos pas lors des séances de marche et optimiser le suivi de vos activités.";

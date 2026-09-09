@@ -17,7 +17,6 @@
 		28B9A4832EB30500003952F1 /* RyseMealWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 28B9A4662EB30460003952F1 /* RyseMealWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		28C32FF42EB7A3C1004421F9 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 28C32FF32EB7A3C1004421F9 /* GoogleService-Info.plist */; };
 		28C3325C2EC05276004421F9 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28C3325B2EC05276004421F9 /* StoreKit.framework */; };
-		28E3BD992E9BB564009966BF /* NativeSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E3BD982E9BB564009966BF /* NativeSpeechRecognizer.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -81,7 +80,6 @@
 		28B9A4812EB304C0003952F1 /* RyseMealWidgetExtensionDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RyseMealWidgetExtensionDebug.entitlements; sourceTree = "<group>"; };
 		28C32FF32EB7A3C1004421F9 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		28C3325B2EC05276004421F9 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
-		28E3BD982E9BB564009966BF /* NativeSpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSpeechRecognizer.swift; sourceTree = "<group>"; };
 		28EB57162EB16C680084696F /* RunnerProfile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RunnerProfile.entitlements; sourceTree = "<group>"; };
 		2DC00ADDDCD79A3E0C925277 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -200,7 +198,6 @@
 				28AC04562ECFC06800CFE304 /* RevenueCat.storekit */,
 				28C32FF32EB7A3C1004421F9 /* GoogleService-Info.plist */,
 				28B9A4812EB304C0003952F1 /* RyseMealWidgetExtensionDebug.entitlements */,
-				28E3BD982E9BB564009966BF /* NativeSpeechRecognizer.swift */,
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
 				28B9A46B2EB30460003952F1 /* RyseMealWidget */,
@@ -516,7 +513,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
-				28E3BD992E9BB564009966BF /* NativeSpeechRecognizer.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
