@@ -96,7 +96,7 @@ class GeminiAnalysisServiceV2 {
       // rien de plus, et la requête double de poids.
       final Uint8List resized = await _resizeImage(await imageFile.readAsBytes());
 
-      final prompt = _buildImagePrompt(
+      final prompt = buildImagePrompt(
         userNote: userNote,
         countryName: countryName,
         cultureContext: cultureContext,
@@ -178,7 +178,7 @@ class GeminiAnalysisServiceV2 {
       final languageCode = LocalizationService.instance.currentLanguageCode;
       final countryName = await LocationService.getUserCountryName();
 
-      final prompt = _buildTextPrompt(
+      final prompt = buildTextPrompt(
         textDescription: textDescription,
         userNote: userNote,
         countryName: countryName,
@@ -284,7 +284,10 @@ When you estimate, count what people forget:
 - sauces, dressings, gravy, syrup, and what soaked into the food;
 - weigh food as it is served, cooked, not as raw ingredients.''';
 
-  static String _buildImagePrompt({
+  /// Le prompt tel qu'il part, pour que le banc de coût le mesure sans
+  /// le recopier — une copie dériverait au premier changement.
+  @visibleForTesting
+  static String buildImagePrompt({
     required String? userNote,
     required String countryName,
     required String cultureContext,
@@ -310,7 +313,10 @@ Only list food you can actually identify. If several pieces of the same thing ar
 ${_responseShape(responseLanguage)}''';
   }
 
-  static String _buildTextPrompt({
+  /// Le prompt tel qu'il part, pour que le banc de coût le mesure sans
+  /// le recopier — une copie dériverait au premier changement.
+  @visibleForTesting
+  static String buildTextPrompt({
     required String textDescription,
     String? userNote,
     required String countryName,
