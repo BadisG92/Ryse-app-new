@@ -5,6 +5,8 @@ import '../design/design.dart';
 import '../models/nutrition_models.dart' as nutrition;
 import '../models/weekly_planner_models.dart';
 import '../services/day_meals.dart';
+import '../services/meal_planner_sync_service.dart';
+import '../services/weekly_planner_service.dart';
 import '../services/localization_service.dart';
 import '../services/ryze_dates.dart';
 import '../services/translations.dart';
@@ -42,24 +44,69 @@ class MealSheet {
     final data = planned?.mealData;
     final dish = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : meal.plannedName;
 
-    final changed = await showRyzeSheet<bool>(
+    // Un repas prevu qu'on n'a pas encore mange : le valider en un geste est
+    // la facon la plus rapide de noter un repas, et elle n'existait nulle
+    // part. Le service savait pourtant le faire depuis toujours.
+    final waiting = planned != null && planned.status != PlannedStatus.completed && (meal.logged?.items.isEmpty ?? true);
+
+    final action = await showRyzeSheet<_Action>(
       context,
       title: label,
       subtitle: RyzeDates.full(day, lang),
       builder: (_) => _Body(lang: lang, meal: meal, dish: dish, data: data),
       actions: [
+        if (waiting)
+          OnbButton(
+            label: 'planner_validate_meal'.tr(lang),
+            icon: LucideIcons.check,
+            onPressed: () => Navigator.pop(context, _Action.validate),
+          ),
         if (onAdd != null)
           OnbButton(
             label: 'add_food'.tr(lang),
             ghost: true,
             icon: LucideIcons.plus,
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(context, _Action.add),
+          ),
+        if (waiting)
+          OnbButton(
+            label: 'planner_delete_meal'.tr(lang),
+            ghost: true,
+            icon: LucideIcons.trash2,
+            onPressed: () => Navigator.pop(context, _Action.remove),
           ),
       ],
     );
 
-    if (changed == true && onAdd != null) onAdd();
-    return changed == true;
+    if (action == null || !context.mounted) return false;
+
+    switch (action) {
+      case _Action.add:
+        onAdd?.call();
+        return true;
+      case _Action.validate:
+        final id = await MealPlannerSyncService.validateMeal(planned!);
+        if (!context.mounted) return id != null;
+        if (id == null) {
+          RyzeUndo.failed(context, message: 'error_generic'.tr(lang));
+          return false;
+        }
+        RyzeFeedback.success();
+        RyzeUndo.note(
+          context,
+          message: 'meal_logged_kcal'.tr(lang).replaceAll('{m}', label).replaceAll('{n}', '${data?.calories ?? 0}'),
+        );
+        return true;
+      case _Action.remove:
+        final ok = await WeeklyPlannerService.deletePlannedActivity(planned!.id);
+        if (!context.mounted) return ok;
+        if (ok) {
+          RyzeFeedback.removed();
+        } else {
+          RyzeUndo.failed(context, message: 'error_generic'.tr(lang));
+        }
+        return ok;
+    }
   }
 }
 
@@ -230,3 +277,6 @@ class _Stat extends StatelessWidget {
     );
   }
 }
+
+/// Ce que la feuille rend a son appelant.
+enum _Action { validate, add, remove }

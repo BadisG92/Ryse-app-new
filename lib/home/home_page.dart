@@ -21,7 +21,6 @@ import '../sport/sport_data.dart';
 import '../sport/sport_start.dart';
 import 'home_slots.dart';
 import 'home_suggestion.dart';
-import 'sheets/planned_meal_sheet.dart';
 import 'widgets/coach_line.dart';
 import 'widgets/today_row.dart';
 import 'widgets/water_tile.dart';
@@ -471,7 +470,15 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     } else if (line.slot == WeekSlot.sport && line.activity != null) {
       await CardioRecapBottomSheet.show(context, activity: line.activity!);
     } else if (line.activity != null) {
-      await PlannedMealSheet.show(context, meal: line.activity!, lang: _lang);
+      // Le repas prevu s'ouvre dans la meme feuille que tout le reste : elle
+      // montre ce qui est prevu, ce qui a ete mange, et propose de valider.
+      await MealSheet.show(
+        context,
+        day: day,
+        slot: line.slot,
+        planned: line.activity,
+        onAdd: () => _logMealOf(line.slot),
+      );
     }
     if (mounted) _loadWeek(force: true);
   }

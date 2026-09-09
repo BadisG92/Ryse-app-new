@@ -265,6 +265,10 @@ class _MealRow extends StatelessWidget {
 }
 
 /// Free, planned, done: the three states of the system, on the rail.
+///
+/// Un carre arrondi, parce que c'est de la nourriture. Il etait rond ici et
+/// carre sur l'accueil, alors que la regle de forme du systeme est constante
+/// depuis le debut : la nourriture est un carre, le sport un anneau.
 class _Dot extends StatelessWidget {
   const _Dot({required this.done, required this.planned});
 
@@ -282,7 +286,7 @@ class _Dot extends StatelessWidget {
         height: 16,
         decoration: BoxDecoration(
           color: done ? RyzeColors.ink : (planned ? RyzeColors.surf : RyzeColors.paper),
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(5),
           border: Border.all(color: done || planned ? RyzeColors.ink : RyzeColors.idle, width: 2),
         ),
         child: done ? Icon(LucideIcons.check, size: 9, color: RyzeColors.surf) : null,
