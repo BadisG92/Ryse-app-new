@@ -53,28 +53,10 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
   late final AnimationController _land = AnimationController(vsync: this, duration: const Duration(milliseconds: 620));
   bool _landed = false;
 
-  // Valeurs animées pour le repas détecté uniquement
-  late AnimationController _animationController;
-  late Animation<double> _animation;
-  int _animatedCalories = 0;
-  int _animatedProtein = 0;
-  int _animatedCarbs = 0;
-  int _animatedFat = 0;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialiser l'animation
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _animation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    );
 
     if (widget.analysisResult != null) {
       // Mode texte : résultats déjà fournis
@@ -83,10 +65,6 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
       _isLoading = false;
       _land.value = 1;
       _landed = true;
-      // Démarrer l'animation
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) _startAnimation();
-      });
     } else if (widget.imagePath != null) {
       // Mode photo : analyser l'image
       _analyzeImage();
@@ -101,36 +79,8 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
   @override
   void dispose() {
     _mealNameController.dispose();
-    _animationController.dispose();
     _land.dispose();
     super.dispose();
-  }
-
-  void _startAnimation() {
-    // Calculer les totaux du repas détecté
-    double totalCalories = 0;
-    double totalProteins = 0;
-    double totalCarbs = 0;
-    double totalFats = 0;
-
-    for (final food in _analysisResult.detectedFoods) {
-      totalCalories += food.calories;
-      totalProteins += food.nutrition.proteins;
-      totalCarbs += food.nutrition.carbs;
-      totalFats += food.nutrition.fats;
-    }
-
-    // Animer de 0 aux valeurs du repas
-    _animation.addListener(() {
-      setState(() {
-        _animatedCalories = (totalCalories * _animation.value).round();
-        _animatedProtein = (totalProteins * _animation.value).round();
-        _animatedCarbs = (totalCarbs * _animation.value).round();
-        _animatedFat = (totalFats * _animation.value).round();
-      });
-    });
-
-    _animationController.forward();
   }
 
   Future<void> _analyzeImage() async {
@@ -150,10 +100,6 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
           _isLoading = false;
         });
         _startLanding();
-        // Démarrer l'animation des barres
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) _startAnimation();
-        });
       }
     } catch (e) {
       if (mounted) {
@@ -196,8 +142,6 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
             _analysisResult.detectedFoods[index] = updatedFood;
           }
         });
-        // Redémarrer l'animation avec les nouvelles valeurs
-        _restartAnimation();
       },
     );
   }
@@ -222,39 +166,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
         ),
       );
     } else {
-      // Redémarrer l'animation avec les nouvelles valeurs
-      _restartAnimation();
     }
-  }
-
-  void _restartAnimation() {
-    // Réinitialiser l'animation
-    _animationController.reset();
-
-    // Calculer les nouveaux totaux
-    double totalCalories = 0;
-    double totalProteins = 0;
-    double totalCarbs = 0;
-    double totalFats = 0;
-
-    for (final food in _analysisResult.detectedFoods) {
-      totalCalories += food.calories;
-      totalProteins += food.nutrition.proteins;
-      totalCarbs += food.nutrition.carbs;
-      totalFats += food.nutrition.fats;
-    }
-
-    // Animer de 0 aux nouvelles valeurs
-    _animation.addListener(() {
-      setState(() {
-        _animatedCalories = (totalCalories * _animation.value).round();
-        _animatedProtein = (totalProteins * _animation.value).round();
-        _animatedCarbs = (totalCarbs * _animation.value).round();
-        _animatedFat = (totalFats * _animation.value).round();
-      });
-    });
-
-    _animationController.forward();
   }
 
   Future<void> _saveAllFoods() async {
@@ -692,8 +604,6 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
         setState(() {
           _analysisResult.detectedFoods.add(newFood);
         });
-        // Redémarrer l'animation avec les nouvelles valeurs
-        _restartAnimation();
         debugPrint('Nouvel ingrédient ajouté: ${newFood.name}');
       },
     );
@@ -811,11 +721,11 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
             ],
           ),
           SizedBox(height: context.vw(4.6)),
-          _MealMacro(label: 'proteins'.tr(lang), grams: _animatedProtein, total: _macroTotal),
+          _MealMacro(label: 'proteins'.tr(lang), grams: _proteins, total: _macroTotal),
           SizedBox(height: context.vw(2.6)),
-          _MealMacro(label: 'carbs'.tr(lang), grams: _animatedCarbs, total: _macroTotal),
+          _MealMacro(label: 'carbs'.tr(lang), grams: _carbs, total: _macroTotal),
           SizedBox(height: context.vw(2.6)),
-          _MealMacro(label: 'fats'.tr(lang), grams: _animatedFat, total: _macroTotal),
+          _MealMacro(label: 'fats'.tr(lang), grams: _fats, total: _macroTotal),
         ],
       ),
     );
@@ -825,10 +735,19 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
   int get _totalCalories =>
       _analysisResult.detectedFoods.fold<double>(0, (sum, f) => sum + f.calories).round();
 
+  int get _proteins => _analysisResult.detectedFoods.fold<double>(0, (s, f) => s + f.nutrition.proteins).round();
+  int get _carbs => _analysisResult.detectedFoods.fold<double>(0, (s, f) => s + f.nutrition.carbs).round();
+  int get _fats => _analysisResult.detectedFoods.fold<double>(0, (s, f) => s + f.nutrition.fats).round();
+
   /// La plus grosse des trois macros donne l'échelle : sans objectif à
   /// atteindre, un rail plein n'a pas de sens, mais la proportion en a.
+  ///
+  /// Elle se calcule sur les valeurs **finales**. Elle était calculée sur les
+  /// valeurs animées : le dénominateur montait avec le numérateur, la
+  /// proportion ne bougeait pas, et les rails n'avaient jamais l'air de se
+  /// remplir — ils tremblaient au rythme des arrondis.
   int get _macroTotal {
-    final biggest = [_animatedProtein, _animatedCarbs, _animatedFat].reduce((a, b) => a > b ? a : b);
+    final biggest = [_proteins, _carbs, _fats].reduce((a, b) => a > b ? a : b);
     return biggest == 0 ? 1 : biggest;
   }
 
@@ -884,6 +803,18 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
 
 /// Une macro du repas : son nom, son rail en encre, ses grammes. Pas de
 /// couleur par macro, comme partout ailleurs depuis la refonte.
+/// Un rail de macro : il monte de zéro à sa part, tout seul.
+///
+/// Il montait par à-coups, pour trois raisons qui s'additionnaient. Une
+/// horloge unique appelait `setState` soixante fois par seconde sur tout
+/// l'écran — la liste des aliments, la photo, le champ de nom — pendant une
+/// seconde et demie. Les grammes étaient arrondis à l'entier à chaque image,
+/// donc dix-sept grammes de protéines n'avaient que dix-sept positions
+/// possibles : un escalier, pas un remplissage. Et l'échelle se recalculait
+/// sur ces mêmes valeurs animées, ce qui figeait la proportion.
+///
+/// Ici l'animation appartient au rail : une fraction continue, et le seul
+/// morceau d'écran qui se redessine fait six pixels de haut.
 class _MealMacro extends StatelessWidget {
   const _MealMacro({required this.label, required this.grams, required this.total});
 
@@ -893,6 +824,20 @@ class _MealMacro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: _share),
+      duration: const Duration(milliseconds: 820),
+      curve: RyzeCurves.out,
+      builder: (context, t, _) => _row(context, t),
+    );
+  }
+
+  double get _share => total <= 0 ? 0.0 : (grams / total).clamp(0.0, 1.0);
+
+  Widget _row(BuildContext context, double t) {
+    // Les grammes suivent la meme montee que le rail, sans etre arrondis en
+    // chemin : c'est la fraction qui porte l'animation, le chiffre la lit.
+    final shown = _share <= 0 ? grams : (grams * (t / _share)).round().clamp(0, grams);
     return Row(
       children: [
         SizedBox(
@@ -908,7 +853,7 @@ class _MealMacro extends StatelessWidget {
                   decoration: BoxDecoration(color: RyzeColors.idle, borderRadius: BorderRadius.circular(3)),
                 ),
                 FractionallySizedBox(
-                  widthFactor: (grams / total).clamp(0.0, 1.0),
+                  widthFactor: t,
                   child: Container(
                     decoration: BoxDecoration(color: RyzeColors.ink, borderRadius: BorderRadius.circular(3)),
                   ),
@@ -921,7 +866,7 @@ class _MealMacro extends StatelessWidget {
         SizedBox(
           width: context.vw(13),
           child: Text(
-            '$grams g',
+            '$shown g',
             textAlign: TextAlign.right,
             style: RyzeText.body(context, 3.3, weight: FontWeight.w600).copyWith(
               fontFeatures: const [FontFeature.tabularFigures()],
