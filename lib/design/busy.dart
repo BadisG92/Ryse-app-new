@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'mark.dart';
+import 'motion.dart';
 import 'tokens.dart';
 import 'type.dart';
 
@@ -38,11 +40,16 @@ class RyzeBusy extends StatefulWidget {
   State<RyzeBusy> createState() => _RyzeBusyState();
 }
 
-class _RyzeBusyState extends State<RyzeBusy> with SingleTickerProviderStateMixin {
+class _RyzeBusyState extends State<RyzeBusy> with TickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
+
+  /// L'arrivée. Sans elle, l'attente tombe d'un coup — un écran clair devient
+  /// un mur d'encre en une image, et c'est ce saut qu'on voit, pas la marque.
+  late final AnimationController _in = AnimationController(vsync: this, duration: RyzeDurations.enter)..forward();
 
   @override
   void dispose() {
+    _in.dispose();
     _c.dispose();
     super.dispose();
   }
@@ -112,6 +119,17 @@ class _RyzeBusyState extends State<RyzeBusy> with SingleTickerProviderStateMixin
     );
 
     final ground = widget.background;
-    return ground == null ? content : ColoredBox(color: ground, child: content);
+    final body = ground == null ? content : ColoredBox(color: ground, child: content);
+
+    // Le sol est sombre : les icônes de la barre d'état doivent passer en
+    // clair, sinon l'heure et la batterie s'écrivent en presque-noir sur
+    // l'encre et disparaissent.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: FadeTransition(
+        opacity: CurvedAnimation(parent: _in, curve: RyzeCurves.out),
+        child: body,
+      ),
+    );
   }
 }

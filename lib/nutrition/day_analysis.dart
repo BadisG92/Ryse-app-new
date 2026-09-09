@@ -9,6 +9,7 @@ import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/paywall_service.dart';
+import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
 import '../sport/sport_data.dart';
@@ -114,7 +115,7 @@ class DayAnalysis {
     );
     if (!canUse || !context.mounted) return;
 
-    final progress = _showBusy(context, lang);
+    final progress = _showBusy(context, lang, day);
     try {
       final gs = GlobalStateManager.instance;
       final meals = await FoodEntriesService.getFoodEntriesForDate(userId, day);
@@ -162,8 +163,20 @@ class DayAnalysis {
   /// exacte d'un dialogue Material, avec un logo figé dedans. Le moment où
   /// Ryze réfléchit se traite comme le viseur ou la séance en direct — plein
   /// cadre sur l'encre, une seule chose au centre, et elle respire.
-  static OverlayEntry _showBusy(BuildContext context, String lang) {
-    final entry = OverlayEntry(builder: (_) => RyzeBusy(message: 'day_analysis_running'.tr(lang), background: RyzeColors.ink));
+  static OverlayEntry _showBusy(BuildContext context, String lang, DateTime day) {
+    // Le jour lu est écrit sous la ligne : entre minuit et cinq heures,
+    // l'analyse porte sur la veille, et un écran qui ne dit pas de quel jour
+    // il parle laisse un doute pendant toute l'attente.
+    final entry = OverlayEntry(
+      builder: (context) => RyzeBusy(
+        message: 'day_analysis_running'.tr(lang),
+        background: RyzeColors.ink,
+        trailing: Text(
+          RyzeDates.full(day, lang),
+          style: RyzeText.body(context, 3.4, color: RyzeColors.surf.withValues(alpha: 0.5)),
+        ),
+      ),
+    );
     Overlay.of(context, rootOverlay: true).insert(entry);
     return entry;
   }
