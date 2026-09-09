@@ -504,6 +504,21 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     });
     _scrollChatToBottom();
 
+    // Ce qu'un outil produit attend la phrase qui l'explique.
+    //
+    // Le modèle appelle l'outil avant de parler : au moment où la carte
+    // arrive, il n'a encore rien dit. Vider le tampon ne posait donc rien,
+    // et la carte se retrouvait au-dessus de la phrase — « Retirer ces
+    // séances ? » avec ses deux boutons, puis, dessous, « Je retire ta
+    // séance prévue pour demain. » On lisait la question après la réponse.
+    final held = <void Function()>[];
+    void reveal() {
+      for (final poser in held) {
+        poser();
+      }
+      held.clear();
+    }
+
     try {
       if (!RyzeAccess.canUse) {
         _addBotMessage(PlannerAIService.paywallMessage(LocalizationService.instance.currentLanguageCode));
@@ -532,28 +547,32 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
             buffer.write(text);
 
           case CoachProposals(:final meals, :final sessions):
-            flush();
-            _showProposals(meals, sessions);
+            held.add(() => _showProposals(meals, sessions));
 
           case CoachAsk(:final pending):
-            flush();
-            _addPendingCard(pending);
+            held.add(() => _addPendingCard(pending));
 
           case CoachAction(:final summary):
-            flush();
-            _addBotMessage(summary);
+            held.add(() => _addBotMessage(summary));
+            // La bande des jours, elle, n'attend pas : elle montre l'état,
+            // pas le récit.
             await _refreshWeekData();
 
           case CoachFailure(:final message):
             flush();
+            reveal();
             _addBotMessage(message);
             return;
         }
       }
 
       flush();
+      reveal();
     } catch (e) {
       debugPrint('Error processing AI request: $e');
+      // Une carte prête ne disparaît pas avec la phrase qui a échoué : ce
+      // qu'elle propose est déjà construit.
+      reveal();
       // a failed call must not eat one of the demo messages
       if (widget.demoMode && widget.maxMessages != null && _userMessageCount > 0) _userMessageCount--;
       _addBotMessage(_getErrorMessage());
@@ -599,7 +618,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
   /// Une action qui touche à la semaine déjà posée : elle demande avant.
   void _addPendingCard(RyzePending pending) {
     _pendingCard = pending;
-    _addConfirmationMessage(pending.title);
+
+    // Le détail dit ce qui va disparaître, nommément. Sans lui, la carte
+    // demandait « Retirer ces séances ? » sans jamais dire lesquelles.
+    final detail = pending.detail;
+    _addConfirmationMessage(
+      detail == null || detail.isEmpty ? pending.title : '${pending.title}\n$detail',
+    );
   }
 
   /// L'utilisateur a répondu à la carte.
