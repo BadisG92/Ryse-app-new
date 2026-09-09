@@ -55,6 +55,24 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
   bool _isLoading = true;
   bool _isSaving = false;
 
+  /// La forme de la photo, largeur sur hauteur. Nulle tant qu'elle n'est pas
+  /// décodée.
+  ///
+  /// La vignette du résultat était une bande fixe de 46 vw : une photo prise
+  /// en portrait — c'est-à-dire presque toutes — s'y retrouvait coupée en
+  /// paysage, et il manquait la moitié de l'assiette. L'analyse, elle, a
+  /// toujours porté sur le fichier entier ; c'était l'utilisateur qui ne
+  /// pouvait plus vérifier ce que Ryze avait regardé.
+  double? _aspect;
+
+  /// La hauteur de la vignette : celle de la photo, bornée pour qu'elle ne
+  /// pousse pas le résultat hors de l'écran.
+  double _previewHeight(BuildContext context, double width) {
+    final a = _aspect;
+    if (a == null || a <= 0) return context.vw(46);
+    return (width / a).clamp(context.vw(38), context.vw(78));
+  }
+
   /// Le vol de la photo : plein cadre pendant l'attente, puis elle rejoint sa
   /// place en haut du résultat. À 1, elle y est, et c'est la vignette de la
   /// liste qui la porte.
@@ -65,6 +83,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
+    _readAspect();
 
     if (widget.analysisResult != null) {
       // Mode texte : résultats déjà fournis
@@ -89,6 +108,21 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     _mealNameController.dispose();
     _land.dispose();
     super.dispose();
+  }
+
+  /// Les dimensions de la photo, prises sur le decodage que l'affichage fait
+  /// de toute facon : rien n'est decode deux fois.
+  void _readAspect() {
+    final path = widget.imagePath;
+    if (path == null) return;
+    final stream = FileImage(File(path)).resolve(const ImageConfiguration());
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener((info, _) {
+      final ratio = info.image.width / info.image.height;
+      if (mounted && ratio > 0) setState(() => _aspect = ratio);
+      stream.removeListener(listener);
+    }, onError: (_, __) => stream.removeListener(listener));
+    stream.addListener(listener);
   }
 
   Future<void> _analyzeImage() async {
@@ -339,11 +373,12 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     final size = MediaQuery.sizeOf(context);
     final safeTop = MediaQuery.paddingOf(context).top;
     // Sa place dans le résultat : sous l'en-tête, en haut de la liste.
+    final width = size.width - gutter * 2;
     final target = Rect.fromLTWH(
       gutter,
       safeTop + context.vw(2.1) + context.vw(9.7) + context.vw(2.6) + context.vw(2.1),
-      size.width - gutter * 2,
-      context.vw(46),
+      width,
+      _previewHeight(context, width),
     );
     final full = Rect.fromLTWH(0, 0, size.width, size.height);
 
@@ -469,7 +504,11 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
                             if (widget.imagePath != null) ...[
                               // Tant que la photo vole, sa place est gardée vide :
                               // c'est elle qui vient s'y poser.
-                              _landed ? _buildImagePreview() : SizedBox(height: context.vw(46)),
+                              _landed
+                                  ? _buildImagePreview()
+                                  : LayoutBuilder(
+                                      builder: (context, c) => SizedBox(height: _previewHeight(context, c.maxWidth)),
+                                    ),
                               SizedBox(height: context.vw(4.6)),
                             ],
                             if (widget.isFromTextInput && widget.note != null) ...[
@@ -550,12 +589,14 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
   }
 
   Widget _buildImagePreview() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(RyzeRadius.md),
-      child: SizedBox(
-        height: context.vw(46),
-        width: double.infinity,
-        child: Image.file(File(widget.imagePath!), fit: BoxFit.cover),
+    return LayoutBuilder(
+      builder: (context, constraints) => ClipRRect(
+        borderRadius: BorderRadius.circular(RyzeRadius.md),
+        child: SizedBox(
+          height: _previewHeight(context, constraints.maxWidth),
+          width: double.infinity,
+          child: Image.file(File(widget.imagePath!), fit: BoxFit.cover),
+        ),
       ),
     );
   }
