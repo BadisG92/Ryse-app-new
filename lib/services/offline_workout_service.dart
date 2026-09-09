@@ -25,6 +25,14 @@ class OfflineWorkoutService {
   static SupabaseClient get _client => SupabaseConfig.client;
 
   static const String _exercisesCacheKey = 'offline_exercises_cache';
+
+  /// La langue dans laquelle le cache des exercices a été écrit.
+  ///
+  /// Il n'en gardait aucune trace. Une fois rempli, il resservait les mêmes
+  /// noms indéfiniment : un compte français continuait de voir « Bench Press »
+  /// et « Barbell Curl », et ces noms partaient dans l'historique des séances
+  /// à chaque enregistrement.
+  static const String _exercisesCacheLangKey = 'offline_exercises_cache_lang';
   static const String _customExercisesCacheKey = 'offline_custom_exercises';
   static const String _templatesCacheKey = 'offline_templates_cache';
   static const String _cacheTimestampKey = 'offline_cache_timestamp';
@@ -64,6 +72,7 @@ class OfflineWorkoutService {
       final prefs = await SharedPreferences.getInstance();
 
       await prefs.setString(_exercisesCacheKey, jsonEncode(exercises.map(_exerciseToJson).toList()));
+      await prefs.setString(_exercisesCacheLangKey, LocalizationService.instance.currentLanguageCode);
 
       final templatesJson = templates.map((t) => {
         'id': t.id,
@@ -159,6 +168,15 @@ class OfflineWorkoutService {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_exercisesCacheKey);
     if (jsonString == null) return [];
+
+    // Un cache écrit dans une autre langue ne sert à rien : ses noms
+    // partiraient tels quels dans l'historique. Mieux vaut rien, et laisser
+    // l'appelant relire la base.
+    final cacheLang = prefs.getString(_exercisesCacheLangKey);
+    if (cacheLang != null && cacheLang != LocalizationService.instance.currentLanguageCode) {
+      debugPrint('🌍 Cache des exercices en $cacheLang, ignoré');
+      return [];
+    }
 
     try {
       final List<dynamic> jsonList = jsonDecode(jsonString);
