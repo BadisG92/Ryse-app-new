@@ -9984,6 +9984,21 @@ class AppTranslations {
       'en': 'Dismiss the proposal',
       'de': 'Vorschlag verwerfen',
     },
+    'planner_proposed_meals': {
+      'fr': 'Repas proposés',
+      'en': 'Proposed meals',
+      'de': 'Vorgeschlagene Mahlzeiten',
+    },
+    'planner_tap_meal_detail': {
+      'fr': 'Touche un repas pour voir la recette',
+      'en': 'Tap a meal to see the recipe',
+      'de': 'Tippe auf eine Mahlzeit für das Rezept',
+    },
+    'ryze_validate_all': {
+      'fr': 'Tout valider',
+      'en': 'Validate all',
+      'de': 'Alle bestätigen',
+    },
     'planner_proposed_sessions': {
       'fr': 'Séances proposées',
       'en': 'Proposed sessions',

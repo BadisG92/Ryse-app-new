@@ -52,8 +52,20 @@ class RyzePending {
     this.detail,
     this.confirmLabelKey = 'ryze_validate',
     this.blocked,
+    this.payload,
     required this.commit,
   });
+
+  /// L'objet proposé, quand il y en a un : une séance avec ses exercices, un
+  /// repas avec ses macros.
+  ///
+  /// La conversation n'en avait qu'un titre et une ligne de détail, donc elle
+  /// en faisait une carte plate, une par proposition. L'écran du
+  /// planificateur, lui, tenait l'objet : il en tirait une carte unique, les
+  /// séances en rangs avec leur pastille de jour, et le détail complet au
+  /// toucher. Deux mises en scène pour la même proposition, et la plus pauvre
+  /// était dans le chat.
+  final Object? payload;
 
   /// Rien à valider : la proposition n'a pas pu être construite.
   ///

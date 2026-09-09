@@ -236,6 +236,7 @@ class PlanTools {
       toolName: toolName,
       title: built.summary,
       detail: detail.isEmpty ? null : detail,
+      payload: built.payload,
       commit: () => commit(built.payload),
     );
   }

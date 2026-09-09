@@ -6,6 +6,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../ai/ryze_events.dart';
 import '../ai/ryze_tools/ryze_tool.dart';
+import '../components/weekly_planner/proposal_group.dart';
+import '../models/weekly_planner_models.dart';
 import '../models/coach_chat_models.dart';
 import '../services/coach_chat_service.dart';
 import '../design/design.dart';
@@ -40,7 +42,16 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   ///
   /// Elles vivent hors de la liste des messages : tant qu'elles ne sont pas
   /// tranchées, elles ne sont rien qui se soit passé.
-  final List<RyzePending> _pendingCards = [];
+  /// Les propositions en attente, groupées par tour.
+  ///
+  /// Elles étaient à plat, une carte par proposition : « ajoute trois séances »
+  /// donnait trois cartes empilées, chacune avec ses deux boutons et sans
+  /// moyen de voir ce qu'il y avait dedans. L'écran du planificateur, avec les
+  /// mêmes objets, n'en faisait qu'une carte — les jours en pastilles, le
+  /// détail au toucher. Un tour de Ryze fait maintenant un groupe, et le
+  /// groupe se met en scène comme là-bas.
+  final List<List<RyzePending>> _pendingGroups = [];
+
 
   // Speech to text
 
@@ -159,7 +170,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     void reveal() {
       if (held.isEmpty || !mounted) return;
       RyzeFeedback.tap();
-      setState(() => _pendingCards.addAll(held));
+      setState(() => _pendingGroups.add(List.of(held)));
       held.clear();
       _scrollToBottom();
     }
@@ -503,7 +514,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
     // Les cartes en attente vivent au bas de la liste, après les messages :
     // elles ne sont pas encore de l'histoire.
-    final total = _messages.length + _pendingCards.length;
+    final total = _messages.length + _pendingGroups.length;
 
     return ListView.builder(
       controller: _scrollController,
@@ -515,7 +526,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         final at = total - 1 - index;
 
         if (at >= _messages.length) {
-          return _buildPendingCard(_pendingCards[at - _messages.length], lang);
+          return _buildProposalGroup(_pendingGroups[at - _messages.length], lang);
         }
 
         final message = _messages[at];
@@ -553,6 +564,43 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     );
   }
 
+  /// Ce que Ryze a proposé pendant un tour.
+  ///
+  /// Trois natures cohabitent : des séances, des repas, et tout le reste — une
+  /// suppression à confirmer, un poids à noter, un repas à relire. Les deux
+  /// premières portent un objet complet, donc elles prennent la carte du
+  /// planificateur ; le reste garde la carte simple, qui lui suffit.
+  Widget _buildProposalGroup(List<RyzePending> group, String lang) {
+    final sessions = [for (final p in group) if (p.payload is PendingSession) p];
+    final meals = [for (final p in group) if (p.payload is PendingMeal) p];
+    final autres = [
+      for (final p in group)
+        if (p.payload is! PendingSession && p.payload is! PendingMeal) p
+    ];
+
+    return Column(
+      key: ValueKey(group.first.id),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (sessions.isNotEmpty)
+          SessionProposalGroup(
+            lang: lang,
+            pendings: sessions,
+            onConfirmAll: () => _resolveGroup(sessions, accept: true),
+            onCancel: () => _resolveGroup(sessions, accept: false),
+          ),
+        if (meals.isNotEmpty)
+          MealProposalGroup(
+            lang: lang,
+            pendings: meals,
+            onConfirmAll: () => _resolveGroup(meals, accept: true),
+            onCancel: () => _resolveGroup(meals, accept: false),
+          ),
+        for (final p in autres) _buildPendingCard(p, lang),
+      ],
+    );
+  }
+
   /// Une action que Ryze propose, à valider ou à refuser.
   Widget _buildPendingCard(RyzePending pending, String lang) => RyzeActionCard(
         key: ValueKey(pending.id),
@@ -564,8 +612,24 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         onCancel: () => _resolveCard(pending, accept: false),
       );
 
+  /// Un lot tranché d'un coup.
+  ///
+  /// Valider trois séances demandait trois gestes, alors que Ryze les a
+  /// proposées ensemble et que l'utilisateur répond ensemble.
+  Future<void> _resolveGroup(List<RyzePending> lot, {required bool accept}) async {
+    for (final p in lot) {
+      await _resolveCard(p, accept: accept);
+      if (!mounted) return;
+    }
+  }
+
   Future<void> _resolveCard(RyzePending pending, {required bool accept}) async {
-    setState(() => _pendingCards.removeWhere((p) => p.id == pending.id));
+    setState(() {
+      for (final g in _pendingGroups) {
+        g.removeWhere((p) => p.id == pending.id);
+      }
+      _pendingGroups.removeWhere((g) => g.isEmpty);
+    });
 
     if (!accept) {
       CoachChatService.instance.cancelPending(pending.id);
