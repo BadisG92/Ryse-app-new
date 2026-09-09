@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../ai/ryze_events.dart';
 import '../ai/ryze_tools/ryze_tool.dart';
 import '../models/coach_chat_models.dart';
@@ -13,7 +12,6 @@ import '../design/design.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/weekly_bilan_service.dart';
-import '../components/ui/microphone_permission_dialog.dart';
 
 /// Main chat screen for conversation with Coach Ryze
 class CoachChatScreen extends StatefulWidget {
@@ -45,16 +43,12 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   final List<RyzePending> _pendingCards = [];
 
   // Speech to text
-  final stt.SpeechToText _speech = stt.SpeechToText();
-  bool _isListening = false;
-  bool _speechAvailable = false;
 
   @override
   void initState() {
     super.initState();
     _initLocale();
     _loadConversation();
-    _initSpeech();
     _checkBilanBanner();
 
     // Scroll to bottom when keyboard opens
@@ -96,7 +90,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     _textController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
-    _speech.stop();
 
     // Ce que Ryze retient se relit en quittant la conversation, pas après
     // chaque réponse. Sans attendre : l'écran se ferme, l'extraction suit.
@@ -104,41 +97,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
     super.dispose();
   }
-
-  Future<void> _initSpeech() async {
-    // Don't initialize yet - wait for user to tap the mic button
-    // This avoids showing permission dialog on screen load
-    _speechAvailable = false;
-  }
-
-  Future<void> _initSpeechWithPermission() async {
-    // Show explanation dialog first
-    final shouldContinue = await MicrophonePermissionDialog.showExplanationIfNeeded(
-      context,
-      isMounted: () => mounted,
-    );
-
-    if (!shouldContinue || !mounted) {
-      return;
-    }
-
-    try {
-      _speechAvailable = await _speech.initialize(
-        onStatus: (status) {
-          if (status == 'done' || status == 'notListening') {
-            if (mounted) setState(() => _isListening = false);
-          }
-        },
-        onError: (error) {
-          if (mounted) setState(() => _isListening = false);
-        },
-      );
-      if (mounted) setState(() {});
-    } catch (e) {
-      _speechAvailable = false;
-    }
-  }
-
   Future<void> _loadConversation() async {
     setState(() => _isLoading = true);
 
@@ -336,41 +294,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       }
     }
   }
-
-  void _startListening() async {
-    if (_isListening) return;
-
-    // If speech not initialized yet, show permission dialog first
-    if (!_speechAvailable) {
-      await _initSpeechWithPermission();
-      if (!_speechAvailable || !mounted) return;
-    }
-
-    final locService = Provider.of<LocalizationService>(context, listen: false);
-    final lang = locService.currentLanguageCode;
-    final localeId = lang == 'fr' ? 'fr_FR' : lang == 'de' ? 'de_DE' : 'en_US';
-
-    setState(() => _isListening = true);
-
-    await _speech.listen(
-      onResult: (result) {
-        if (mounted) {
-          setState(() {
-            _textController.text = result.recognizedWords;
-          });
-        }
-      },
-      localeId: localeId,
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-    );
-  }
-
-  void _stopListening() async {
-    await _speech.stop();
-    setState(() => _isListening = false);
-  }
-
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LocalizationService>().currentLanguageCode;
@@ -717,11 +640,9 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       builder: (context, value, _) => RyzeChatInput(
         controller: _textController,
         focusNode: _focusNode,
-        hint: _isListening ? 'coach_chat_listening'.tr(lang) : 'coach_chat_message_placeholder'.tr(lang),
+        hint: 'coach_chat_message_placeholder'.tr(lang),
         canSend: value.text.trim().isNotEmpty,
         busy: _isSending,
-        listening: _isListening,
-        onMic: _isListening ? _stopListening : _startListening,
         onSend: _sendMessage,
       ),
     );

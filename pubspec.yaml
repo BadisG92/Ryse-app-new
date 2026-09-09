@@ -70,8 +70,6 @@ dependencies:
   # Markdown rendering
   flutter_markdown: ^0.7.3
 
-  # Speech to text (native like Apple/Siri)
-  speech_to_text: ^7.0.0
 
   # Health & Fitness Integration
   # health: ^10.2.0  # HealthKit integration pour iOS - temporarily commented due to build issues
@@ -110,9 +108,6 @@ dependencies:
   # Image caching for performance
   cached_network_image: ^3.3.1
 
-  # Voice recognition for workout (already added above line 70)
-  # speech_to_text: ^7.0.0  # Removed duplicate
-  flutter_tts: ^4.0.2
 
   # AI Analysis
   google_generative_ai: ^0.4.6

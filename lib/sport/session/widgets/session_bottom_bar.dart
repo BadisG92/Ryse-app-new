@@ -20,14 +20,12 @@ class SessionBottomBar extends StatelessWidget {
     required this.controller,
     required this.onAddExercise,
     required this.onFinish,
-    required this.onMic,
   });
 
   final String lang;
   final SessionController controller;
   final VoidCallback onAddExercise;
   final VoidCallback onFinish;
-  final VoidCallback onMic;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +34,7 @@ class SessionBottomBar extends StatelessWidget {
       builder: (context, rest, _) {
         final Widget child;
         if (controller.editingField != null) {
-          child = NumberPad(key: const ValueKey('pad'), controller: controller, lang: lang, onMic: onMic);
+          child = NumberPad(key: const ValueKey('pad'), controller: controller, lang: lang);
         } else if (rest.endsAt != null) {
           child = RestBar(key: const ValueKey('rest'), lang: lang, timer: controller.rest, state: rest);
         } else {

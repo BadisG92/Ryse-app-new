@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../design/design.dart';
 import '../services/localization_service.dart';
@@ -50,90 +49,19 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
   bool _isAnalyzing = false;
   String? _errorMessage;
 
-  // Speech to text
-  late stt.SpeechToText _speech;
-  bool _isListening = false;
-  bool _speechEnabled = false;
 
   // Suggestions supprimées pour simplifier l'interface
 
   @override
   void initState() {
     super.initState();
-    _speech = stt.SpeechToText();
-    _initSpeech();
   }
 
   @override
   void dispose() {
     _textController.dispose();
-    _speech.stop();
     super.dispose();
   }
-
-  /// Initialiser le speech to text
-  Future<void> _initSpeech() async {
-    _speechEnabled = await _speech.initialize(
-      onStatus: (status) {
-        if (status == 'done' || status == 'notListening') {
-          setState(() {
-            _isListening = false;
-          });
-        }
-      },
-      onError: (error) {
-        setState(() {
-          _isListening = false;
-          _errorMessage = 'Erreur de reconnaissance vocale';
-        });
-      },
-    );
-    setState(() {});
-  }
-
-  /// Démarrer/arrêter l'écoute
-  void _toggleListening() async {
-    if (!_speechEnabled) {
-      setState(() {
-        _errorMessage = LocalizationService.instance.currentLanguageCode == 'fr'
-            ? 'Reconnaissance vocale non disponible'
-            : 'Speech recognition not available';
-      });
-      return;
-    }
-
-    if (_isListening) {
-      await _speech.stop();
-      setState(() {
-        _isListening = false;
-      });
-    } else {
-      setState(() {
-        _isListening = true;
-        _errorMessage = null;
-      });
-
-      await _speech.listen(
-        onResult: (result) {
-          setState(() {
-            _textController.text = result.recognizedWords;
-
-            // Si la confiance est élevée et que l'utilisateur a fini de parler
-            if (result.finalResult && result.confidence > 0.8) {
-              _isListening = false;
-            }
-          });
-        },
-        // Utiliser la langue de l'app
-        localeId: LocalizationService.instance.currentLanguageCode == 'fr'
-            ? 'fr_FR'
-            : 'en_US',
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
-      );
-    }
-  }
-
   Future<void> _analyzeText() async {
     final text = _textController.text.trim();
     if (text.isEmpty) {
@@ -252,15 +180,16 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
           ),
           SizedBox(height: context.vw(4.6)),
 
-          // Ce qu'on dit au coach. La dictée est à côté du champ, en encre :
-          // c'est un outil de saisie, pas une fonction à part.
+          // Ce qu'on dit au coach. La dictée, c'est celle du clavier : elle
+          // marche dans toutes les langues, sur l'appareil, et ne demande aucune
+          // permission a Ryze.
           Padding(
             padding: EdgeInsets.symmetric(horizontal: gutter),
             child: Container(
               decoration: BoxDecoration(
                 color: RyzeColors.surf,
                 borderRadius: BorderRadius.circular(RyzeRadius.md),
-                border: Border.all(color: _isListening ? RyzeColors.ink : RyzeColors.line, width: _isListening ? 1.5 : 1),
+                border: Border.all(color: RyzeColors.line),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -268,7 +197,7 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
                   Expanded(
                     child: TextField(
                       controller: _textController,
-                      autofocus: !_isListening,
+                      autofocus: true,
                       maxLines: 4,
                       minLines: 2,
                       textCapitalization: TextCapitalization.sentences,
@@ -283,42 +212,10 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
                       ),
                     ),
                   ),
-                  if (_speechEnabled)
-                    Padding(
-                      padding: EdgeInsets.only(right: context.vw(2.6), bottom: context.vw(2.6)),
-                      child: Pressable(
-                        onTap: _isAnalyzing ? null : _toggleListening,
-                        child: AnimatedContainer(
-                          duration: RyzeDurations.tap,
-                          curve: RyzeCurves.out,
-                          width: context.vw(10.8),
-                          height: context.vw(10.8),
-                          decoration: BoxDecoration(
-                            color: _isListening ? RyzeColors.ink : RyzeColors.paper,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: _isListening ? RyzeColors.ink : RyzeColors.line),
-                          ),
-                          child: Icon(
-                            _isListening ? LucideIcons.audioLines : LucideIcons.mic,
-                            size: context.vw(4.6),
-                            color: _isListening ? RyzeColors.surf : RyzeColors.mute,
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
           ),
-
-          if (_isListening)
-            Padding(
-              padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, 0),
-              child: Text(
-                'chat_listening'.tr(lang),
-                style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.accInk),
-              ),
-            ),
 
           if (_errorMessage != null)
             Padding(

@@ -14,7 +14,6 @@ import '../../widgets/exercise/exercise_detail_page.dart';
 import 'session_controller.dart';
 import 'session_history.dart';
 import 'session_models.dart';
-import 'session_voice.dart';
 import 'sheets/exercise_menu_sheet.dart';
 import 'sheets/exercise_picker_sheet.dart';
 import 'sheets/finish_sheet.dart';
@@ -66,7 +65,6 @@ class WorkoutSessionScreen extends StatefulWidget {
 
 class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> with WidgetsBindingObserver {
   late final SessionController _c;
-  late final SessionVoice _voice;
   final ScrollController _scroll = ScrollController();
   bool _finishing = false;
 
@@ -95,9 +93,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> with Widget
         ),
       );
     }
-    _voice = SessionVoice(onFilled: _onVoiceFilled);
     _c.addListener(_onChanged);
-    _voice.addListener(_onChanged);
     // Un rappel hors de l'app quand le repos tombe à zéro. Il double
     // l'haptique du retour, il ne la remplace pas : s'il échoue, rien ne
     // change pour l'utilisateur.
@@ -113,8 +109,6 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> with Widget
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _c.removeListener(_onChanged);
-    _voice.removeListener(_onChanged);
-    _voice.dispose();
     _c.dispose();
     _scroll.dispose();
     super.dispose();
@@ -201,31 +195,6 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> with Widget
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ExerciseDetailPage(exerciseName: ex.exercise.name)),
     );
-  }
-
-  // ------------------------------------------------------------------ voix
-
-  Future<void> _mic() async {
-    final i = _c.editingSet;
-    if (i == null) return;
-    if (_voice.listening) {
-      await _voice.stop();
-      return;
-    }
-    final ok = await _voice.start(i);
-    if (!ok && mounted) {
-      RyzeUndo.failed(context, message: 'session_mic_unavailable'.tr(_lang));
-    }
-  }
-
-  void _onVoiceFilled(int setIndex, int? reps, double? weightKg) {
-    final ex = _c.currentExercise;
-    if (setIndex < 0 || setIndex >= ex.sets.length) return;
-    final set = ex.sets[setIndex];
-    if (weightKg != null && weightKg > 0) set.weightKg = weightKg;
-    if (reps != null && reps > 0) set.reps = reps;
-    _c.closePad();
-    if (set.reps > 0) _c.completeSet(setIndex);
   }
 
   // ---------------------------------------------------------------- sortie
@@ -365,20 +334,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> with Widget
                           ),
                         ),
                 ),
-                if (_voice.listening)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: context.vw(2.1)),
-                    child: Text(
-                      _voice.heard.isEmpty ? 'session_listening'.tr(lang) : _voice.heard,
-                      style: RyzeText.body(context, 3.4, color: RyzeColors.accInk),
-                    ),
-                  ),
                 SessionBottomBar(
                   lang: lang,
                   controller: _c,
                   onAddExercise: _addExercise,
                   onFinish: _finish,
-                  onMic: _mic,
                 ),
               ],
             ),

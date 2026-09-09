@@ -10,14 +10,13 @@ import '../session_controller.dart';
 /// Le pavé numérique d'iOS n'a pas de touche Retour : c'est ce qui avait
 /// forcé l'ancien écran à empiler des minuteurs et des marges magiques pour
 /// suivre le focus. Ici les touches sont à nous, grandes, avec les pas qu'on
-/// fait vraiment en salle (−2,5 · +2,5 · +5 pour le poids), le micro, et un
+/// fait vraiment en salle (−2,5 · +2,5 · +5 pour le poids), et un
 /// seul bouton principal : *Suivant* sur le poids, *Valider* sur les reps.
 class NumberPad extends StatelessWidget {
-  const NumberPad({super.key, required this.controller, required this.lang, required this.onMic});
+  const NumberPad({super.key, required this.controller, required this.lang});
 
   final SessionController controller;
   final String lang;
-  final VoidCallback onMic;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +46,6 @@ class NumberPad extends StatelessWidget {
                   ),
                 ),
               const Spacer(),
-              _Round(icon: LucideIcons.mic, label: 'session_dictate'.tr(lang), onTap: onMic),
             ],
           ),
           SizedBox(height: context.vw(2.1)),
@@ -187,35 +185,6 @@ class _Pill extends StatelessWidget {
         child: Text(
           label,
           style: RyzeText.body(context, 3.4, weight: FontWeight.w600).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-        ),
-      ),
-    );
-  }
-}
-
-class _Round extends StatelessWidget {
-  const _Round({required this.icon, required this.label, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: Pressable(
-        onTap: onTap,
-        child: Container(
-          width: context.vw(9.7),
-          height: context.vw(9.7),
-          decoration: BoxDecoration(
-            color: RyzeColors.surf,
-            shape: BoxShape.circle,
-            border: Border.all(color: RyzeColors.line),
-          ),
-          child: Icon(icon, size: context.vw(4.6), color: RyzeColors.ink),
         ),
       ),
     );

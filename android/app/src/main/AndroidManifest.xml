@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <!-- Permissions pour la reconnaissance vocale -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- RECORD_AUDIO retiree : la dictee passe par le clavier du systeme. -->
 
     <!-- Feature pour reconnaissance vocale (optionnel mais recommandé) -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
