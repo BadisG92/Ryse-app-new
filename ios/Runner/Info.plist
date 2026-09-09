@@ -50,6 +50,12 @@
 	<string>Cette application utilise les capteurs de mouvement pour compter vos pas lors des séances de marche et optimiser le suivi de vos activités.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Cette application peut sauvegarder les photos scannées dans votre galerie pour référence.</string>
+	<!-- Le SDK de mesure de Firebase reference l'API de suivi publicitaire, meme
+	     si Ryze ne s'en sert pas : Apple exige alors la phrase, dans l'Info.plist
+	     ET dans chaque dossier de langue (ITMS-90683). Les trois traductions
+	     existent deja dans en/fr/de.lproj ; c'est celle-ci qui manquait. -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Cette app ne suit pas vos données personnelles. Le suivi GPS sert uniquement à mesurer vos performances sportives localement sur votre appareil.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Cette application accède à vos photos pour analyser les aliments et calculer leurs valeurs nutritionnelles.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
