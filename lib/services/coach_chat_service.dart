@@ -54,6 +54,7 @@ class CoachChatService {
     // finir une séance rafraîchit le bloc concerné, sans reconstruire la
     // conversation.
     RyzeContext.instance.listen();
+    RyzeContextSource.instance.listen();
 
     await _loadUserPreferences();
 

@@ -499,12 +499,18 @@ class PlannerAIService {
         );
       }
 
-      // « 1 repas ajoutés » : le pluriel se décide, il ne se colle pas.
+      // Le message dit OÙ le repas a atterri, pas seulement qu'il existe.
+      //
+      // Il annonçait « repas ajouté au planificateur ». L'utilisateur ne le
+      // trouvait pas, demandait pourquoi, et Ryze — qui ne savait pas non plus
+      // où il l'avait mis — inventait une règle sur les repas passés. Avec le
+      // jour et le moment, il n'a plus rien à deviner.
       final n = createdItems.length;
+      final ou = createdItems.first; // « Mercredi - Petit-déjeuner »
       final message = switch (langCode) {
-        'fr' => n == 1 ? 'Repas ajouté au planificateur' : '$n repas ajoutés au planificateur',
-        'de' => n == 1 ? 'Mahlzeit zum Planer hinzugefügt' : '$n Mahlzeiten zum Planer hinzugefügt',
-        _ => n == 1 ? 'Meal added to the planner' : '$n meals added to the planner',
+        'fr' => n == 1 ? '$ou ajouté au plan' : '$n repas ajoutés au plan',
+        'de' => n == 1 ? '$ou zum Plan hinzugefügt' : '$n Mahlzeiten zum Plan hinzugefügt',
+        _ => n == 1 ? '$ou added to the plan' : '$n meals added to the plan',
       };
 
       return PlannerActionResult.success(message, items: createdItems);

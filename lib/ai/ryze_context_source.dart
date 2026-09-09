@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../services/coach_context_builder.dart';
+import '../services/global_state_manager.dart';
 import '../services/weight_service.dart';
 import 'prompts/persona_strings.dart';
 import 'ryze_context.dart';
@@ -26,6 +29,22 @@ class RyzeContextSource {
   /// prompt, c'est-à-dire à chaque ouverture et à chaque changement de ton.
   Future<Map<String, dynamic>>? _snapshot;
   DateTime? _snapshotAt;
+  StreamSubscription<StateChangeEvent>? _events;
+
+  /// Vide l'instantané quand la donnée qu'il décrit a bougé.
+  ///
+  /// Sans ça, l'invalidation par bloc ne servait à rien : un bloc recalculé
+  /// relisait le même instantané, gardé dix minutes. Ryze pouvait donc créer
+  /// un repas et ne pas le voir dans sa propre semaine au message suivant —
+  /// et c'est en cherchant à expliquer cette absence qu'il inventait.
+  ///
+  /// Idempotent : un second appel ne crée pas un second abonnement.
+  void listen() {
+    if (_events != null) return;
+    _events = GlobalStateManager.instance.events.listen((e) {
+      if (RyzeContext.blocksFor(e.type).isNotEmpty) invalidate();
+    });
+  }
 
   Future<Map<String, dynamic>> _userContext() {
     final frais = _snapshotAt != null &&
@@ -42,6 +61,10 @@ class RyzeContextSource {
     _snapshotAt = null;
     RyzeContext.instance.clear();
   }
+
+  /// Ce que l'instantané contient, pour les tests.
+  @visibleForTesting
+  bool get hasSnapshot => _snapshot != null;
 
   /// Le contexte complet, assemblé et prêt à être collé sous la persona.
   Future<String> build(PersonaStrings s) async {

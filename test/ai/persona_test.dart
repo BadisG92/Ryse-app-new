@@ -169,6 +169,31 @@ void main() {
   });
 
 
+  group('Ryze n\'explique pas la mécanique de l\'application', () {
+    // Vu sur appareil, 09:52 : « Comme il est déjà 09:52, le petit-déjeuner
+    // est considéré comme un repas passé. L'outil que j'utilise est conçu
+    // pour les repas à venir. » Rien de tout cela n'existe : le repas était
+    // en base, sur aujourd'hui, au petit-déjeuner.
+    for (final persona in personas) {
+      test('la règle tient en ${persona.lang}', () {
+        final regles = persona.nonNegotiables.toLowerCase();
+
+        expect(
+          regles.contains('conçu pour') || regles.contains('designed for') || regles.contains('gedacht für'),
+          isTrue,
+          reason: '${persona.lang} : rien n\'interdit d\'inventer le fonctionnement d\'un outil',
+        );
+
+        expect(
+          regles.contains('où c\'est allé') || regles.contains('where it went') || regles.contains('wohin es ging'),
+          isTrue,
+          reason: '${persona.lang} : rien ne dit quoi répondre quand on ne trouve pas',
+        );
+      });
+    }
+  });
+
+
   group('Ce que Ryze ne doit jamais prétendre', () {
     // Vu sur appareil : l'utilisateur dit « je ne le vois pas dans la
     // planification », Ryze s'excuse et répond « c'est maintenant chose
