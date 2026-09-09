@@ -10306,6 +10306,11 @@ class AppTranslations {
       'en': 'free',
       'de': 'frei',
     },
+    'meal_logged_kcal': {
+      'fr': '{m} noté · {n} kcal',
+      'en': '{m} logged · {n} kcal',
+      'de': '{m} notiert · {n} kcal',
+    },
     'home_meal_logged': {
       'fr': '{m} noté. Bien joué.',
       'en': '{m} logged. Nicely done.',

@@ -281,7 +281,23 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     await GlobalStateManager.instance.refreshMealsCount();
     await DashboardService.invalidateAndRefreshGoals();
 
-    if (mounted) _leave(saved: true);
+    if (!mounted) return;
+
+    // L'accuse de reception. L'ecran se contentait de se fermer : on validait
+    // un plat analyse et on se retrouvait sur l'accueil sans qu'un mot dise ce
+    // qui venait d'etre ajoute. La pilule est dessinee dans l'overlay racine,
+    // donc elle survit aux fermetures d'ecrans et se lit sur l'accueil.
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final label = 'meal_name_${mealName.toLowerCase()}'.tr(lang);
+    RyzeFeedback.success();
+    RyzeUndo.note(
+      context,
+      message: 'meal_logged_kcal'
+          .tr(lang)
+          .replaceAll('{m}', label.startsWith('meal_name_') ? mealName : label)
+          .replaceAll('{n}', '$_totalCalories'),
+    );
+    _leave(saved: true);
   }
 
   Future<void> _createNewMealAndAdd(String mealType, String time) async {
