@@ -416,6 +416,12 @@ class MealPlannerSyncService {
           'status': 'completed',
         })
         .eq('id', activityId);
+
+    // Le lien vient d'être écrit : sans ce vidage, les écrans gardent la
+    // version d'avant, où le repas prévu et l'entrée du journal n'étaient pas
+    // encore reliés — et les affichaient donc en double.
+    WeeklyPlannerService.invalidateCache();
+    GlobalStateManager.instance.invalidateWeeklyData();
   }
 
   /// Retirer le lien et remettre status à planned
@@ -544,7 +550,9 @@ class MealPlannerSyncService {
         'is_ai_generated': false,
       });
 
-      // Notifier le GlobalStateManager pour mettre à jour le planner
+      // Le cache du planificateur aussi : l'événement seul ne le vide pas, et
+      // les écrans qui relisent sans forcer resservaient l'ancienne semaine.
+      WeeklyPlannerService.invalidateCache();
       GlobalStateManager.instance.invalidateWeeklyData();
 
       debugPrint('✅ Synced food_entry $foodEntryId to planner');

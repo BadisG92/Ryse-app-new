@@ -31,8 +31,28 @@ class NutritionHistoryPage extends StatefulWidget {
   State<NutritionHistoryPage> createState() => _NutritionHistoryPageState();
 }
 
-class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
+class _NutritionHistoryPageState extends State<NutritionHistoryPage>
+    with GlobalStateListener {
   static const int _span = 30;
+
+  /// Un repas ajouté ou retiré ailleurs se voit ici aussi.
+  ///
+  /// Cette page n'écoutait rien : elle ne se rechargeait que sur ses propres
+  /// gestes. Un repas supprimé depuis la conversation y restait affiché
+  /// jusqu'à ce qu'on change de jour ou d'onglet.
+  @override
+  void onGlobalStateUpdate(StateChangeEvent event) {
+    switch (event.type) {
+      case ChangeType.planner:
+      case ChangeType.meals:
+      case ChangeType.calories:
+      case ChangeType.dayReset:
+      case ChangeType.batch:
+        _load();
+      default:
+        break;
+    }
+  }
 
   late DateTime _selected;
   DayMeals? _day;

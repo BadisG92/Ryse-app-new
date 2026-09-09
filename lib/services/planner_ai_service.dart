@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/weekly_planner_models.dart';
 import '../models/sport_models.dart';
 import 'weekly_planner_service.dart';
+import 'global_state_manager.dart';
 import 'planned_cardio_service.dart';
 import 'ai_workout_generation_service.dart';
 import 'localization_service.dart';
@@ -543,6 +544,31 @@ class PlannerAIService {
   /// une seule fois pour les deux surfaces. Ce qui reste ici, ce sont les
   /// exécuteurs : ils écrivent dans la semaine et ils sont bons.
   static Future<Map<String, dynamic>> executeToolCall(
+    String functionName,
+    Map<String, dynamic> args,
+    String langCode,
+  ) async {
+    final out = await _execute(functionName, args, langCode);
+
+    // Tout ce qui a changé le plan le fait savoir.
+    //
+    // Les exécuteurs écrivent en SQL brut et n'invalidaient rien : créer un
+    // repas passait par `addPlannedActivity`, qui prévient, mais supprimer,
+    // modifier ou tout effacer ne prévenait personne. Le repas supprimé dans
+    // la conversation restait affiché sur l'accueil, dans Nutrition et dans le
+    // calendrier, servi par un cache de deux minutes que rien ne vidait.
+    if (out['success'] == true && !_readOnlyTools.contains(functionName)) {
+      WeeklyPlannerService.invalidateCache();
+      GlobalStateManager.instance.invalidateWeeklyData();
+    }
+
+    return out;
+  }
+
+  /// Les outils qui ne touchent à rien.
+  static const Set<String> _readOnlyTools = {'ask_clarification'};
+
+  static Future<Map<String, dynamic>> _execute(
     String functionName,
     Map<String, dynamic> args,
     String langCode,
@@ -1732,14 +1758,52 @@ class PlannerAIService {
       final startOfDay = DateTime(date.year, date.month, date.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      final result = await Supabase.instance.client
+      // On relit avant d'effacer, pour choisir quoi effacer.
+      //
+      // La requête partait en suppression directe sur le type et le jour :
+      // deux collations disparaissaient ensemble, et le miroir d'un repas
+      // déjà noté au journal partait avec, laissant l'entrée orpheline et les
+      // calories au compteur.
+      final candidats = await Supabase.instance.client
           .from('planned_activities')
-          .delete()
+          .select()
           .eq('user_id', user.id)
           .eq('activity_type', mealType.value)
           .gte('planned_date', startOfDay.toIso8601String().split('T')[0])
           .lt('planned_date', endOfDay.toIso8601String().split('T')[0])
-          .select();
+          .order('created_at', ascending: true);
+
+      // Ce que le journal a créé n'appartient pas au plan : il se retire en
+      // retirant l'aliment, pas en effaçant son reflet.
+      final effacables = [
+        for (final row in candidats)
+          if ((row['activity_data'] as Map?)?['from_journal'] != true) row,
+      ];
+
+      // Le plat nommé d'abord, sinon celui qui attend encore, sinon le premier.
+      final voulu = '${args['dish_name'] ?? ''}'.trim().toLowerCase();
+      Map<String, dynamic>? cible;
+      if (voulu.isNotEmpty) {
+        for (final row in effacables) {
+          final nom = '${(row['activity_data'] as Map?)?['dish_name'] ?? ''}'.toLowerCase();
+          if (nom.contains(voulu) || voulu.contains(nom)) {
+            cible = Map<String, dynamic>.from(row as Map);
+            break;
+          }
+        }
+      }
+      cible ??= effacables.cast<Map<String, dynamic>?>().firstWhere(
+            (row) => row?['status'] == 'planned',
+            orElse: () => effacables.isEmpty ? null : Map<String, dynamic>.from(effacables.first as Map),
+          );
+
+      final result = cible == null
+          ? const <Map<String, dynamic>>[]
+          : await Supabase.instance.client
+              .from('planned_activities')
+              .delete()
+              .eq('id', cible['id'])
+              .select();
 
       if (result.isEmpty) {
         final msg = langCode == 'fr'

@@ -10,6 +10,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/weekly_planner_models.dart';
 import '../services/weekly_planner_service.dart';
+import '../services/global_state_manager.dart';
 import '../design/design.dart';
 import '../home/home_slots.dart';
 import '../sport/sport_data.dart';
@@ -56,7 +57,30 @@ class PlannerChatScreen extends StatefulWidget {
   State<PlannerChatScreen> createState() => _PlannerChatScreenState();
 }
 
-class _PlannerChatScreenState extends State<PlannerChatScreen> {
+class _PlannerChatScreenState extends State<PlannerChatScreen>
+    with GlobalStateListener {
+  /// La bande des jours suit ce qui change ailleurs.
+  ///
+  /// L'écran n'écoutait rien et relisait sans forcer : un repas supprimé
+  /// depuis la conversation, ou une séance terminée pendant qu'il était
+  /// ouvert, ne s'y voyaient pas. Le mode démo garde sa semaine en mémoire,
+  /// il ne doit pas être rechargé depuis la base.
+  @override
+  void onGlobalStateUpdate(StateChangeEvent event) {
+    if (widget.demoMode) return;
+    switch (event.type) {
+      case ChangeType.planner:
+      case ChangeType.meals:
+      case ChangeType.workout:
+      case ChangeType.sport:
+      case ChangeType.dayReset:
+      case ChangeType.batch:
+        _refreshWeekData();
+      default:
+        break;
+    }
+  }
+
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _chatScrollController = ScrollController();
@@ -219,6 +243,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         activities: newActivities,
         workouts: _weekData.workouts.toList(),
         journalEntriesByDate: _journalByDate,
+        eatenMealTypesByDate: _eatenByDate,
       );
     });
   }
@@ -247,6 +272,16 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           if (plan.journalEntries.isNotEmpty) plan.date: plan.journalEntries,
       };
 
+  /// Les repas déjà mangés, par jour.
+  ///
+  /// Les reconstructions locales l'oubliaient : après un ajout, un repas
+  /// prévu et déjà mangé repassait de « fait » à « prévu » à l'écran,
+  /// jusqu'à la prochaine relecture.
+  Map<DateTime, Set<String>> get _eatenByDate => {
+        for (final plan in _weekData.dayPlans.values)
+          if (plan.eatenMealTypes.isNotEmpty) plan.date: plan.eatenMealTypes,
+      };
+
   void _addWorkoutsToWeekDataLocally(List<PendingWorkout> workouts) {
     bool sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
     final newWorkouts = _weekData.workouts.where((w) => !workouts.any((n) => sameDay(w.plannedDate, n.plannedDate))).toList();
@@ -259,6 +294,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         activities: _weekData.activities.toList(),
         workouts: newWorkouts,
         journalEntriesByDate: _journalByDate,
+        eatenMealTypesByDate: _eatenByDate,
       );
     });
   }
@@ -275,6 +311,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           activities: newActivities,
           workouts: _weekData.workouts.toList(),
           journalEntriesByDate: _journalByDate,
+          eatenMealTypesByDate: _eatenByDate,
         );
       });
     }

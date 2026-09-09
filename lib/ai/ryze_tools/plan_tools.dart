@@ -526,6 +526,12 @@ class PlanTools {
           'description': 'Which meal.',
           'enum': ['breakfast', 'lunch', 'dinner', 'snack'],
         },
+        'dish_name': {
+          'type': 'string',
+          'description':
+              'The dish to remove, when the slot holds more than one and the user '
+              'named it. Without it, the one still waiting goes first.',
+        },
       },
       required: ['day', 'meal_type'],
     ),
