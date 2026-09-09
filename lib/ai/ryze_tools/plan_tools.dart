@@ -66,7 +66,7 @@ class PlanTools {
   /// C'est ce qui protège la semaine d'une IA trop sûre d'elle.
   static Future<RyzeToolResult> _run(String name, Map<String, dynamic> args) async {
     try {
-      final out = await PlannerAIService.executeToolCall(name, args, _lang);
+      final out = await PlannerAIService.executeToolCall(name, _recipeArgs(args), _lang);
 
       final pendingMeal = out['pending_meal'] as PendingMeal?;
       final pendingWorkout = out['pending_workout'] as PendingWorkout?;
@@ -140,6 +140,35 @@ class PlanTools {
       if (kDebugMode) debugPrint('❌ commit : $e');
       return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
     }
+  }
+
+  /// Recompose la recette dans le champ que la base attend.
+  ///
+  /// Elle tenait dans une seule chaîne, avec ses sections séparées par des
+  /// tirets et nommées à l'intérieur. Le modèle n'en écrivait que la première
+  /// phrase : une consigne de mise en forme au milieu d'une description de
+  /// paramètre se perd, alors qu'un champ vide se voit. Chaque partie a donc
+  /// le sien, et c'est ici qu'elles sont recollées.
+  static Map<String, dynamic> _recipeArgs(Map<String, dynamic> args) {
+    final ingredients = '${args['ingredients'] ?? ''}'.trim();
+    final method = '${args['method'] ?? ''}'.trim();
+    final tip = '${args['tip'] ?? ''}'.trim();
+    if (ingredients.isEmpty && method.isEmpty && tip.isEmpty) return args;
+
+    final resume = '${args['dish_description'] ?? ''}'.trim();
+
+    final parts = <String>[
+      if (resume.isNotEmpty) resume,
+      if (ingredients.isNotEmpty) '${'recipe_ingredients'.tr(_lang)} : $ingredients',
+      if (method.isNotEmpty) '${'recipe_steps'.tr(_lang)} : $method',
+      if (tip.isNotEmpty) '${'recipe_tip'.tr(_lang)} : $tip',
+    ];
+
+    return {
+      for (final e in args.entries)
+        if (e.key != 'ingredients' && e.key != 'method' && e.key != 'tip') e.key: e.value,
+      'dish_description': parts.join('---'),
+    };
   }
 
   /// Ce que la séance contient, une ligne par exercice.
@@ -226,9 +255,24 @@ class PlanTools {
         'dish_name': {'type': 'string', 'description': 'Short name of the dish.'},
         'dish_description': {
           'type': 'string',
+          'description': 'One or two sentences on the dish, in the user language.',
+        },
+        'ingredients': {
+          'type': 'string',
           'description':
-              'Description then ingredients, recipe and tip, separated by "---", with '
-              'section names in the user\'s language.',
+              'What it takes, one ingredient per line with its amount, each line '
+              'starting with "- ". In the user language. Always fill it: a planned '
+              'meal without its ingredients cannot be shopped for or cooked.',
+        },
+        'method': {
+          'type': 'string',
+          'description':
+              'How to make it, one numbered step per line. In the user language. '
+              'Always fill it.',
+        },
+        'tip': {
+          'type': 'string',
+          'description': 'One short piece of advice on the dish, in the user language.',
         },
         'calories': {'type': 'integer', 'description': 'Estimated calories.'},
         'proteins': {'type': 'number', 'description': 'Proteins in grams.'},
@@ -236,7 +280,11 @@ class PlanTools {
         'fats': {'type': 'number', 'description': 'Fats in grams.'},
         'quantity_g': {'type': 'number', 'description': 'Portion size in grams.'},
       },
-      required: ['day', 'meal_type', 'dish_name', 'calories', 'proteins', 'carbs', 'fats', 'quantity_g'],
+      required: [
+        'day', 'meal_type', 'dish_name', 'dish_description',
+        'ingredients', 'method',
+        'calories', 'proteins', 'carbs', 'fats', 'quantity_g',
+      ],
     ),
     needsConfirmation: (_) => true,
     preview: (args) => _proposal('create_meal', args),

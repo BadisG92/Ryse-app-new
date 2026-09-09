@@ -96,7 +96,7 @@ class _Body extends StatelessWidget {
           SizedBox(height: context.vw(4.6)),
         ],
         if (description.isNotEmpty)
-          Text(description, style: RyzeText.body(context, 3.6, height: 1.5)),
+          RecipeView(lang: lang, recipe: RecipeText.parse(description)),
         // Le raisonnement vient de Ryze : il porte sa marque, comme partout
         // ailleurs où c'est lui qui parle.
         if (reasoning.isNotEmpty) ...[

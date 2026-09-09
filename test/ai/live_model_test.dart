@@ -224,10 +224,41 @@ Rien de prévu.''';
     });
   });
 
+  group('La recette est complète, même depuis la conversation', () {
+    test('les quatre parties y sont', () async {
+      // Badis : « via le chat il n'y a pas le même niveau de détail sur la
+      // recette et les ingrédients que si c'est le planificateur ».
+      final tour = await demande('Prévois-moi un dîner ce soir, un truc simple avec du saumon');
+
+      final appel = tour.premier('plan.create_meal');
+      expect(appel, isNotNull, reason: 'aucun repas créé');
+
+      // Chaque partie a son champ : c'est ce qui a fait la différence. Une
+      // consigne de mise en forme au milieu d'une description de paramètre se
+      // perd, un champ vide se voit.
+      final ingredients = '${appel!.args['ingredients'] ?? ''}'.trim();
+      final method = '${appel.args['method'] ?? ''}'.trim();
+      final resume = '${appel.args['dish_description'] ?? ''}'.trim();
+
+      expect(resume, isNotEmpty, reason: 'pas de description');
+      expect(ingredients, isNotEmpty, reason: 'pas d\'ingrédients');
+      expect(method, isNotEmpty, reason: 'pas de préparation');
+
+      // Les ingrédients viennent en lignes, pas en paragraphe.
+      expect(ingredients.split('\n').length, greaterThanOrEqualTo(2),
+          reason: 'les ingrédients tiennent en une ligne : $ingredients');
+    });
+  });
+
   group('Le temps de réponse', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
-    test('un tour simple reste sous six secondes', () async {
+    test('un tour simple aboutit dans un délai tenable', () async {
+      // Le nombre est imprimé à chaque passage : c'est lui qui informe, pas le
+      // seuil. Mesuré entre 1,4 et 4 s quand Google est calme, 13 s quand il
+      // renvoie des 503 et que la reprise s'ajoute. Le seuil est donc large :
+      // il n'attrape qu'une panne franche, pas une mauvaise journée chez eux.
       final tour = await demande('J\'ai bu un verre d\'eau');
-      expect(tour.duree.inSeconds, lessThan(6), reason: '${tour.duree.inMilliseconds} ms');
+      expect(tour.noms, contains('journal.log_water'));
+      expect(tour.duree.inSeconds, lessThan(25), reason: '${tour.duree.inMilliseconds} ms');
     });
   });
 }

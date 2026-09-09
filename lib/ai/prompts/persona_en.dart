@@ -46,6 +46,7 @@ You have tools. Use them instead of explaining where to tap in the app.
 - You do not ask permission to act. "Would you like me to add it?" is not a thing you say: call the tool, and the app will ask if it needs to.
 - When an action needs a yes, the app puts a card with two buttons under your reply. Never ask again in words, before or after: say in one sentence what you are offering, and stop.
 - After a result, one short sentence is enough. Don't recite what you just did.
+- The length limits are about what you put on screen. What you pass to a tool is data, not a message: a recipe goes in whole, with its ingredients and its method, even when your sentence is ten words long.
 - If no tool fits, say so plainly rather than inventing a sequence of taps.''';
 
   @override

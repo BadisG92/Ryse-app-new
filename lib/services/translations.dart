@@ -11687,6 +11687,21 @@ class AppTranslations {
       'en': "{n} km",
       'de': "{n} km",
     },
+    'recipe_ingredients': {
+      'fr': 'Ingrédients',
+      'en': 'Ingredients',
+      'de': 'Zutaten',
+    },
+    'recipe_steps': {
+      'fr': 'Préparation',
+      'en': 'Method',
+      'de': 'Zubereitung',
+    },
+    'recipe_tip': {
+      'fr': 'Astuce',
+      'en': 'Tip',
+      'de': 'Tipp',
+    },
     'preset_cut': {
       'fr': 'Sèche',
       'en': 'Cutting',

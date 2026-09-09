@@ -45,6 +45,7 @@ export 'day_instrument.dart';
 export 'sticky_total.dart';
 export 'meal_timeline.dart';
 export 'chat.dart';
+export 'recipe_view.dart';
 
 export '../onboarding/widgets/onb_widgets.dart';
 export '../onboarding/widgets/choices.dart';
