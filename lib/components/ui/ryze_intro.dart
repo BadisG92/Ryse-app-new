@@ -96,7 +96,13 @@ class _RyzeIntroState extends State<RyzeIntro> with SingleTickerProviderStateMix
     final ms = _c.value * _total;
     // the mark holds until the app knows where it is going
     final holding = ms >= _hold && !widget.ready;
-    if (holding && _c.isAnimating) _c.stop();
+    if (holding && _c.isAnimating) {
+      _c.stop();
+      // Une image dure seize millisecondes : l'arret tombait jusqu'a une image
+      // APRES le debut du bond, donc le logo se figeait deja agrandi. On le
+      // repose exactement la ou la marque est immobile.
+      _c.value = _hold / _total;
+    }
 
     // Le coup part avec le mouvement, jamais avant. Il etait donne des l'entree
     // dans la fenetre du bond — c'est-a-dire a la seconde ou l'ouverture se fige
@@ -119,7 +125,23 @@ class _RyzeIntroState extends State<RyzeIntro> with SingleTickerProviderStateMix
   @override
   void didUpdateWidget(RyzeIntro old) {
     super.didUpdateWidget(old);
-    if (widget.ready && !old.ready && !_c.isAnimating && !_done) _c.forward();
+    if (!widget.ready || old.ready || _c.isAnimating || _done) return;
+
+    // Le bond ne part pas dans la meme image que l'ecran qu'il ouvre.
+    //
+    // `ready` devient vrai a l'instant ou le routage a fini, et c'est la meme
+    // image qui construit l'application entiere derriere la marque — la page
+    // d'accueil, sa semaine, sa barre. La premiere peinture de tout ca coute
+    // plusieurs images, et le bond les prenait de plein fouet : il partait,
+    // se figeait au milieu, puis reprenait. On attend donc que l'ecran du
+    // dessous soit construit et peint, et le bond se deroule ensuite d'un
+    // trait. Le temps d'attente, lui, reste sur la marque immobile.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _done) return;
+      Future<void>.delayed(const Duration(milliseconds: 90), () {
+        if (mounted && !_done && !_c.isAnimating) _c.forward();
+      });
+    });
   }
 
   @override
