@@ -145,15 +145,11 @@ class WeightService {
         );
       },
       operationName: 'getWeightProgress',
-      fallbackValue: WeightProgress(
-        currentWeight: 70.0,
-        previousWeight: 70.0,
-        initialWeight: 70.0,
-        targetWeight: 70.0,
-        entries: [
-          WeightEntry(date: DateTime.now(), weight: 70.0),
-        ],
-      ),
+      // Pas de valeur de repli : elle valait 70 kg, avec une pesée inventée
+      // datée d'aujourd'hui, et c'est ce que la Progression affichait dès que
+      // le réseau manquait — un poids qui n'était celui de personne. Sans
+      // repli, l'erreur remonte, l'appelant rend null, et la page montre son
+      // état vide, qui est honnête.
     );
   }
 

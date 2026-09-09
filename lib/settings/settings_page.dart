@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -101,7 +103,11 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _subscription() async {
     final lang = _lang;
     RyzeFeedback.tap();
-    final uri = Uri.parse('https://apps.apple.com/account/subscriptions');
+    // Le lien Apple s'ouvrait aussi sur Android, où il ne mène à rien : un
+    // abonnement Google Play se gère dans le Play Store.
+    final uri = Uri.parse(Platform.isIOS
+        ? 'https://apps.apple.com/account/subscriptions'
+        : 'https://play.google.com/store/account/subscriptions?package=com.ryze.app');
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {

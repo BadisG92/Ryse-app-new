@@ -388,6 +388,15 @@ class MealPlannerSyncService {
     }
   }
 
+  /// Coche un repas prévu *et* garde le lien vers l'aliment qui l'a coché.
+  ///
+  /// Sans ce lien, `onFoodEntryDeleted` ne retrouvait pas l'activité : retirer
+  /// le dernier aliment d'un repas prévu laissait le plan sur « terminé » pour
+  /// toujours. L'accueil, qui lit le plan, gardait la pastille pleine pendant
+  /// que Nutrition, qui lit le journal, rouvrait le créneau.
+  static Future<void> markPlannedMealDone(String activityId, String foodEntryId) =>
+      _updateActivityWithLink(activityId, foodEntryId);
+
   /// Mettre à jour l'activité avec le lien vers food_entry
   static Future<void> _updateActivityWithLink(String activityId, String foodEntryId) async {
     // Récupérer d'abord les données existantes

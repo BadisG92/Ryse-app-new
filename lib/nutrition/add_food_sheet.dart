@@ -77,9 +77,9 @@ class AddFoodSheet {
           ],
           RyzeSheetGroup(
             children: [
-              for (final way in AddFoodSheet._ways)
+              for (final way in AddFoodSheet._waysFor(date))
                 RyzeSheetRow(
-                  first: way == AddFoodSheet._ways.first,
+                  first: way == AddFoodSheet._waysFor(date).first,
                   icon: way.icon,
                   label: way.label.tr(lang),
                   hint: way.hint.tr(lang),
@@ -99,6 +99,23 @@ class AddFoodSheet {
         ],
       ),
     );
+  }
+
+  /// Les façons proposées pour un jour donné.
+  ///
+  /// La photo et le coach écrivent depuis leur propre écran et atterrissent
+  /// toujours sur aujourd'hui : les proposer sur un jour passé faisait poser
+  /// l'aliment sur la mauvaise journée, sans le dire. Sur un jour passé, on
+  /// ne montre que les trois outils qui savent viser une date.
+  static List<_Way> _waysFor(DateTime? date) {
+    if (date == null) return _ways;
+    final now = DateTime.now();
+    final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+    if (isToday) return _ways;
+    return [
+      for (final way in _ways)
+        if (way.tool != FoodTool.photo && way.tool != FoodTool.coach) way,
+    ];
   }
 
   /// Les deux façons où Ryze fait le travail viennent d'abord — la photo,

@@ -10,6 +10,7 @@ import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/paywall_service.dart';
 import '../services/translations.dart';
+import '../services/water_service.dart';
 import '../sport/sport_data.dart';
 
 /// Le bilan de la journée par Coach Ryze.
@@ -44,6 +45,11 @@ class DayAnalysis {
 
   /// Vrai entre minuit et cinq heures.
   static bool isNight({DateTime? now}) => (now ?? DateTime.now()).hour < nightUntil;
+
+  static bool _isToday(DateTime day) {
+    final now = DateTime.now();
+    return day.year == now.year && day.month == now.month && day.day == now.day;
+  }
 
   /// La journée qui vient de finir.
   static DateTime yesterday({DateTime? now}) {
@@ -113,9 +119,16 @@ class DayAnalysis {
       final gs = GlobalStateManager.instance;
       final meals = await FoodEntriesService.getFoodEntriesForDate(userId, day);
       // La séance du jour vient de l'onglet Sport : le coach doit savoir si
-      // ces calories ont été gagnées à la salle.
-      final sessions = await SportData.onDay(day);
+      // ces calories ont été gagnées à la salle. `onDay` rend aussi ce qui
+      // était prévu et n'a pas eu lieu — le coach félicitait donc pour une
+      // séance que personne n'avait faite. Seul le réalisé compte ici.
+      final sessions = (await SportData.onDay(day)).where((s) => s.done).toList();
       final burned = sessions.fold<int>(0, (n, s) => n + s.kcal);
+
+      // L'eau du jour analysé, pas celle de l'état global : entre minuit et
+      // cinq heures, l'analyse porte sur hier et l'état global a déjà basculé.
+      final water = await WaterService.getDailyWaterProgress(date: day);
+      final waterMl = water?.consumedMl ?? (_isToday(day) ? (gs.currentWaterL * 1000).round() : 0);
 
       final analysis = await CoachRyzeNutritionService.generateAnalysis(
         userId: userId,
@@ -125,7 +138,7 @@ class DayAnalysis {
         proteinTarget: gs.proteinGoal.toDouble(),
         carbsTarget: gs.carbsGoal.toDouble(),
         fatsTarget: gs.fatGoal.toDouble(),
-        waterIntake: (gs.currentWaterL * 1000).round(),
+        waterIntake: waterMl,
         hasWorkoutToday: sessions.isNotEmpty,
         workoutType: sessions.isEmpty ? null : sessions.first.name,
         caloriesBurned: burned > 0 ? burned : null,

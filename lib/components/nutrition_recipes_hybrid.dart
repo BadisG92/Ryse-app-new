@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/design.dart';
 import 'ui/recipe_models.dart';
 import 'ui/recipe_widgets.dart';
 import '../screens/recipe_details_screen.dart';
@@ -28,27 +29,6 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
     // Initialiser les données des recettes ET attendre le chargement
     _loadRecipes();
 
-    // Tutorial Recettes désactivé - déjà expliqué dans le tutorial principal
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _showRecipesTutorial();
-    // });
-  }
-
-  /// Affiche le tutorial des Recettes lors de la première visite
-  Future<void> _showRecipesTutorial() async {
-    // Accéder au parent NutritionSection pour afficher le tutorial
-    final nutritionSection = context.findAncestorStateOfType<State<StatefulWidget>>();
-    if (nutritionSection != null && nutritionSection is State) {
-      try {
-        final method = nutritionSection.runtimeType.toString();
-        if (method.contains('NutritionSection')) {
-          final parent = nutritionSection as dynamic;
-          await parent.showTabTutorial('recipes');
-        }
-      } catch (e) {
-        debugPrint('⚠️ Erreur lors de l\'affichage du tutorial Recettes: $e');
-      }
-    }
   }
 
   Future<void> _loadRecipes() async {
@@ -95,8 +75,11 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final isKeyboardVisible = keyboardHeight > 0;
 
+    // La gouttière des deux autres positions de l'onglet Nutrition, pour que
+    // rien ne se décale en glissant d'une page à l'autre. Elle était en pixels
+    // fixes, seule de son espèce.
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.vw(5.1), vertical: context.vw(6)),
       child: Column(
         children: [
           // Contenu principal avec carrousel conditionnel

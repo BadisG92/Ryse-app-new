@@ -82,6 +82,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'error_camera_not_available'.tr(LocalizationService.instance.currentLanguageCode);
           _isLoading = false;
@@ -112,6 +113,8 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       }
     } catch (e) {
       if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur caméra: $e');
+      // Quitter l'écran pendant l'initialisation faisait lever ce setState.
+      if (!mounted) return;
       setState(() {
         _errorMessage = '${'error_camera'.tr(LocalizationService.instance.currentLanguageCode)}: $e';
         _isLoading = false;

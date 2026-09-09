@@ -2,9 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- HealthKit capabilities -->
-	<key>com.apple.developer.healthkit</key>
-	<true/>
 
 	<!-- Associated domains (si besoin pour auth) -->
 	<key>com.apple.developer.associated-domains</key>

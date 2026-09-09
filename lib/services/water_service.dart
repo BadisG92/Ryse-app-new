@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
-import 'dashboard_service.dart';
+
 import 'optimistic_update_service.dart';
 import 'global_state_manager.dart';
 import 'streak_service.dart';
@@ -34,38 +34,39 @@ class WaterService {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('Utilisateur non connecté');
 
-      // NOUVEAU: Mise à jour instantanée via GlobalStateManager
+      // Le verre s'affiche tout de suite : l'écriture, elle, est attendue.
       GlobalStateManager.instance.updateWater(amount / 1000.0); // Convertir ml en L
 
       // OPTIMISATION: Mise à jour optimiste immédiate de l'UI (garde pour compatibilité)
       await OptimisticUpdateService.updateWaterOptimistic(amount);
 
-      // Insertion en base (non-bloquant pour l'UI)
-      _supabase.from('water_entries').insert({
-        'user_id': user.id,
-        'amount': amount,
-        'source_type': sourceType,
-        'notes': notes,
-        'consumed_at': (consumedAt ?? DateTime.now()).toIso8601String(),
-      }).then((_) async {
-        // Synchronisation ultra-rapide après succès
-        debugPrint('✅ Eau ajoutée en base - sync rapide');
-        DashboardService.invalidateAndRefreshGoals();
-        // Mettre à jour les données du widget iOS
-        await MealWidgetDataProvider.updateWidgetData();
-        // Mettre à jour l'activité pour les notifications de réengagement
-        unawaited(NotificationService().updateLastActivity());
-        // Annuler les rappels d'eau et les notifications "rien logué"
-        unawaited(NotificationService().cancelWaterReminders());
-        unawaited(NotificationService().cancelActivityBasedReminders());
-        // Boire fait partie des journées suivies.
-        unawaited(StreakService.notifyActivity());
-      }).catchError((error) {
+      // L'insertion n'était pas attendue : la méthode rendait `true` avant de
+      // savoir, l'app annonçait « verre ajouté » même hors ligne, puis le
+      // verre disparaissait quand le rollback passait. Le message d'échec
+      // qui existe dans l'interface n'était donc jamais atteint.
+      try {
+        await _supabase.from('water_entries').insert({
+          'user_id': user.id,
+          'amount': amount,
+          'source_type': sourceType,
+          'notes': notes,
+          'consumed_at': (consumedAt ?? DateTime.now()).toIso8601String(),
+        }).timeout(const Duration(seconds: 8));
+      } catch (error) {
         debugPrint('❌ Erreur ajout eau: $error');
-        // Rollback si erreur
         GlobalStateManager.instance.updateWater(-amount / 1000.0); // Rollback GlobalState
         OptimisticUpdateService.rollback();
-      });
+        return false;
+      }
+
+      // Ce qui suit ne conditionne pas la réussite : le verre est en base.
+      debugPrint('✅ Eau ajoutée en base - sync rapide');
+      unawaited(MealWidgetDataProvider.updateWidgetData());
+      unawaited(NotificationService().updateLastActivity());
+      unawaited(NotificationService().cancelWaterReminders());
+      unawaited(NotificationService().cancelActivityBasedReminders());
+      // Boire fait partie des journées suivies.
+      unawaited(StreakService.notifyActivity());
 
       return true;
     } catch (e) {
@@ -175,18 +176,21 @@ class WaterService {
         await OptimisticUpdateService.updateWaterOptimistic(-amountToRemove);
       }
 
-      // Suppression en base (non-bloquant)
-      _supabase.from('water_entries').delete().eq('id', entryId).then((_) {
-        debugPrint('✅ Eau supprimée de la base');
-        // Sync complète après succès
-        DashboardService.invalidateAndRefreshGoals();
-      }).catchError((error) {
+      // Attendue, comme l'ajout : c'est ce qui permet à l'appelant de dire la
+      // vérité plutôt que d'annoncer un retrait qui n'a pas eu lieu.
+      try {
+        await _supabase.from('water_entries').delete().eq('id', entryId).timeout(const Duration(seconds: 8));
+      } catch (error) {
         debugPrint('❌ Erreur suppression eau: $error');
         if (amountToRemove != null) {
           GlobalStateManager.instance.updateWater(amountToRemove / 1000.0); // Rollback
         }
         OptimisticUpdateService.rollback();
-      });
+        return false;
+      }
+
+      debugPrint('✅ Eau supprimée de la base');
+      unawaited(MealWidgetDataProvider.updateWidgetData());
 
       return true;
     } catch (e) {

@@ -40,6 +40,20 @@ class FeatureFlags {
   // clé, vérifie l'abonnement et compte les jetons. Quand c'est faux,
   // l'application appelle Google directement avec la clé compilée — ce qui
   // marche, mais expose la clé à qui sait ouvrir un binaire.
+  //
+  // ⚠️ AVANT DE PASSER À `true` : la fonction refuse (402) tout appelant dont
+  // la ligne `user_subscriptions` n'est pas premium et active. Elle lit notre
+  // base, pas RevenueCat, alors que l'application fait l'inverse. Au moment de
+  // l'audit, la base comptait 108 comptes onboardés pour 9 lignes
+  // d'abonnement : basculer en l'état couperait le coach, le scan photo, le
+  // planificateur et le bilan pour tous les autres.
+  //
+  // La bascule demande donc, dans cet ordre :
+  //   1. que `_syncRevenueCatStatus` écrive la ligne à chaque ouverture de
+  //      session, pas seulement quand RevenueCat et la base divergent ;
+  //   2. un contrôle sur appareil, avec un compte payant, des quatre chemins
+  //      (conversation, photo, génération de séance, bilan) ;
+  //   3. et seulement ensuite, ce `true`.
   static const bool RYZE_VIA_EDGE = false;
 
   // 📊 MIGRATION FLAGS

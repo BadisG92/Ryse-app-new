@@ -1,0 +1,27 @@
+/* Deutsche Lokalisierung der Info.plist-Berechtigungstexte */
+
+/* Kamera */
+"NSCameraUsageDescription" = "Diese App nutzt die Kamera, um Lebensmittel zu scannen und Mahlzeiten mit KI-Ernährungstechnologie zu analysieren.";
+
+/* Standort */
+"NSLocationWhenInUseUsageDescription" = "Diese App nutzt deinen Standort, um dir regionale Ernährungsempfehlungen zu geben und deine Cardio-Einheiten genau zu erfassen (Distanz, Tempo, Strecke).";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Diese App kann deinen Standort im Hintergrund nutzen, um deine sportlichen Aktivitäten auch dann zu erfassen, wenn die App nicht aktiv ist.";
+"NSLocationTemporaryUsageDescriptionDictionary" = {
+    "CardioWorkout" = "Für die Messung von Distanz und Tempo während des Cardio-Trainings wird der genaue Standort benötigt.";
+};
+
+/* Mikrofon */
+"NSMicrophoneUsageDescription" = "Diese App nutzt das Mikrofon für die Sprachunterstützung beim Ernährungs-Scan und für die freihändige Aufzeichnung deiner Leistung während des Trainings.";
+
+/* Spracherkennung */
+"NSSpeechRecognitionUsageDescription" = "Diese App nutzt Spracherkennung, um deine Wiederholungen und Gewichte beim Krafttraining aufzuzeichnen, damit du dich auf deine Einheit konzentrieren kannst.";
+
+/* Bewegung */
+"NSMotionUsageDescription" = "Diese App nutzt die Bewegungssensoren, um deine Schritte bei Geheinheiten zu zählen und die Aktivitätserfassung zu verbessern.";
+
+/* Fotomediathek */
+"NSPhotoLibraryAddUsageDescription" = "Diese App kann gescannte Fotos zur späteren Ansicht in deiner Mediathek speichern.";
+"NSPhotoLibraryUsageDescription" = "Diese App greift auf deine Fotos zu, um Lebensmittel zu analysieren und ihre Nährwerte zu berechnen.";
+
+/* Tracking */
+"NSUserTrackingUsageDescription" = "Diese App verfolgt keine personenbezogenen Daten. Die GPS-Erfassung dient ausschließlich dazu, deine sportliche Leistung lokal auf deinem Gerät zu messen.";

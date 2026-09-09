@@ -54,6 +54,10 @@ class GlobalStateManager {
   // Streak (série de jours consécutifs)
   int _currentStreak = 0;
 
+  /// Le jour de la derniere activite notee, 'AAAA-MM-JJ'. Sert a savoir si la
+  /// serie gardee est encore vivante quand on la relit sans reseau.
+  String? _streakDate;
+
   // Informations utilisateur
   String _userName = 'User';
 
@@ -167,6 +171,7 @@ class GlobalStateManager {
         'carbsGoal': _carbsGoal,
         'fatGoal': _fatGoal,
         'streak': _currentStreak,
+        'streakDate': _streakDate,
         'name': _userName,
       }));
     } catch (_) {
@@ -196,7 +201,11 @@ class GlobalStateManager {
       _proteinGoal = int_('proteinGoal', _proteinGoal);
       _carbsGoal = int_('carbsGoal', _carbsGoal);
       _fatGoal = int_('fatGoal', _fatGoal);
-      _currentStreak = int_('streak', _currentStreak);
+      // La serie gardee sur le telephone se relit comme celle de la base :
+      // si sa derniere journee est trop ancienne, elle vaut zero.
+      _streakDate = (map['streakDate'] as String?) ?? _streakDate;
+      final storedStreak = int_('streak', _currentStreak);
+      _currentStreak = _streakStillAlive(storedStreak, _streakDate) ? storedStreak : 0;
       _userName = (map['name'] as String?) ?? _userName;
 
       if (map['day'] != _todayKey) return;
@@ -274,7 +283,7 @@ class GlobalStateManager {
           // Récupérer les objectifs, le streak et le prénom de l'utilisateur
           client
               .from('users')
-              .select('daily_calories, daily_water_goal, daily_protein, daily_carbs, daily_fat, streak_count, first_name')
+              .select('daily_calories, daily_water_goal, daily_protein, daily_carbs, daily_fat, streak_count, streak_last_date, first_name')
               .eq('id', user.id)
               .single(),
         ]);
@@ -333,7 +342,14 @@ class GlobalStateManager {
         final dailyProteinGoal = (userProfile['daily_protein'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.30) / 4).toInt();
         final dailyCarbsGoal = (userProfile['daily_carbs'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.40) / 4).toInt();
         final dailyFatGoal = (userProfile['daily_fat'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.30) / 9).toInt();
-        final streakCount = (userProfile['streak_count'] as num?)?.toInt() ?? 0;
+        // La serie n'est vraie que si sa derniere journee est encore proche :
+        // `streak_count` reste tel quel en base apres une coupure, et l'accueil
+        // affichait donc une flamme que la Progression, elle, avait deja
+        // eteinte. Meme regle qu'a StreakService : un jour d'ecart toleree.
+        final rawStreak = (userProfile['streak_count'] as num?)?.toInt() ?? 0;
+        final streakLast = userProfile['streak_last_date'] as String?;
+        final streakCount = _streakStillAlive(rawStreak, streakLast) ? rawStreak : 0;
+        _streakDate = streakLast;
 
         // Formater le nom avec la première lettre en majuscule dès le chargement
         final rawName = userProfile['first_name'] as String? ?? user.email?.split('@').first ?? 'User';
@@ -395,6 +411,19 @@ class GlobalStateManager {
     // Démarrer la vérification du changement de jour
     _startMidnightCheck();
     _lastCheckedDate = DateTime.now();
+  }
+
+  /// Une serie coupee ne vaut plus rien tant que rien de neuf n'est note.
+  /// La tolerance est celle de `StreakService` : la journee d'hier compte
+  /// encore, l'avant-veille non.
+  static bool _streakStillAlive(int count, String? lastDate) {
+    if (count <= 0 || lastDate == null) return false;
+    final last = DateTime.tryParse(lastDate);
+    if (last == null) return false;
+    final a = DateTime(last.year, last.month, last.day);
+    final now = DateTime.now();
+    final b = DateTime(now.year, now.month, now.day);
+    return b.difference(a).inDays <= 1;
   }
 
   /// Démarrer la vérification périodique du changement de jour
@@ -701,8 +730,14 @@ class GlobalStateManager {
   }
 
   /// MISE À JOUR INSTANTANÉE - Streak
-  void updateStreak(int newStreak) {
+  void updateStreak(int newStreak, {String? lastDate}) {
     _currentStreak = newStreak;
+    if (lastDate != null) {
+      _streakDate = lastDate;
+    } else if (newStreak > 0) {
+      final n = DateTime.now();
+      _streakDate = '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+    }
 
     _notifyChange(StateChangeEvent(
       type: ChangeType.streak,
@@ -774,6 +809,70 @@ class GlobalStateManager {
       if (kDebugMode) debugPrint('🍽️ GlobalState: Repas recomptés depuis la base -> $_mealsCount');
     } catch (e) {
       if (kDebugMode) debugPrint('❌ Erreur refresh meals count: $e');
+    }
+  }
+
+  /// RECOMPTE INSTANTANÉ - Calories, macros, eau et repas du jour depuis la base.
+  ///
+  /// Le tirer-pour-rafraîchir de l'accueil rechargeait le nombre de repas, le
+  /// sport et le plan — mais pas les trois chiffres que l'instrument affiche.
+  /// Le geste qui doit corriger un total qui a dérivé ne le corrigeait pas.
+  Future<void> refreshNutrition() async {
+    try {
+      final client = SupabaseConfig.client;
+      final user = client.auth.currentUser;
+      if (user == null) return;
+
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final futures = await Future.wait<dynamic>([
+        client
+            .from('food_entries')
+            .select('calories, proteins, carbs, fats, meal_id')
+            .eq('user_id', user.id)
+            .gte('consumed_at', startOfDay.toIso8601String())
+            .lt('consumed_at', endOfDay.toIso8601String()),
+        client
+            .from('water_entries')
+            .select('amount')
+            .eq('user_id', user.id)
+            .gte('consumed_at', startOfDay.toIso8601String())
+            .lt('consumed_at', endOfDay.toIso8601String()),
+      ]);
+
+      double calories = 0, proteins = 0, carbs = 0, fats = 0, waterMl = 0;
+      final mealIds = <String>{};
+      for (final entry in futures[0] as List) {
+        calories += (entry['calories'] as num?)?.toDouble() ?? 0;
+        proteins += (entry['proteins'] as num?)?.toDouble() ?? 0;
+        carbs += (entry['carbs'] as num?)?.toDouble() ?? 0;
+        fats += (entry['fats'] as num?)?.toDouble() ?? 0;
+        final id = entry['meal_id'] as String?;
+        if (id != null && id.isNotEmpty) mealIds.add(id);
+      }
+      for (final entry in futures[1] as List) {
+        waterMl += (entry['amount'] as num?)?.toDouble() ?? 0;
+      }
+
+      _currentCalories = calories;
+      _currentProteins = proteins;
+      _currentCarbs = carbs;
+      _currentFats = fats;
+      _currentWaterL = waterMl / 1000.0;
+      _mealsCount = mealIds.length;
+
+      _notifyChange(StateChangeEvent(
+        type: ChangeType.batch,
+        value: {'calories': _currentCalories, 'water': _currentWaterL, 'meals': _mealsCount},
+      ));
+
+      if (kDebugMode) {
+        debugPrint('🔄 GlobalState: Nutrition rechargée -> ${calories.toInt()} kcal, ${(waterMl / 1000).toStringAsFixed(2)} L, $_mealsCount repas');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ Erreur refresh nutrition: $e');
     }
   }
 
@@ -1032,6 +1131,7 @@ class GlobalStateManager {
     _calorieGoal = 2000;
     _waterGoalL = 2.0;
     _currentStreak = 0;
+    _streakDate = null;
     _userName = 'User';
 
     // Vider les données hebdomadaires

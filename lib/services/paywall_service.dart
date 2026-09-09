@@ -183,7 +183,7 @@ class PaywallService {
           {
             'icon': '🎯',
             'text': isGerman
-                ? 'Schluss mit ungenauen Schaetzungen, die deinen Fortschritt ruinieren'
+                ? 'Schluss mit ungenauen Schätzungen, die deinen Fortschritt ruinieren'
                 : isFrench
                     ? 'Fini les estimations approximatives qui ruinent tes progrès'
                     : 'No more rough estimates ruining your progress',
@@ -191,7 +191,7 @@ class PaywallService {
           {
             'icon': '🔥',
             'text': isGerman
-                ? 'Scanne deine 3 taeglichen Mahlzeiten in unter 30 Sekunden'
+                ? 'Scanne deine 3 täglichen Mahlzeiten in unter 30 Sekunden'
                 : isFrench
                     ? 'Scanne tes 3 repas quotidiens en moins de 30 secondes'
                     : 'Scan your 3 daily meals in under 30 seconds',
@@ -227,7 +227,7 @@ class PaywallService {
           {
             'icon': '📱',
             'text': isGerman
-                ? 'Scanne den Barcode, erhalte die echten Naehrwerte'
+                ? 'Scanne den Barcode, erhalte die echten Nährwerte'
                 : isFrench
                     ? 'Scanne le code-barre, obtiens les vraies valeurs nutritionnelles'
                     : 'Scan the barcode, get the real nutritional values',
@@ -251,7 +251,7 @@ class PaywallService {
           {
             'icon': '🎯',
             'text': isGerman
-                ? 'Schluss mit Schaetzfehlern, die deine Ergebnisse verfaelschen'
+                ? 'Schluss mit Schätzfehlern, die deine Ergebnisse verfälschen'
                 : isFrench
                     ? 'Fini les erreurs d\'estimation qui faussent tes résultats'
                     : 'No more estimation errors messing up your results',
@@ -407,7 +407,7 @@ class PaywallService {
           {
             'icon': '📈',
             'text': isGerman
-                ? 'Visualisiere deinen Fortschritt Woche fuer Woche'
+                ? 'Visualisiere deinen Fortschritt Woche für Woche'
                 : isFrench
                     ? 'Visualise ta progression semaine après semaine'
                     : 'Visualize your progress week after week',
@@ -423,7 +423,7 @@ class PaywallService {
           {
             'icon': '✨',
             'text': isGerman
-                ? 'Erhalte taeglich personalisierte Ermutigung'
+                ? 'Erhalte täglich personalisierte Ermutigung'
                 : isFrench
                     ? 'Reçois des encouragements personnalisés chaque jour'
                     : 'Receive personalized encouragement every day',
@@ -435,7 +435,7 @@ class PaywallService {
           {
             'icon': '💪',
             'text': isGerman
-                ? 'Analyse deiner Leistung Uebung fuer Uebung'
+                ? 'Analyse deiner Leistung Übung für Übung'
                 : isFrench
                     ? 'Analyse de tes perfs exercice par exercice'
                     : 'Analysis of your performance exercise by exercise',
@@ -689,7 +689,7 @@ class PaywallService {
                   ? '📱 Scanner codes-barres - Premium'
                   : '📱 Barcode Scanner - Premium',
           'message': isGerman
-              ? 'Der Barcode-Scanner ist Premium-Mitgliedern vorbehalten.\n\n✨ Scanne Supermarktprodukte\n📊 Komplette Naehrwerte automatisch\n⚡ Enorme Zeitersparnis'
+              ? 'Der Barcode-Scanner ist Premium-Mitgliedern vorbehalten.\n\n✨ Scanne Supermarktprodukte\n📊 Komplette Nährwerte automatisch\n⚡ Enorme Zeitersparnis'
               : isFrench
                   ? 'Le scanner de codes-barres est réservé aux membres Premium.\n\n✨ Scanne les produits du supermarché\n📊 Nutritions complètes automatiquement\n⚡ Gain de temps énorme'
                   : 'Barcode scanner is reserved for Premium members.\n\n✨ Scan supermarket products\n📊 Complete nutrition automatically\n⚡ Huge time saver',
@@ -844,8 +844,12 @@ class PaywallService {
   }) async {
     if (_isPremium) return true;
 
-    await showPaywall(context: context, paywallContext: paywallContext);
-    return false;
+    // Le résultat du paywall était jeté et la méthode rendait `false` en dur :
+    // un utilisateur qui s'abonnait depuis cet écran le voyait se fermer sans
+    // que la fonction demandée s'ouvre, et devait retaper. On rend ce que le
+    // paywall a dit, en revérifiant l'abonnement, qui fait autorité.
+    final purchased = await showPaywall(context: context, paywallContext: paywallContext);
+    return purchased || _isPremium;
   }
 
   /// Vrai quand la fonction doit porter un cadenas.

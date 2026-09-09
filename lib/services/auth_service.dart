@@ -496,9 +496,14 @@ class AuthService extends ChangeNotifier {
       // 1. Clear secure storage (tokens)
       await _secureStorage.deleteAll();
 
-      // 2. Clear SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      // 2. Effacer ce qui appartient au compte — et rien d'autre.
+      //
+      // `prefs.clear()` emportait aussi le thème, la langue, les réglages de
+      // notifications, l'objectif sport, `has_logged_in_before` (le lancement
+      // suivant proposait « créer un compte » au lieu de « se connecter ») et,
+      // surtout, `strength_pending_v2` : la file des séances terminées qui
+      // attendaient le réseau. Se déconnecter les détruisait.
+      await _clearAccountScopedPreferences();
 
       // 3. Clear fast cache
       FastCacheService.invalidateDashboard();
@@ -510,6 +515,43 @@ class AuthService extends ChangeNotifier {
       if (kDebugMode) debugPrint('✅ All local data cleared');
     } catch (e) {
       if (kDebugMode) debugPrint('⚠️ Error clearing local data: $e');
+    }
+  }
+
+  /// Les clés propres au compte, celles qu'une déconnexion doit emporter.
+  ///
+  /// Tout le reste — préférences de l'appareil et données en attente d'envoi —
+  /// survit volontairement à la déconnexion.
+  static const List<String> _accountScopedPrefKeys = [
+    'global_day_state_v1',
+    'is_onboarded',
+    'user_gender',
+    'user_age',
+    'user_height',
+    'user_weight',
+    'target_weight',
+    'user_activity',
+    'user_goal',
+    'calories_target',
+    'protein_target',
+    'carbs_target',
+    'fat_target',
+    'has_custom_macros',
+    'sport_week_v1',
+    'sport_weekly_goal',
+    'foods_cache_v2',
+  ];
+
+  Future<void> _clearAccountScopedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in _accountScopedPrefKeys) {
+      await prefs.remove(key);
+    }
+    // Les brouillons et progressions liés à un parcours utilisateur.
+    for (final key in prefs.getKeys().toList()) {
+      if (key.startsWith('onb_') || key.startsWith('coach_') || key.startsWith('tutorial_')) {
+        await prefs.remove(key);
+      }
     }
   }
 

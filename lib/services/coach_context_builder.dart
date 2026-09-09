@@ -404,7 +404,7 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
           .from('food_entries')
           .select('''
             meal_type, calories, proteins, carbs, fats, consumed_at, scanned_food_name,
-            food_database:food_id(name_fr, name_en),
+            food_database:food_id(name_fr, name_en, name_de),
             custom_foods:custom_food_id(name)
           ''')
           .eq('user_id', user.id)
@@ -444,7 +444,11 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
             String foodName = 'Aliment';
             if (food['food_database'] != null) {
               final db = food['food_database'];
-              foodName = (db['name_fr'] as String?) ?? (db['name_en'] as String?) ?? 'Aliment';
+              // Le coach doit voir les aliments dans la langue de l'utilisateur :
+              // il en reparle dans sa reponse.
+              final resolved = LocalizationService.instance
+                  .getTextFromColumns(db['name_fr'] as String?, db['name_en'] as String?, db['name_de'] as String?);
+              foodName = resolved.isEmpty ? 'Aliment' : resolved;
             } else if (food['custom_foods'] != null && food['custom_foods']['name'] != null) {
               foodName = food['custom_foods']['name'] as String;
             } else if (food['scanned_food_name'] != null) {

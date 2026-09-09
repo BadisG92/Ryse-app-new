@@ -1844,6 +1844,20 @@ class AppTranslations {
       'en': 'Retry',
       'de': 'Erneut versuchen',
     },
+    // La boutique n'a pas répondu : le paywall le dit au lieu d'afficher un
+    // prix inventé. Même phrase que celle de l'onboarding.
+    'store_unavailable': {
+      'fr': 'Boutique indisponible pour le moment. Réessaie dans un instant.',
+      'en': 'Store unavailable right now. Try again in a moment.',
+      'de': 'Store gerade nicht verfügbar. Versuch es gleich noch einmal.',
+    },
+    // Manquait au dictionnaire : la ligne s'affichait littéralement
+    // « website » dans Réglages → Aide & support et dans Réglages → À propos.
+    'website': {
+      'fr': 'Site web',
+      'en': 'Website',
+      'de': 'Website',
+    },
     // Progress KPI translations
     'progress_overview': {
       'fr': 'Aperçu des progrès',

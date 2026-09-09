@@ -2,6 +2,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -76,15 +77,33 @@ class NotificationService {
     }
   }
 
-  /// Demander les permissions (iOS)
+  /// Demander les permissions, sur les deux plateformes.
+  ///
+  /// Seul iOS était demandé, et le `?? true` faisait croire qu'Android était
+  /// servi. Depuis Android 13, `POST_NOTIFICATIONS` est une permission
+  /// d'exécution : sans elle, aucune notification locale n'apparaît jamais.
+  /// Elle était déclarée au manifeste mais jamais demandée — rappels de repas,
+  /// hydratation, série, bilan hebdo : tout était muet.
   Future<bool> requestPermissions() async {
     if (!_initialized) await initialize();
 
-    final result = await _notifications
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
+    if (Platform.isIOS) {
+      final result = await _notifications
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+      return result ?? false;
+    }
 
-    return result ?? true; // Android n'a pas besoin de permissions runtime
+    if (Platform.isAndroid) {
+      final android = _notifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (android == null) return false;
+      final granted = await android.requestNotificationsPermission();
+      if (kDebugMode) debugPrint('🔔 Android POST_NOTIFICATIONS: ${granted == true ? "accordée" : "refusée"}');
+      return granted ?? false;
+    }
+
+    return false;
   }
 
   /// Charger les préférences depuis SharedPreferences

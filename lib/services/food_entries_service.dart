@@ -12,10 +12,17 @@ import 'meal_widget_data_provider.dart';
 import 'notification_service.dart';
 import 'weekly_planner_service.dart';
 import 'meal_planner_sync_service.dart';
-import '../models/weekly_planner_models.dart';
 
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
+
+  /// L'état global ne décrit que la journée en cours : une écriture qui porte
+  /// sur un autre jour ne doit pas le toucher. Une seule définition, utilisée
+  /// par l'ajout, la suppression et la correction de portion.
+  static bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year && date.month == now.month && date.day == now.day;
+  }
 
   // Mapping des noms de repas français, anglais et allemand vers les meal_types en base
   static const Map<String, String> _mealTypeMapping = {
@@ -76,7 +83,8 @@ class FoodEntriesService {
             food_database:food_id (
               id,
               name_fr,
-              name_en
+              name_en,
+              name_de
             ),
             custom_foods:custom_food_id (
               id,
@@ -87,7 +95,8 @@ class FoodEntriesService {
             recipes_database:recipe_id (
               id,
               name_fr,
-              name_en
+              name_en,
+              name_de
             )
           ''')
           .eq('user_id', userId)
@@ -144,9 +153,9 @@ class FoodEntriesService {
           // Recette
           final recipe = entry['recipes_database'];
           final locService = LocalizationService.instance;
-          foodName = locService.getTextFromColumns(recipe['name_fr'], recipe['name_en']).isEmpty 
-              ? 'Recette' 
-              : locService.getTextFromColumns(recipe['name_fr'], recipe['name_en']);
+          foodName = locService.getTextFromColumns(recipe['name_fr'], recipe['name_en'], recipe['name_de']).isEmpty
+              ? 'Recette'
+              : locService.getTextFromColumns(recipe['name_fr'], recipe['name_en'], recipe['name_de']);
           isCustom = false;
           isRecipe = true;
           isScanned = false;
@@ -158,9 +167,9 @@ class FoodEntriesService {
         } else if (entry['food_database'] != null) {
           final food = entry['food_database'];
           final locService = LocalizationService.instance;
-          foodName = locService.getTextFromColumns(food['name_fr'], food['name_en']).isEmpty 
-              ? 'Aliment' 
-              : locService.getTextFromColumns(food['name_fr'], food['name_en']);
+          foodName = locService.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de']).isEmpty
+              ? 'Aliment'
+              : locService.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de']);
           isCustom = false;
           isScanned = false;
         } else {
@@ -279,9 +288,9 @@ class FoodEntriesService {
           .select('''
             id,
             scanned_food_name,
-            food_database:food_id ( name_fr, name_en ),
+            food_database:food_id ( name_fr, name_en, name_de ),
             custom_foods:custom_food_id ( name ),
-            recipes_database:recipe_id ( name_fr, name_en )
+            recipes_database:recipe_id ( name_fr, name_en, name_de )
           ''')
           .eq('user_id', userId)
           .gte('consumed_at', start.toIso8601String())
@@ -299,11 +308,11 @@ class FoodEntriesService {
         final rowName = scanned != null && scanned.isNotEmpty
             ? scanned
             : recipe != null
-                ? loc.getTextFromColumns(recipe['name_fr'], recipe['name_en'])
+                ? loc.getTextFromColumns(recipe['name_fr'], recipe['name_en'], recipe['name_de'])
                 : custom != null
                     ? (custom['name'] as String? ?? '')
                     : food != null
-                        ? loc.getTextFromColumns(food['name_fr'], food['name_en'])
+                        ? loc.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de'])
                         : '';
         if (rowName.trim().toLowerCase() == wanted) return row['id'] as String?;
       }
@@ -344,9 +353,9 @@ class FoodEntriesService {
             has_modified_macros,
             scanned_food_name,
             is_scanned,
-            food_database:food_id ( name_fr, name_en ),
+            food_database:food_id ( name_fr, name_en, name_de ),
             custom_foods:custom_food_id ( name, origin ),
-            recipes_database:recipe_id ( name_fr, name_en )
+            recipes_database:recipe_id ( name_fr, name_en, name_de )
           ''')
           .eq('user_id', userId)
           .gte('consumed_at', since.toIso8601String())
@@ -396,7 +405,7 @@ class FoodEntriesService {
       isScanned = true;
     } else if (row['recipes_database'] != null) {
       final recipe = row['recipes_database'];
-      name = loc.getTextFromColumns(recipe['name_fr'], recipe['name_en']);
+      name = loc.getTextFromColumns(recipe['name_fr'], recipe['name_en'], recipe['name_de']);
       isRecipe = true;
       isScanned = false;
     } else if (row['custom_foods'] != null) {
@@ -406,7 +415,7 @@ class FoodEntriesService {
       isScanned = custom['origin'] == 'barcode';
     } else if (row['food_database'] != null) {
       final food = row['food_database'];
-      name = loc.getTextFromColumns(food['name_fr'], food['name_en']);
+      name = loc.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de']);
       isScanned = false;
     } else {
       return null;
@@ -535,6 +544,9 @@ class FoodEntriesService {
   }) async {
     // Déclarer les variables en dehors du try pour qu'elles soient accessibles dans le catch
     Map<String, dynamic>? macronutrients;
+    // Vrai une fois l'état global effectivement modifié : c'est la seule
+    // condition sous laquelle le rollback du catch a un sens.
+    var touchedToday = false;
 
     try {
       final mealType = _mealTypeMapping[mealName];
@@ -604,13 +616,20 @@ class FoodEntriesService {
         entry['scanned_food_name'] = foodItem.name;
       }
 
-      // NOUVEAU: Mise à jour instantanée via GlobalStateManager
-      GlobalStateManager.instance.updateCalories(macronutrients['calories'].toDouble());
-      GlobalStateManager.instance.updateMacros(
-        proteins: macronutrients['proteins'].toDouble(),
-        carbs: macronutrients['carbs'].toDouble(),
-        fats: macronutrients['fats'].toDouble(),
-      );
+      // L'etat global est celui du jour : un repas oublie ajoute a une journee
+      // passee depuis l'historique ne doit pas gonfler le compteur d'aujourd'hui.
+      // La suppression et la correction de portion posaient deja cette garde ;
+      // l'ajout, non.
+      final touchesToday = _isToday(now);
+      touchedToday = touchesToday;
+      if (touchesToday) {
+        GlobalStateManager.instance.updateCalories(macronutrients['calories'].toDouble());
+        GlobalStateManager.instance.updateMacros(
+          proteins: macronutrients['proteins'].toDouble(),
+          carbs: macronutrients['carbs'].toDouble(),
+          fats: macronutrients['fats'].toDouble(),
+        );
+      }
 
       // Insérer et récupérer l'ID créé
       final insertResult = await _supabase
@@ -622,7 +641,7 @@ class FoodEntriesService {
       final foodEntryId = insertResult['id'] as String;
 
       // Recompter les repas uniques depuis la base pour avoir le bon nombre
-      await GlobalStateManager.instance.refreshMealsCount();
+      if (touchesToday) await GlobalStateManager.instance.refreshMealsCount();
 
       // Déclencher la mise à jour des calculs nutritionnels
       await _notifyNutritionUpdate(userId, now);
@@ -644,19 +663,17 @@ class FoodEntriesService {
       if (!skipPlannerSync) {
         try {
           // Chercher s'il existe un repas planifié pour ce créneau
-          final plannedMeal = await WeeklyPlannerService.findPlannedMealForDate(mealType!, now);
+          final plannedMeal = await WeeklyPlannerService.findPlannedMealForDate(mealType, now);
           if (plannedMeal != null) {
-            // Marquer comme complété et lier au food_entry
-            await WeeklyPlannerService.updateActivityStatus(
-              plannedMeal.id,
-              PlannedStatus.completed,
-            );
+            // Marquer comme complété *et* lier au food_entry : c'est ce lien
+            // qui permettra de rouvrir le créneau si l'aliment est retiré.
+            await MealPlannerSyncService.markPlannedMealDone(plannedMeal.id, foodEntryId);
             debugPrint('✅ Weekly Planner: Meal $mealType marqué comme complété');
           } else {
             // Pas de repas planifié → créer une activité liée (sync journal → planner)
             await MealPlannerSyncService.syncFoodEntryToPlanner(
               foodEntryId: foodEntryId,
-              mealType: mealType!,
+              mealType: mealType,
               consumedAt: now,
               foodName: foodItem.name,
               calories: macronutrients['calories'],
@@ -679,8 +696,9 @@ class FoodEntriesService {
     } catch (e) {
       debugPrint('Erreur lors de l\'ajout de l\'entrée: $e');
 
-      // ROLLBACK GlobalState en cas d'erreur (seulement si macronutrients a été calculé)
-      if (macronutrients != null) {
+      // ROLLBACK GlobalState : uniquement si on l'avait effectivement touché,
+      // c'est-à-dire pour une entrée du jour dont les macros étaient calculées.
+      if (macronutrients != null && touchedToday) {
         GlobalStateManager.instance.updateCalories(-macronutrients['calories'].toDouble());
         GlobalStateManager.instance.updateMacros(
           proteins: -macronutrients['proteins'].toDouble(),
@@ -847,9 +865,7 @@ class FoodEntriesService {
       await _supabase.from('food_entries').update(after).eq('id', entryId);
 
       final consumedAt = DateTime.parse(row['consumed_at'] as String);
-      final now = DateTime.now();
-      final isToday = consumedAt.year == now.year && consumedAt.month == now.month && consumedAt.day == now.day;
-      if (isToday) {
+      if (_isToday(consumedAt)) {
         GlobalStateManager.instance.updateCalories((after['calories'] as int).toDouble() - calories);
         GlobalStateManager.instance.updateMacros(
           proteins: (after['proteins'] as double) - proteins,
@@ -902,10 +918,8 @@ class FoodEntriesService {
       // MISE À JOUR GLOBALSTATE: Soustraire les calories/macros de l'entrée supprimée
       // Vérifier si c'est aujourd'hui pour mettre à jour le GlobalState
       final consumedAt = DateTime.parse(entryInfo['consumed_at'] as String);
-      final now = DateTime.now();
-      final isToday = consumedAt.year == now.year && consumedAt.month == now.month && consumedAt.day == now.day;
 
-      if (isToday && calories > 0) {
+      if (_isToday(consumedAt) && calories > 0) {
         debugPrint('🔄 GlobalState: Soustraction de $calories kcal après suppression');
         GlobalStateManager.instance.updateCalories(-calories);
         GlobalStateManager.instance.updateMacros(
@@ -948,8 +962,10 @@ class FoodEntriesService {
   // Notifier la mise à jour nutritionnelle
   static Future<void> _notifyNutritionUpdate(String userId, DateTime date) async {
     try {
-      // Mettre à jour les objectifs du dashboard en temps réel
-      await DashboardService.invalidateAndRefreshGoals();
+      // Le rafraîchissement du dashboard était attendu : chaque aliment ajouté
+      // payait un aller-retour réseau avant que l'écran ne reprenne la main,
+      // pour un cache que plus aucun écran de l'app refondue ne lit.
+      unawaited(DashboardService.invalidateAndRefreshGoals());
       
       // Notifier via le stream controller pour la mise à jour en temps réel
       _nutritionUpdateController.add({
@@ -1061,6 +1077,7 @@ class FoodEntriesService {
     double totalCarbs = 0;
     double totalFats = 0;
     double totalWeight = 0;
+    var touchedToday = false;
 
     try {
       // Calculer les totaux
@@ -1139,16 +1156,21 @@ class FoodEntriesService {
       debugPrint('   - carbs: $totalCarbs');
       debugPrint('   - fats: $totalFats');
 
-      // Insérer dans food_entries avec les bonnes colonnes
-      // NOUVEAU: Mise à jour instantanée via GlobalStateManager
-      GlobalStateManager.instance.updateCalories(totalCalories);
-      GlobalStateManager.instance.updateMacros(
-        proteins: totalProteins,
-        carbs: totalCarbs,
-        fats: totalFats,
-      );
+      // Insérer dans food_entries avec les bonnes colonnes.
+      // Comme pour l'ajout ordinaire, l'état global ne bouge que si l'entrée
+      // tombe aujourd'hui : sinon un repas rattrapé sur un jour passé gonflait
+      // le compteur du jour.
+      touchedToday = _isToday(targetDate);
+      if (touchedToday) {
+        GlobalStateManager.instance.updateCalories(totalCalories);
+        GlobalStateManager.instance.updateMacros(
+          proteins: totalProteins,
+          carbs: totalCarbs,
+          fats: totalFats,
+        );
+      }
 
-      await _supabase.from('food_entries').insert({
+      final aiInsert = await _supabase.from('food_entries').insert({
         'user_id': userId,
         'meal_type': mealType,
         'meal_id': finalMealId,
@@ -1160,12 +1182,13 @@ class FoodEntriesService {
         'carbs': totalCarbs,
         'fats': totalFats,
         'consumed_at': targetDate.toIso8601String(),
-      });
+      }).select('id').single();
+      final aiFoodEntryId = aiInsert['id'] as String;
 
       debugPrint('✅ Entrée food_entries créée avec succès');
 
       // Recompter les repas uniques depuis la base pour avoir le bon nombre
-      await GlobalStateManager.instance.refreshMealsCount();
+      if (touchedToday) await GlobalStateManager.instance.refreshMealsCount();
 
       // Notifier la mise à jour de la nutrition
       await _notifyNutritionUpdate(userId, targetDate);
@@ -1175,12 +1198,9 @@ class FoodEntriesService {
 
       // WEEKLY PLANNER SYNC: Marquer le repas planifié comme complété
       try {
-        final plannedMeal = await WeeklyPlannerService.findPlannedMealForDate(mealType!, targetDate);
+        final plannedMeal = await WeeklyPlannerService.findPlannedMealForDate(mealType, targetDate);
         if (plannedMeal != null) {
-          await WeeklyPlannerService.updateActivityStatus(
-            plannedMeal.id,
-            PlannedStatus.completed,
-          );
+          await MealPlannerSyncService.markPlannedMealDone(plannedMeal.id, aiFoodEntryId);
           debugPrint('✅ Weekly Planner: Meal $mealType marqué comme complété');
         }
       } catch (plannerError) {
@@ -1192,7 +1212,7 @@ class FoodEntriesService {
 
       // Annuler la notification de rappel pour ce type de repas
       // (évite de recevoir "N'oublie pas ton déjeuner" après l'avoir loggé)
-      unawaited(NotificationService().cancelMealReminderForType(mealType!));
+      unawaited(NotificationService().cancelMealReminderForType(mealType));
       // Annuler les notifications "rien logué" et "streak protection"
       unawaited(NotificationService().cancelActivityBasedReminders());
 
@@ -1200,15 +1220,17 @@ class FoodEntriesService {
     } catch (e) {
       debugPrint('Erreur lors de l\'ajout de l\'aliment IA: $e');
 
-      // ROLLBACK GlobalState en cas d'erreur
-      GlobalStateManager.instance.updateCalories(-totalCalories);
-      GlobalStateManager.instance.updateMacros(
-        proteins: -totalProteins,
-        carbs: -totalCarbs,
-        fats: -totalFats,
-      );
-      // Recompter les repas pour être sûr d'avoir la bonne valeur même après erreur
-      await GlobalStateManager.instance.refreshMealsCount();
+      // ROLLBACK GlobalState : seulement s'il a effectivement été touché.
+      if (touchedToday) {
+        GlobalStateManager.instance.updateCalories(-totalCalories);
+        GlobalStateManager.instance.updateMacros(
+          proteins: -totalProteins,
+          carbs: -totalCarbs,
+          fats: -totalFats,
+        );
+        // Recompter les repas pour être sûr d'avoir la bonne valeur même après erreur
+        await GlobalStateManager.instance.refreshMealsCount();
+      }
 
       return false;
     }

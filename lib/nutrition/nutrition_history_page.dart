@@ -11,6 +11,7 @@ import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/notification_service.dart';
+import '../services/portions.dart';
 import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
@@ -155,6 +156,46 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
     );
   }
 
+  /// Refixer ce que pesait un aliment, comme sur la page du jour. La feuille
+  /// existait là-bas seulement : sur un jour passé, se tromper de portion
+  /// obligeait à supprimer puis ressaisir.
+  Future<void> _editItem(WeekSlot slot, nutrition.FoodItem item) async {
+    if (item.id == null) return;
+    final parts = item.portion.trim().split(RegExp(r'\s+'));
+    final current = double.tryParse(parts.first.replaceAll(',', '.')) ?? 100;
+    final unit = parts.length > 1 ? parts.sublist(1).join(' ') : 'g';
+    final steps = <double>{...RyzePortions.presets(unit: unit, reference: current), current}.toList()..sort();
+
+    final chosen = await showRyzeSheet<double>(
+      context,
+      title: item.name,
+      subtitle: 'nutri_fix_portion'.tr(_lang),
+      builder: (sheet) => Wrap(
+        spacing: sheet.vw(2),
+        runSpacing: sheet.vw(2),
+        children: [
+          for (final value in steps)
+            _Chip(
+              label: RyzePortions.label(value, unit, _lang),
+              selected: (value - current).abs() < 0.05,
+              onTap: () => Navigator.pop(sheet, value),
+            ),
+        ],
+      ),
+    );
+    if (chosen == null || !mounted || (chosen - current).abs() < 0.05) return;
+
+    final ok = await FoodEntriesService.updateFoodEntryQuantity(item.id!, chosen);
+    if (!mounted) return;
+    if (ok) {
+      RyzeFeedback.confirm();
+    } else {
+      RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
+    }
+    _load();
+    _loadStrip();
+  }
+
   Future<void> _removeItem(WeekSlot slot, nutrition.FoodItem item) async {
     if (item.id == null) return;
     RyzeFeedback.removed();
@@ -175,12 +216,16 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
             consumedAt: _selected,
           );
           _load();
+          _loadStrip();
         },
       );
     } else {
       RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
     }
     _load();
+    // La jauge du jour dans la bande restait sur son ancienne valeur : elle
+    // n'était relue qu'à l'ajout, jamais au retrait.
+    _loadStrip();
   }
 
   @override
@@ -274,6 +319,7 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
                   onToggle: (slot) => setState(() => _open.contains(slot) ? _open.remove(slot) : _open.add(slot)),
                   onAdd: _add,
                   onRemoveItem: _removeItem,
+                  onEditItem: _editItem,
                 ),
               ],
             ],
@@ -304,6 +350,37 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
 /// A 3 pt bar under the number: how much of the goal that day held. Nothing is
 /// drawn while the day is still being read, so the strip never shows a false
 /// empty.
+/// Une valeur possible, dans la feuille de correction de portion. Le même
+/// jeton que sur la page du jour.
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label, required this.onTap, this.selected = false});
+
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        height: 44,
+        padding: EdgeInsets.symmetric(horizontal: context.vw(4.1)),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? RyzeColors.ink : RyzeColors.surf,
+          borderRadius: BorderRadius.circular(RyzeRadius.pill),
+          border: Border.all(color: RyzeColors.ink, width: 1.5),
+        ),
+        child: Text(
+          label,
+          style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: selected ? RyzeColors.surf : RyzeColors.ink),
+        ),
+      ),
+    );
+  }
+}
+
 class _Gauge extends StatelessWidget {
   const _Gauge({required this.fill, required this.selected});
 

@@ -12,7 +12,6 @@ import 'services/app_navigator.dart';
 import 'pages/ryze_app.dart';
 import 'services/offline_workout_service.dart';
 import 'settings/settings_page.dart';
-import 'screens/pricing_screen.dart';
 import 'core/infrastructure/startup/priority_service_initializer.dart';
 import 'services/global_state_manager.dart';
 import 'services/navigation_preloader.dart';
@@ -236,9 +235,11 @@ class MyApp extends StatelessWidget {
           ),
         ),
         home: const AppInitializer(),
+        // La route '/pricing' menait a un ecran d'essai avec un bouton
+        // « TEST: Premium active » cable sur un bypass d'achat. Rien n'y
+        // naviguait, mais il etait enregistre dans l'application publiee.
         routes: {
           '/settings': (context) => const SettingsPage(),
-          '/pricing': (context) => const PricingScreen(),
         },
         ),
       ),

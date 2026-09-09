@@ -34,8 +34,10 @@
 
     <!-- Permissions pour les notifications locales (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- USE_EXACT_ALARM est reservee par Google Play aux applications d'alarme
+         et d'agenda : la demander pour des rappels de repas fait refuser la
+         fiche. SCHEDULE_EXACT_ALARM suffit, et l'utilisateur peut la retirer. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 
     <!-- Permission pour le compteur de pas (Android 10+) -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />

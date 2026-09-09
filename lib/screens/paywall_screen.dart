@@ -10,6 +10,9 @@ import '../services/unified_subscription_service.dart';
 import '../services/localization_service.dart';
 import '../services/haptic_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/translations.dart';
 
 /// Paywall avec design V3 - Animations gaming + particles
 class PaywallScreen extends StatefulWidget {
@@ -62,7 +65,6 @@ class _PaywallScreenState extends State<PaywallScreen>
   late Animation<Offset> _heroSlideAnimation;
   late Animation<double> _heroMoveAnimation; // Animation de montée smooth
   late Animation<double> _breathingAnimation;
-  late Animation<double> _pulseAnimation;
 
   // Individual animations for each element
   late Animation<double> _titleOpacity;
@@ -77,7 +79,6 @@ class _PaywallScreenState extends State<PaywallScreen>
   late Animation<Offset> _ctaSlide;
 
   // Timing variables
-  bool _showHero = false;
   bool _showContent = false;
 
   @override
@@ -195,9 +196,6 @@ class _PaywallScreenState extends State<PaywallScreen>
       vsync: this,
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
 
     // Staggered animation sequence
     _startAnimationSequence();
@@ -216,21 +214,81 @@ class _PaywallScreenState extends State<PaywallScreen>
     _loadPackages();
   }
 
-  /// Helper to get dynamic price string from loaded packages
-  String _getPriceString(SubscriptionPeriod period, String defaultPrice) {
-    if (_availablePackages.isEmpty) return defaultPrice;
-    
+  /// Le paquet du store pour une periode, ou null s'il n'a pas ete charge.
+  Package? _packageFor(SubscriptionPeriod period) {
+    for (final p in _availablePackages) {
+      final id = p.identifier.toLowerCase();
+      final match = switch (period) {
+        SubscriptionPeriod.weekly => id.contains('weekly'),
+        SubscriptionPeriod.monthly => id.contains('monthly'),
+        SubscriptionPeriod.annual => id.contains('annual') || id.contains('yearly'),
+        SubscriptionPeriod.lifetime => false,
+      };
+      if (match) return p;
+    }
+    return null;
+  }
+
+  /// Le prix affiche vient du store, jamais d'ailleurs.
+  ///
+  /// Il retombait sur des montants en euros ecrits en dur — « 69,99€ »,
+  /// « 9,99€ », « 2,99€ » — des que RevenueCat tardait ou echouait : un
+  /// utilisateur hors zone euro voyait donc un prix qui n'etait pas le sien.
+  /// Tant que le store n'a pas repondu, on n'ecrit rien.
+  String _priceOf(SubscriptionPeriod period) => _packageFor(period)?.storeProduct.priceString ?? '';
+
+  /// L'equivalent mensuel de l'annuel, dans la devise du store.
+  ///
+  /// Il etait ecrit en dur (« 5,83€/mois »), donc faux partout ailleurs qu'en
+  /// zone euro, meme quand le vrai prix s'affichait juste au-dessus.
+  String _monthlyEquivalent(SubscriptionPeriod period) {
+    final package = _packageFor(period);
+    if (package == null) return '';
+    final product = package.storeProduct;
+    final divisor = period == SubscriptionPeriod.annual ? 12.0 : null;
+    final multiplier = period == SubscriptionPeriod.weekly ? 52 / 12 : null;
+    if (divisor == null && multiplier == null) return '';
+    final value = divisor != null ? product.price / divisor : product.price * multiplier!;
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final locale = lang == 'fr' ? 'fr_FR' : (lang == 'de' ? 'de_DE' : 'en_US');
+    final String amount;
     try {
-      final package = _availablePackages.firstWhere((p) {
-        final id = p.identifier.toLowerCase();
-        if (period == SubscriptionPeriod.weekly) return id.contains('weekly');
-        if (period == SubscriptionPeriod.monthly) return id.contains('monthly');
-        if (period == SubscriptionPeriod.annual) return id.contains('annual') || id.contains('yearly');
-        return false;
-      });
-      return package.storeProduct.priceString;
+      amount = NumberFormat.simpleCurrency(locale: locale, name: product.currencyCode).format(value);
     } catch (_) {
-      return defaultPrice;
+      return '';
+    }
+    final per = lang == 'fr' ? '/mois' : (lang == 'de' ? '/Monat' : '/mo');
+    return '$amount$per';
+  }
+
+  /// L'economie reelle de l'annuel face au mensuel. Nulle tant que les deux
+  /// prix ne sont pas connus : le badge annoncait « 49 % » en dur, ce que les
+  /// prix affiches ne donnaient meme pas.
+  int? get _annualSavingsPercent {
+    final annual = _packageFor(SubscriptionPeriod.annual)?.storeProduct;
+    final monthly = _packageFor(SubscriptionPeriod.monthly)?.storeProduct;
+    if (annual == null || monthly == null) return null;
+    final full = monthly.price * 12;
+    if (full <= 0 || annual.price <= 0 || annual.price >= full) return null;
+    final saved = ((full - annual.price) / full * 100).round();
+    return saved <= 0 ? null : saved;
+  }
+
+  /// Vrai quand le store n'a rien rendu : on le dit, on ne devine pas.
+  bool get _storeUnavailable => !_isLoadingPackages && _availablePackages.isEmpty;
+
+  /// Le pourcentage à écrire dans le badge de l'annuel.
+  String get _savingsLabel => '${_annualSavingsPercent ?? 40}';
+
+  /// Les deux liens qu'App Review attend sur un écran d'abonnement. Ils
+  /// n'existaient pas ici : seul le paywall de l'onboarding les portait.
+  Future<void> _openLegal(String page) async {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final suffix = lang == 'fr' ? '' : '_en';
+    try {
+      await launchUrl(Uri.parse('https://coach-ryze.com/$page$suffix.html'), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('PaywallScreen: ouverture $page: $e');
     }
   }
 
@@ -272,18 +330,20 @@ class _PaywallScreenState extends State<PaywallScreen>
     }
 
     if (_availablePackages.isEmpty) {
-      debugPrint('⚠️ No packages available - showing configuration error');
+      // Ce message etait celui du developpeur — « Configure products in
+      // RevenueCat Dashboard or activate StoreKit Testing in Xcode » — montre
+      // a l'utilisateur, en anglais, dans l'ecran ou on lui demande de payer.
+      debugPrint('No packages available - store unreachable');
       if (mounted) {
+        final lang = LocalizationService.instance.currentLanguageCode;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              '❌ RevenueCat configuration incomplete\n'
-              '💡 Configure products in RevenueCat Dashboard or activate StoreKit Testing in Xcode',
-            ),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 5),
+          SnackBar(
+            content: Text('store_unavailable'.tr(lang)),
+            backgroundColor: const Color(0xFF6B7280),
+            duration: const Duration(seconds: 4),
           ),
         );
+        _loadPackages();
       }
       return;
     }
@@ -330,7 +390,7 @@ class _PaywallScreenState extends State<PaywallScreen>
         if (widget.onPurchaseSuccess != null) {
           await widget.onPurchaseSuccess!();
         } else {
-          _dismissPaywall();
+          _dismissPaywall(purchased: true);
         }
       }
     } on PlatformException catch (e) {
@@ -371,7 +431,6 @@ class _PaywallScreenState extends State<PaywallScreen>
     // Step 1: Show hero (avatar + bubble) centered
     await Future.delayed(const Duration(milliseconds: 300));
     if (mounted) {
-      setState(() => _showHero = true);
       _heroController.forward();
     }
 
@@ -657,31 +716,6 @@ class _PaywallScreenState extends State<PaywallScreen>
     });
   }
 
-  Widget _buildCloseButton() {
-    // Hard paywall: no close button
-    if (widget.isHardPaywall) {
-      return const SizedBox.shrink();
-    }
-
-    return IconButton(
-      onPressed: () {
-        HapticService.instance.lightImpact();
-        Navigator.pop(context);
-      },
-      icon: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(
-          Icons.close,
-          size: 20,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
 
   Widget _buildHeroSection(CoachRyzeAvatarType avatarType, String bubbleText) {
     return Padding(
@@ -778,22 +812,6 @@ class _PaywallScreenState extends State<PaywallScreen>
     );
   }
 
-  Widget _buildTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Text(
-        title,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w900,
-          color: Colors.white,
-          letterSpacing: -0.5,
-          height: 1.2,
-        ),
-      ),
-    );
-  }
 
   Widget _buildBenefits(List<Map<String, String>> benefits, bool isFrench, bool isGerman) {
     return Column(
@@ -851,6 +869,56 @@ class _PaywallScreenState extends State<PaywallScreen>
   }
 
   Widget _buildPricingCards(bool isFrench, bool isGerman) {
+    // Le store n'a pas répondu : on le dit et on propose de réessayer, au lieu
+    // de dessiner trois cartes vides ou, comme avant, trois prix en euros
+    // écrits en dur que personne hors zone euro n'aurait payés.
+    // Tant que le store repond, on ne dessine pas des cartes de prix vides.
+    if (_isLoadingPackages) {
+      return SizedBox(
+        height: 140,
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white.withValues(alpha: 0.7)),
+          ),
+        ),
+      );
+    }
+
+    if (_storeUnavailable) {
+      final lang = LocalizationService.instance.currentLanguageCode;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'store_unavailable'.tr(lang),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: Colors.white, height: 1.4),
+              ),
+              const SizedBox(height: 6),
+              TextButton(
+                onPressed: _loadPackages,
+                child: Text(
+                  'retry'.tr(lang),
+                  style: const TextStyle(fontSize: 13, color: Color(0xFFF2A93B), fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       height: 140,
       child: Padding(
@@ -887,7 +955,11 @@ class _PaywallScreenState extends State<PaywallScreen>
                           ],
                         ),
                         child: Text(
-                          isFrench ? 'Économise 49%' : isGerman ? 'Spare 49%' : 'Save 49%',
+                          isFrench
+                              ? 'Économise $_savingsLabel%'
+                              : isGerman
+                                  ? 'Spare $_savingsLabel%'
+                                  : 'Save $_savingsLabel%',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
@@ -901,12 +973,16 @@ class _PaywallScreenState extends State<PaywallScreen>
                   // Pricing card
                   _buildPricingCard(
                     period: SubscriptionPeriod.annual,
-                    price: _getPriceString(SubscriptionPeriod.annual, '69,99€'),
+                    price: _priceOf(SubscriptionPeriod.annual),
                     interval: isFrench ? '/an' : isGerman ? '/Jahr' : '/yr',
                     badge: isFrench ? 'Meilleure valeur' : isGerman ? 'Bester Wert' : 'Best value',
                     badgeColor: const Color(0xFFD4A574),
-                    description: isFrench ? 'Économise 49%' : isGerman ? 'Spare 49%' : 'Save 49%',
-                    equivalentPrice: isFrench ? '5,83€/mois' : isGerman ? '5,83€/Monat' : '€5.83/mo',
+                    description: isFrench
+                        ? 'Économise $_savingsLabel%'
+                        : isGerman
+                            ? 'Spare $_savingsLabel%'
+                            : 'Save $_savingsLabel%',
+                    equivalentPrice: _monthlyEquivalent(SubscriptionPeriod.annual),
                     savingsText: null, // Remove from inside the card
                     isHighlighted: true,
                     isFrench: isFrench,
@@ -921,7 +997,7 @@ class _PaywallScreenState extends State<PaywallScreen>
             Expanded(
               child: _buildPricingCard(
                 period: SubscriptionPeriod.monthly,
-                price: _getPriceString(SubscriptionPeriod.monthly, '9,99€'),
+                price: _priceOf(SubscriptionPeriod.monthly),
                 interval: isFrench ? '/mois' : isGerman ? '/Monat' : '/mo',
                 badge: isFrench ? 'Le plus choisi' : isGerman ? 'Am beliebtesten' : 'Most popular',
                 badgeColor: const Color(0xFFD4A574),
@@ -936,11 +1012,11 @@ class _PaywallScreenState extends State<PaywallScreen>
             Expanded(
               child: _buildPricingCard(
                 period: SubscriptionPeriod.weekly,
-                price: _getPriceString(SubscriptionPeriod.weekly, '2,99€'),
+                price: _priceOf(SubscriptionPeriod.weekly),
                 interval: isFrench ? '/sem' : isGerman ? '/Woche' : '/wk',
                 badge: isFrench ? 'Pour tester' : isGerman ? 'Zum Testen' : 'Try it',
                 badgeColor: const Color(0xFFD4A574),
-                equivalentPrice: isFrench ? '12,96€/mois' : isGerman ? '12,96€/Monat' : '€12.96/mo',
+                equivalentPrice: _monthlyEquivalent(SubscriptionPeriod.weekly),
                 isFrench: isFrench,
                 isGerman: isGerman,
               ),
@@ -1119,38 +1195,6 @@ class _PaywallScreenState extends State<PaywallScreen>
     );
   }
 
-  /// Get CTA button gradient colors based on context
-  List<Color> _getCtaGradient() {
-    switch (widget.context) {
-      case PaywallContext.scanner:
-        return [const Color(0xFFFFD700), const Color(0xFFFFA500)]; // Gold gradient
-
-      case PaywallContext.barcodeScanner:
-        return [const Color(0xFFFFD700), const Color(0xFFFF8C00)]; // Gold to Dark Orange
-
-      case PaywallContext.chatInput:
-        return [const Color(0xFFFFD700), const Color(0xFFFFB900)]; // Gold to Amber
-
-      case PaywallContext.workoutGenerator:
-        return [const Color(0xFFFFD700), const Color(0xFFFF6B00)]; // Gold to Bright Orange
-
-      case PaywallContext.nutritionAnalysis:
-        return [const Color(0xFFFFD700), const Color(0xFFF4C430)]; // Gold to Saffron
-
-      case PaywallContext.exerciseAnalysis:
-        return [const Color(0xFFFFD700), const Color(0xFFFFAA00)]; // Gold to Orange
-
-      case PaywallContext.coachChat:
-      case PaywallContext.genericUpgrade:
-        return [const Color(0xFFFFD700), const Color(0xFFDAA520)]; // Gold to Goldenrod (default)
-
-      case PaywallContext.planner:
-        return [const Color(0xFFFFD700), const Color(0xFFFFA500)]; // Gold to Orange (same as trial badge)
-
-      case PaywallContext.onboarding:
-        return [const Color(0xFFFFD700), const Color(0xFFFFA500)]; // Gold to Orange
-    }
-  }
 
   Widget _buildCTA(bool isFrench, bool isGerman) {
     return Padding(
@@ -1230,27 +1274,46 @@ class _PaywallScreenState extends State<PaywallScreen>
               fontWeight: FontWeight.w600,
             ),
           ),
-          // Restore Purchases button (Required by Apple App Store)
-          TextButton(
-            onPressed: _handleRestorePurchases,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              isFrench ? 'Restaurer mes achats' : isGerman ? 'Käufe wiederherstellen' : 'Restore Purchases',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF6B7280),
-                fontWeight: FontWeight.w500,
+          // Restauration + conditions + confidentialité : les trois liens
+          // qu'App Review attend sur un écran d'abonnement. Seule la
+          // restauration était là.
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _footLink(
+                isFrench ? 'Restaurer mes achats' : isGerman ? 'Käufe wiederherstellen' : 'Restore Purchases',
+                _handleRestorePurchases,
               ),
-            ),
+              const _FootDot(),
+              _footLink(
+                isFrench ? 'Conditions' : isGerman ? 'Nutzungsbedingungen' : 'Terms of Use',
+                () => _openLegal('terms'),
+              ),
+              const _FootDot(),
+              _footLink(
+                isFrench ? 'Confidentialité' : isGerman ? 'Datenschutz' : 'Privacy Policy',
+                () => _openLegal('privacy'),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+
+  Widget _footLink(String label, VoidCallback onTap) => TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w500),
+        ),
+      );
 
   Widget _buildSkipButton(bool isFrench, bool isGerman) {
     // Hard paywall: no skip button at all
@@ -1282,12 +1345,16 @@ class _PaywallScreenState extends State<PaywallScreen>
     );
   }
 
-  /// Ferme le paywall et appelle le callback onDismiss si fourni
-  void _dismissPaywall() {
+  /// Ferme le paywall et appelle le callback onDismiss si fourni.
+  ///
+  /// Le résultat remonte à l'appelant : il rendait toujours `null`, donc
+  /// `PaywallService.showPaywall` lisait « refusé » même après un achat
+  /// réussi, et la fonction demandée ne s'ouvrait pas.
+  void _dismissPaywall({bool purchased = false}) {
     if (widget.onDismiss != null) {
       widget.onDismiss!();
     } else {
-      Navigator.pop(context);
+      Navigator.pop(context, purchased);
     }
   }
 
@@ -1355,7 +1422,7 @@ class _PaywallScreenState extends State<PaywallScreen>
           if (widget.onPurchaseSuccess != null) {
             await widget.onPurchaseSuccess!();
           } else {
-            _dismissPaywall();
+            _dismissPaywall(purchased: true);
           }
         } else {
           // No purchases found
@@ -1393,14 +1460,11 @@ class _PaywallScreenState extends State<PaywallScreen>
   }
 
   String _getLegalText(bool isFrench, bool isGerman) {
-    final price = _getPriceString(_selectedPeriod, '');
+    final displayPrice = _priceOf(_selectedPeriod);
 
-    // Si pas de prix chargé (vide), utiliser les valeurs par défaut pour le texte légal
-    // pour éviter d'afficher "Puis /mois"
-    final displayPrice = price.isEmpty ?
-        (_selectedPeriod == SubscriptionPeriod.monthly ? '9,99€' :
-         _selectedPeriod == SubscriptionPeriod.annual ? '69,99€' : '2,99€')
-        : price;
+    // Sans prix du store, on ne complete pas la phrase avec un montant
+    // invente : elle ne se dit simplement pas.
+    if (displayPrice.isEmpty) return '';
 
     switch (_selectedPeriod) {
       case SubscriptionPeriod.monthly:
@@ -1425,4 +1489,13 @@ class _PaywallScreenState extends State<PaywallScreen>
         return '';
     }
   }
+}
+
+/// Le point qui sépare les liens du pied du paywall.
+class _FootDot extends StatelessWidget {
+  const _FootDot();
+
+  @override
+  Widget build(BuildContext context) =>
+      const Text('·', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)));
 }

@@ -56,16 +56,28 @@ class HomeSlots {
     };
     final eatenTypes = day.journalEntries.where((e) => !linked.contains(e.id)).map((e) => normalizeMealType(e.mealType)).toSet();
 
+    // Le journal fait foi, exactement comme dans `DayMeals` : un créneau est
+    // fait s'il y a quelque chose dans l'assiette, quoi que dise le plan.
+    //
+    // Le statut du plan décidait seul dès qu'un repas y était prévu. Deux
+    // écarts en découlaient : un repas noté hors plan pendant que le plan
+    // n'avait pas suivi restait « prévu » sur l'accueil alors que Nutrition le
+    // donnait fait ; et un repas prévu coché puis vidé de son dernier aliment
+    // gardait sa pastille pleine ici pendant que Nutrition rouvrait le créneau.
     for (final slot in kFoodSlots) {
       final type = slot.name;
       final planned = day.meals.where((m) => m.activityType.value == type).toList();
+      final hasFood = day.eatenMealTypes.contains(type) || eatenTypes.contains(type);
+
+      if (hasFood) {
+        states[slot] = SlotState.done;
+      } else if (planned.isNotEmpty) {
+        states[slot] = SlotState.planned;
+      }
+
       if (planned.isNotEmpty) {
-        final done = planned.any((m) => m.status == PlannedStatus.completed);
-        states[slot] = done ? SlotState.done : SlotState.planned;
         final name = planned.first.mealData?.dishName;
         if (name != null && name.isNotEmpty) labels[slot] = name;
-      } else if (eatenTypes.contains(type)) {
-        states[slot] = SlotState.done;
       }
     }
 

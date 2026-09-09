@@ -178,12 +178,14 @@ class SportDashboardService {
         final today = DateTime.now();
         final startOfDay = DateTime(today.year, today.month, today.day);
 
-        // Sessions cardio du jour
+        // Sessions cardio du jour. La borne haute manquait : une séance
+        // datée dans le futur comptait comme faite aujourd'hui.
+        final dayKey = startOfDay.toIso8601String().split('T')[0];
         final cardioSessions = await _client
             .from('cardio_sessions')
             .select()
             .eq('user_id', userId)
-            .gte('session_date', startOfDay.toIso8601String().split('T')[0])
+            .eq('session_date', dayKey)
             .eq('is_completed', true)
             .order('created_at', ascending: false);
 
@@ -198,7 +200,7 @@ class SportDashboardService {
             .from('workout_session_summaries')
             .select()
             .eq('user_id', userId)
-            .gte('session_date', startOfDay.toIso8601String().split('T')[0])
+            .eq('session_date', dayKey)
             .order('created_at', ascending: false);
 
         return {

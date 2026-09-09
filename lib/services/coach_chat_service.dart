@@ -192,6 +192,7 @@ class CoachChatService {
     if (_currentConversation != null) {
       if (kDebugMode) debugPrint('🔄 CoachChatService: Refreshing chat session with new personality');
       // Reload preferences from database to get latest changes
+      _profileTraitsLoaded = false; // le profil a pu changer dans les réglages
       await _loadUserPreferences();
       await _startChatSession();
     }
@@ -239,6 +240,7 @@ class CoachChatService {
   Future<String> _buildSystemInstruction() async {
     final lang = LocalizationService.instance.currentLanguageCode;
     final strings = RyzePersona.of(lang);
+    await _loadProfileTraits();
 
     final profile = await RyzeContextSource.instance.build(strings);
     final prefs = await RyzeMemory.instance.load();
@@ -260,8 +262,36 @@ class CoachChatService {
   }
 
   /// Le sexe et l'âge, relus avec le profil et gardés pour l'adaptation du ton.
+  ///
+  /// Ils étaient déclarés, passés à la persona… et jamais remplis : les règles
+  /// de ton par sexe et par âge tournaient donc à vide à chaque message.
   String? _userGender;
   int? _userAge;
+
+  /// Vrai une fois la lecture faite, réussie ou non : on ne rejoue pas une
+  /// requête à chaque envoi de message.
+  bool _profileTraitsLoaded = false;
+
+  Future<void> _loadProfileTraits() async {
+    if (_profileTraitsLoaded) return;
+    _profileTraitsLoaded = true;
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+      final row = await _supabase
+          .from('users')
+          .select('gender, age')
+          .eq('id', user.id)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 4));
+      if (row == null) return;
+      final gender = (row['gender'] as String?)?.trim();
+      _userGender = (gender == null || gender.isEmpty) ? null : gender;
+      _userAge = (row['age'] as num?)?.toInt();
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ CoachChatService: profil (sexe/âge) indisponible: $e');
+    }
+  }
 
 
   /// Send a message with streaming response

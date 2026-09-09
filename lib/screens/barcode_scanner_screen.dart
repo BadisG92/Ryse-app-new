@@ -1086,6 +1086,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
 
     if (save == true && mounted) await _saveToCustomFoods();
+
+    // L'aliment part dans le repas quelle que soit la réponse. Sans cette
+    // ligne, un produit scanné pour la première fois n'était jamais ajouté :
+    // la feuille se refermait et l'écran restait là. Seul un deuxième scan du
+    // même produit fonctionnait, par la branche « existe déjà » plus haut.
+    if (!mounted) return;
+    if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
+      _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
+    } else {
+      _handleJournalFoodAddition();
+    }
   }
 
 
@@ -1142,32 +1153,22 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         'reference_quantity': finalQuantity,
         'reference_unit_fr': finalUnit,
         'reference_unit_en': finalUnit,
+        'reference_unit_de': finalUnit,
         'origin': 'barcode', // Marquer comme provenant d'un scan
         'barcode': _scannedProduct?.barcode, // Sauvegarder le code-barres
       };
 
       // Sauvegarder dans Supabase
-      final response = await SupabaseConfig.client
-          .from('custom_foods')
-          .insert(customFood)
-          .select()
-          .single();
+      await SupabaseConfig.client.from('custom_foods').insert(customFood);
 
-      // Afficher une confirmation
+      // Afficher une confirmation. Le bouton « Voir » de ce message ne menait
+      // nulle part — son `onPressed` était un TODO vide : un bouton qui ne
+      // fait rien vaut moins que pas de bouton.
       if (mounted) {
         final lang = LocalizationService.instance.currentLanguageCode;
         final productName = _scannedProduct?.productName ?? 'meal_dish'.tr(lang);
         final message = 'product_added_to_custom_foods'.tr(lang)
             .replaceAll('{productName}', productName);
-
-        String viewLabel;
-        if (lang == 'fr') {
-          viewLabel = 'Voir';
-        } else if (lang == 'de') {
-          viewLabel = 'Ansehen';
-        } else {
-          viewLabel = 'View';
-        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1178,13 +1179,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               top: 50,
               left: 20,
               right: 20,
-            ),
-            action: SnackBarAction(
-              label: viewLabel,
-              textColor: Colors.white,
-              onPressed: () {
-                // TODO: Naviguer vers la liste des aliments personnalisés
-              },
             ),
           ),
         );

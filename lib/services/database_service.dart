@@ -997,7 +997,8 @@ class DatabaseService {
         // Background refresh (fire and forget)
         // Refresh in background
         // ignore: discarded_futures
-        getWorkoutTemplates(language: lang).catchError((_) {});
+        getWorkoutTemplates(language: lang)
+            .catchError((Object _) => <models.WorkoutProgram>[]);
         return programs;
       }
     } catch (_) {}
@@ -1041,7 +1042,8 @@ class DatabaseService {
         }).toList();
         // Background refresh (fire and forget)
         // ignore: discarded_futures
-        getWorkoutTemplates(language: lang).catchError((_) {});
+        getWorkoutTemplates(language: lang)
+            .catchError((Object _) => <models.WorkoutProgram>[]);
         return programs;
       }
     } catch (_) {}
@@ -1348,7 +1350,7 @@ class DatabaseService {
     // Helper: validate uuid format
     bool _isValidUuid(String value) {
       final uuidRegex = RegExp(
-          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12} ?$',
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}?$',
           multiLine: false);
       return uuidRegex.hasMatch(value);
     }

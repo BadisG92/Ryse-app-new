@@ -26,6 +26,3 @@
 /* User Tracking */
 "NSUserTrackingUsageDescription" = "This app does not track your personal data. GPS tracking is only used to measure your sports performance locally on your device.";
 
-/* HealthKit */
-"NSHealthShareUsageDescription" = "This app can read your health data (activity, calories burned) to optimize your nutrition and fitness goals.";
-"NSHealthUpdateUsageDescription" = "This app can write your workout data to Apple Health to centralize your fitness tracking.";

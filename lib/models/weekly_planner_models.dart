@@ -576,28 +576,31 @@ class JournalFoodEntry {
       // 3. Aliment de la base de données (food_database)
       final foodDb = map['food_database'] as Map<String, dynamic>?;
       if (foodDb != null) {
-        final nameKey = langCode == 'fr' ? 'name_fr' : 'name_en';
+        // L'allemand existe en base pour la totalite du catalogue : il etait
+        // simplement absent de ce choix de colonne, qui ne connaissait que
+        // deux langues.
+        final nameKey = langCode == 'fr' ? 'name_fr' : (langCode == 'de' ? 'name_de' : 'name_en');
         if (foodDb[nameKey] != null && (foodDb[nameKey] as String).trim().isNotEmpty) {
           return foodDb[nameKey] as String;
         }
-        // Fallback à l'autre langue
-        final nameFr = foodDb['name_fr'] as String?;
-        final nameEn = foodDb['name_en'] as String?;
-        if (nameFr != null && nameFr.trim().isNotEmpty) return nameFr;
-        if (nameEn != null && nameEn.trim().isNotEmpty) return nameEn;
+        // Fallback aux autres langues
+        for (final key in ['name_fr', 'name_en', 'name_de']) {
+          final value = foodDb[key] as String?;
+          if (value != null && value.trim().isNotEmpty) return value;
+        }
       }
 
       // 4. Recette (recipes_database)
       final recipeDb = map['recipes_database'] as Map<String, dynamic>?;
       if (recipeDb != null) {
-        final nameKey = langCode == 'fr' ? 'name_fr' : 'name_en';
+        final nameKey = langCode == 'fr' ? 'name_fr' : (langCode == 'de' ? 'name_de' : 'name_en');
         if (recipeDb[nameKey] != null && (recipeDb[nameKey] as String).trim().isNotEmpty) {
           return recipeDb[nameKey] as String;
         }
-        final nameFr = recipeDb['name_fr'] as String?;
-        final nameEn = recipeDb['name_en'] as String?;
-        if (nameFr != null && nameFr.trim().isNotEmpty) return nameFr;
-        if (nameEn != null && nameEn.trim().isNotEmpty) return nameEn;
+        for (final key in ['name_fr', 'name_en', 'name_de']) {
+          final value = recipeDb[key] as String?;
+          if (value != null && value.trim().isNotEmpty) return value;
+        }
       }
 
       // 5. Fallback: utiliser le type de repas comme nom lisible
@@ -641,6 +644,13 @@ class DayPlanData {
   final List<PlannedActivity> activities;
   final List<PlannedWorkout> workouts;
   final List<JournalFoodEntry> journalEntries; // Aliments du journal non planifiés
+
+  /// Les types de repas que le journal porte vraiment ce jour-là — repas
+  /// planifiés cochés compris, que [journalEntries] écarte pour ne pas les
+  /// compter deux fois. C'est la seule façon de savoir qu'un créneau « coché »
+  /// dans le plan a encore quelque chose dans l'assiette.
+  final Set<String> eatenMealTypes;
+
   final bool isToday;
   final bool isPast;
 
@@ -649,6 +659,7 @@ class DayPlanData {
     required this.activities,
     required this.workouts,
     this.journalEntries = const [],
+    this.eatenMealTypes = const {},
     required this.isToday,
     required this.isPast,
   });
@@ -706,6 +717,7 @@ class WeeklyPlannerData {
     required List<PlannedActivity> activities,
     required List<PlannedWorkout> workouts,
     Map<DateTime, List<JournalFoodEntry>>? journalEntriesByDate,
+    Map<DateTime, Set<String>>? eatenMealTypesByDate,
   }) {
     final weekEnd = weekStart.add(const Duration(days: 6));
     final now = DateTime.now();
@@ -736,6 +748,7 @@ class WeeklyPlannerData {
         activities: dayActivities,
         workouts: dayWorkouts,
         journalEntries: dayJournalEntries,
+        eatenMealTypes: eatenMealTypesByDate?[normalizedDate] ?? const {},
         isToday: normalizedDate == today,
         isPast: normalizedDate.isBefore(today),
       );

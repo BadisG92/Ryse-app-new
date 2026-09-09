@@ -26,6 +26,3 @@
 /* User Tracking */
 "NSUserTrackingUsageDescription" = "Cette app ne suit pas vos données personnelles. Le suivi GPS sert uniquement à mesurer vos performances sportives localement sur votre appareil.";
 
-/* HealthKit */
-"NSHealthShareUsageDescription" = "Cette application peut lire vos données de santé (activité, calories brûlées) pour optimiser vos objectifs nutritionnels et sportifs.";
-"NSHealthUpdateUsageDescription" = "Cette application peut écrire vos données d'entraînement dans Apple Health pour centraliser votre suivi fitness.";

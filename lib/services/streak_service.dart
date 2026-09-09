@@ -32,18 +32,21 @@ class StreakService {
 
       final count = response['streak_count'] as int? ?? 0;
       final last = response['streak_last_date'] as String?;
-      if (count == 0 || last == null) return 0;
 
-      if (_daysBetween(DateTime.parse(last), DateTime.now()) > _toleranceDays) {
-        return 0;
-      }
+      // La valeur juste est propagée dans tous les cas, série cassée comprise.
+      // Sans ce zéro, l'accueil gardait la flamme de l'état global — chargé
+      // brut depuis `streak_count` — pendant que la Progression, qui passe
+      // par ici, n'affichait plus rien : deux écrans, deux séries.
+      final fresh = (count == 0 || last == null)
+          ? 0
+          : (_daysBetween(DateTime.parse(last), DateTime.now()) > _toleranceDays ? 0 : count);
 
       try {
-        GlobalStateManager.instance.updateStreak(count);
+        GlobalStateManager.instance.updateStreak(fresh, lastDate: last);
       } catch (e) {
         debugPrint('⚠️ GlobalStateManager streak update failed: $e');
       }
-      return count;
+      return fresh;
     } catch (e) {
       debugPrint('❌ StreakService: lecture de la série: $e');
       return 0;
@@ -65,7 +68,7 @@ class StreakService {
 
       // NOUVEAU: Notifier GlobalStateManager
       try {
-        GlobalStateManager.instance.updateStreak(1);
+        GlobalStateManager.instance.updateStreak(1, lastDate: date);
       } catch (e) {
         debugPrint('⚠️ GlobalStateManager streak update failed: $e');
       }
@@ -94,7 +97,7 @@ class StreakService {
 
       // NOUVEAU: Notifier GlobalStateManager
       try {
-        GlobalStateManager.instance.updateStreak(newStreak);
+        GlobalStateManager.instance.updateStreak(newStreak, lastDate: date);
       } catch (e) {
         debugPrint('⚠️ GlobalStateManager streak update failed: $e');
       }
@@ -121,7 +124,7 @@ class StreakService {
 
       // NOUVEAU: Notifier GlobalStateManager
       try {
-        GlobalStateManager.instance.updateStreak(1);
+        GlobalStateManager.instance.updateStreak(1, lastDate: date);
       } catch (e) {
         debugPrint('⚠️ GlobalStateManager streak update failed: $e');
       }

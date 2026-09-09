@@ -64,6 +64,9 @@ class WeeklyPlannerService {
 
       // Filtrer et grouper les food_entries (sans requête supplémentaire)
       final journalEntriesByDate = _processJournalEntries(rawFoodEntries, linkedIds);
+      // Ce que le journal porte vraiment, liens compris : un repas prévu coché
+      // dont l'aliment a été retiré ne doit plus compter comme fait.
+      final eatenMealTypesByDate = _eatenMealTypes(rawFoodEntries);
 
       debugPrint('✅ WeeklyPlannerService: Fetched ${activities.length} activities, ${workouts.length} workouts, ${journalEntriesByDate.values.fold(0, (sum, list) => sum + list.length)} journal entries');
 
@@ -73,6 +76,7 @@ class WeeklyPlannerService {
         activities: activities,
         workouts: workouts,
         journalEntriesByDate: journalEntriesByDate,
+        eatenMealTypesByDate: eatenMealTypesByDate,
       );
 
       // Mettre en cache
@@ -152,9 +156,9 @@ class WeeklyPlannerService {
           .select('''
             id, meal_type, calories, proteins, carbs, fats, quantity, unit, consumed_at,
             scanned_food_name,
-            food_database:food_id (name_fr, name_en),
+            food_database:food_id (name_fr, name_en, name_de),
             custom_foods:custom_food_id (name),
-            recipes_database:recipe_id (name_fr, name_en)
+            recipes_database:recipe_id (name_fr, name_en, name_de)
           ''')
           .eq('user_id', userId)
           .gte('consumed_at', '${startStr}T00:00:00')
@@ -212,6 +216,25 @@ class WeeklyPlannerService {
     final totalKept = result.values.fold(0, (sum, list) => sum + list.length);
     debugPrint('📋 Journal entries: ${rawEntries.length} total, $skippedCount skipped (linked), $totalKept kept');
     return result;
+  }
+
+  /// Les types de repas réellement présents dans le journal, par jour.
+  ///
+  /// Contrairement à [_processJournalEntries], rien n'est écarté ici : une
+  /// entrée liée à un repas prévu compte, puisque la question posée est
+  /// « y a-t-il quelque chose dans l'assiette ? », pas « faut-il l'afficher
+  /// une deuxième fois ? ».
+  static Map<DateTime, Set<String>> _eatenMealTypes(List<Map<String, dynamic>> rawEntries) {
+    final out = <DateTime, Set<String>>{};
+    for (final entry in rawEntries) {
+      final type = entry['meal_type'] as String?;
+      if (type == null || type.isEmpty) continue;
+      final raw = entry['consumed_at'] as String?;
+      final at = raw == null ? null : DateTime.tryParse(raw)?.toLocal();
+      if (at == null) continue;
+      out.putIfAbsent(DateTime(at.year, at.month, at.day), () => <String>{}).add(type);
+    }
+    return out;
   }
 
   /// Récupérer les IDs des food_entries liées aux planned_activities

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dashboard_service.dart';
 import 'recipe_service.dart';
 import 'sport_dashboard_service.dart';
+import '../components/ui/dashboard_models.dart';
 
 /// Service de préchargement intelligent
 /// Précharge les données en avance pour avoir zéro latence
@@ -32,23 +33,37 @@ class PreloadService {
       // Lancer tous les préchargements en parallèle
       await Future.wait([
         // Dashboard et objectifs
-        DashboardService.getDailyGoals().catchError((e) {
+        DashboardService.getDailyGoals().catchError((Object e) {
           debugPrint('⚠️ Erreur préchargement goals: $e');
+          return <DailyGoal>[];
         }),
         
         // Profil utilisateur
-        DashboardService.getUserProfile().catchError((e) {
+        DashboardService.getUserProfile().catchError((Object e) {
           debugPrint('⚠️ Erreur préchargement profil: $e');
+          return null;
         }),
         
         // Modules dashboard
-        DashboardService.getModulePreviews().catchError((e) {
+        DashboardService.getModulePreviews().catchError((Object e) {
           debugPrint('⚠️ Erreur préchargement modules: $e');
+          return <ModulePreview>[];
         }),
         
         // Données sport (si l'utilisateur utilise cette fonctionnalité)
-        SportDashboardService.getDashboardData().catchError((e) {
+        SportDashboardService.getDashboardData().catchError((Object e) {
           debugPrint('⚠️ Erreur préchargement sport: $e');
+          return const SportDashboardData(
+            totalCalories: 0,
+            totalSessions: 0,
+            totalDurationMinutes: 0,
+            cardioCalories: 0,
+            musculationCalories: 0,
+            targetWeeklyCalories: 0,
+            totalTodaySessions: 0,
+            recentSessions: [],
+            streak: 0,
+          );
         }),
       ]);
       

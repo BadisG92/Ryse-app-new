@@ -183,11 +183,12 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     }
   }
 
-  /// Pull-to-refresh: the plan, the meals and the sport, all read again.
+  /// Pull-to-refresh: the plan, the meals, the sport — and the three numbers
+  /// the instrument shows, which the gesture used to leave untouched.
   Future<void> _refresh() async {
     final gs = GlobalStateManager.instance;
     await Future.wait<void>([
-      gs.refreshMealsCount().catchError((_) {}),
+      gs.refreshNutrition().catchError((_) {}),
       gs.refreshSportData().catchError((_) {}),
       _loadWeek(force: true),
     ]);
