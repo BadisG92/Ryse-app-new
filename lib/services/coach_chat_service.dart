@@ -403,13 +403,14 @@ class CoachChatService {
           response: {
             'ok': false,
             'status': 'awaiting_user_validation',
-            'card_shown_to_user': pending.detail == null
+            'nothing_written_yet': true,
+            'shown_to_user': pending.detail == null
                 ? pending.title
                 : '${pending.title}\n${pending.detail}',
-            'note': 'The app is showing this to the user right now, with a '
-                'confirm and a cancel button. Do not ask them to confirm, the '
-                'buttons already do. Say one short sentence about what you are '
-                'offering, then stop.',
+            'note': 'This is a proposal on screen, not a change. Nothing is saved '
+                'until the user presses the button that is already there. Do not '
+                'ask them to confirm and do not say it is added, planned, saved or '
+                'done. Say in one short sentence what you are offering, then stop.',
           },
         )
       ]);

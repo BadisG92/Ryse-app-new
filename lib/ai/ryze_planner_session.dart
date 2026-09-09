@@ -108,7 +108,19 @@ class RyzePlannerSession {
       if (payload is PendingMeal) meals.add(payload);
       if (payload is PendingSession) sessions.add(payload);
 
-      _agent.addToolResults([(name: call.name, response: result.toResponse())]);
+      if (!result.ok) {
+        _agent.addToolResults([(name: call.name, response: result.toResponse())]);
+        yield CoachAction(result.summary, ok: false, toolName: call.name);
+        return;
+      }
+
+      // Une création rendait « ok: true » au modèle. Il lisait « c'est écrit »
+      // et l'annonçait : « C'est ajouté ! Tes deux séances sont bien
+      // programmées » — alors que rien n'était écrit et que les boutons
+      // attendaient encore, plus bas. La règle de la persona, « une action en
+      // attente n'est pas faite », ne pèse rien contre un outil qui dit avoir
+      // réussi.
+      _agent.addToolResults([_awaitingValidation(call.name, result.summary)]);
       return;
     }
 
@@ -126,19 +138,9 @@ class RyzePlannerSession {
       // La carte est déjà à l'écran, avec ses deux boutons : le modèle doit le
       // savoir, sinon il redemande la permission en toutes lettres.
       _agent.addToolResults([
-        (
-          name: call.name,
-          response: {
-            'ok': false,
-            'status': 'awaiting_user_validation',
-            'card_shown_to_user': pending.detail == null
-                ? pending.title
-                : '${pending.title}\n${pending.detail}',
-            'note': 'The app is showing this to the user right now, with a '
-                'confirm and a cancel button. Do not ask them to confirm, the '
-                'buttons already do. Say one short sentence about what you are '
-                'offering, then stop.',
-          },
+        _awaitingValidation(
+          call.name,
+          pending.detail == null ? pending.title : '${pending.title}\n${pending.detail}',
         )
       ]);
       yield CoachAsk(pending);
@@ -149,6 +151,29 @@ class RyzePlannerSession {
     _agent.addToolResults([(name: call.name, response: result.toResponse())]);
     yield CoachAction(result.summary, ok: result.ok, toolName: call.name);
   }
+
+  /// Ce que le modèle apprend d'une proposition posée à l'écran.
+  ///
+  /// Un seul endroit, parce que les deux chemins — la carte et la fournée de
+  /// l'écran — avaient chacun leur formulation, et l'un des deux disait
+  /// « ok: true ».
+  static ({String name, Map<String, dynamic> response}) _awaitingValidation(
+    String tool,
+    String shown,
+  ) =>
+      (
+        name: tool,
+        response: {
+          'ok': false,
+          'status': 'awaiting_user_validation',
+          'nothing_written_yet': true,
+          'shown_to_user': shown,
+          'note': 'This is a proposal on screen, not a change. Nothing is saved '
+              'until the user presses the button that is already there. Do not '
+              'ask them to confirm and do not say it is added, planned, saved or '
+              'done. Say in one short sentence what you are offering, then stop.',
+        },
+      );
 
   // ------------------------------------------------------- l'instruction
 

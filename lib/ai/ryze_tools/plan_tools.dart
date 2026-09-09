@@ -5,6 +5,7 @@ import '../../services/localization_service.dart';
 import '../../services/planner_ai_service.dart';
 import '../../services/translations.dart';
 import '../ryze_persona.dart';
+import 'delete_preview.dart';
 import 'ryze_tool.dart';
 
 /// Écrire dans la semaine, depuis la conversation.
@@ -248,6 +249,7 @@ class PlanTools {
     String title,
   ) async =>
       RyzePending(
+        detail: await DeletePreview.detailFor(toolName, args, _lang, dayLabel),
         id: '$toolName-${DateTime.now().microsecondsSinceEpoch}',
         toolName: toolName,
         title: title,

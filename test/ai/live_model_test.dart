@@ -343,6 +343,130 @@ Jambes : Squat, Fentes, Presse à cuisses''';
     });
   });
 
+  group('Le ton d\'une proposition', () {
+    /// Un vrai aller-retour : le modèle appelle l'outil, l'application lui
+    /// répond « posé à l'écran, rien d'écrit », et on lit ce qu'il en dit.
+    ///
+    /// Le tour du modèle repart tel quel — Gemini 3 refuse un appel d'outil
+    /// dont la signature de pensée a été perdue en route.
+    Future<String> reponseApres(String phrase) async {
+      final instruction = await RyzePersona.build(
+        lang: 'fr',
+        surface: RyzeSurface.planner,
+        userName: 'Badis',
+        context: contexteDu(DateTime.now()),
+        tone: 'Tu es un coach chaleureux. Tu tutoies.',
+      );
+
+      final contents = <Map<String, dynamic>>[
+        {
+          'role': 'user',
+          'parts': [
+            {'text': phrase}
+          ]
+        }
+      ];
+
+      Future<Map<String, dynamic>> tour() async {
+        final body = {
+          'contents': contents,
+          'systemInstruction': {
+            'parts': [
+              {'text': instruction}
+            ]
+          },
+          'tools': [
+            {'function_declarations': ryzeTools.declarationsFor(RyzeSurface.planner)}
+          ],
+          'tool_config': {
+            'function_calling_config': {'mode': 'AUTO'}
+          },
+          'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 512},
+        };
+
+        late http.Response r;
+        for (var essai = 1; essai <= 4; essai++) {
+          r = await http.post(
+            Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent'),
+            headers: {'Content-Type': 'application/json', 'x-goog-api-key': key!},
+            body: jsonEncode(body),
+          );
+          if (r.statusCode != 503 && r.statusCode != 429) break;
+          await Future<void>.delayed(Duration(milliseconds: 700 * essai));
+        }
+        expect(r.statusCode, 200, reason: r.body);
+
+        final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        return ((json['candidates'] as List).first as Map)['content'] as Map<String, dynamic>;
+      }
+
+      final premier = await tour();
+      final parts = premier['parts'] as List? ?? [];
+      final appels = [
+        for (final p in parts)
+          if ((p as Map)['functionCall'] != null) p['functionCall'] as Map
+      ];
+      expect(appels, isNotEmpty, reason: 'le modèle n\'a appelé aucun outil');
+
+      // Le tour du modèle, signatures comprises.
+      contents.add(premier);
+
+      // Puis, mot pour mot, ce que l'application répond pour une proposition.
+      contents.add({
+        'role': 'user',
+        'parts': [
+          for (final a in appels)
+            {
+              'functionResponse': {
+                'name': a['name'],
+                'response': {
+                  'ok': false,
+                  'status': 'awaiting_user_validation',
+                  'nothing_written_yet': true,
+                  'shown_to_user': '${a['args']?['day'] ?? ''} '
+                      '${a['args']?['workout_type'] ?? a['args']?['activity_name'] ?? ''}',
+                  'note': 'This is a proposal on screen, not a change. Nothing is saved '
+                      'until the user presses the button that is already there. Do not '
+                      'ask them to confirm and do not say it is added, planned, saved or '
+                      'done. Say in one short sentence what you are offering, then stop.',
+                }
+              }
+            }
+        ],
+      });
+
+      final second = await tour();
+      return ((second['parts'] as List? ?? []).map((p) => (p as Map)['text'] ?? '')).join();
+    }
+
+    /// Les mots qui annoncent un fait accompli.
+    const accompli = [
+      'ajouté', 'ajoutée', 'ajoutés', 'ajoutées',
+      'programmé', 'programmée', 'programmés', 'programmées',
+      'planifié', 'planifiée', 'planifiés', 'planifiées',
+      'enregistré', 'enregistrée', 'enregistrés', 'enregistrées',
+      'créé', 'créée', 'créés', 'créées',
+      'c\'est fait', 'sont dans ton plan',
+    ];
+
+    void verifier(String texte) {
+      // ignore: avoid_print
+      print('\n  → $texte\n');
+      final fautifs = accompli.where(texte.toLowerCase().contains).toList();
+      expect(fautifs, isEmpty, reason: 'ton de fait accompli : $fautifs');
+      expect(texte.trim(), isNotEmpty, reason: 'il n\'a rien dit du tout');
+    }
+
+    test('deux cardios proposés ne sont pas annoncés comme faits', () async {
+      verifier(await reponseApres(
+        'Crée-moi deux séances de course de 10 km pour vendredi et dimanche',
+      ));
+    });
+
+    test('une séance proposée non plus', () async {
+      verifier(await reponseApres('Fais-moi une séance dos pour vendredi, 45 minutes'));
+    });
+  });
   group('Le temps de réponse', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
     test('un tour simple aboutit dans un délai tenable', () async {
       // Le nombre est imprimé à chaque passage : c'est lui qui informe, pas le

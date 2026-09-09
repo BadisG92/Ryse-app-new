@@ -8577,6 +8577,16 @@ class AppTranslations {
       'en': 'Change the session on {day}?',
       'de': 'Die Einheit am {day} ändern?',
     },
+    'cardio_word': {
+      'fr': 'cardio',
+      'en': 'cardio',
+      'de': 'Cardio',
+    },
+    'meal_word': {
+      'fr': 'repas',
+      'en': 'meal',
+      'de': 'Mahlzeit',
+    },
     'ryze_confirm_delete_meal': {
       'fr': 'Retirer ce repas de {day} ?',
       'en': 'Remove that meal on {day}?',
