@@ -370,7 +370,10 @@ class PlanTools {
               'target_reps': {'type': 'integer', 'description': 'Reps per set. For a hold, the seconds.'},
               'suggested_weight_kg': {
                 'type': 'number',
-                'description': 'Load in kilos, a multiple of 2.5. Zero for bodyweight.',
+                'description':
+                    'Load in kilos, a multiple of 2.5. This is what is added to the bar, '
+                    'never counting the bar itself: a bench press at 10 means two plates of '
+                    '5, on an empty bar. Zero for bodyweight.',
               },
             },
             'required': ['exercise_name', 'canonical_name_en', 'sets', 'target_reps'],

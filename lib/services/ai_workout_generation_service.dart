@@ -290,6 +290,7 @@ class AIWorkoutGenerationService {
       if (exerciseStats.isNotEmpty) {
         buffer.writeln('RECENT PERFORMANCE BY EXERCISE (use this to suggest appropriate weights/reps):');
         buffer.writeln('IMPORTANT: Suggest weights based on these records. For exercises not in this list, suggest beginner weights.');
+        buffer.writeln('A weight is always the load added to the bar, never counting the bar itself.');
         buffer.writeln();
 
         // Trier par fréquence d'utilisation
