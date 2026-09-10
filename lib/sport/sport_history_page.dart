@@ -199,7 +199,7 @@ class _SportHistoryPageState extends State<SportHistoryPage> with GlobalStateLis
                           first: i == 0,
                           name: '${_top[i]['name'] ?? ''}',
                           times: _times(lang, (_top[i]['sessions'] as num?)?.toInt() ?? 0),
-                          best: _best(_top[i], units),
+                          best: _best(_top[i], units, lang),
                           onTap: () {
                             RyzeFeedback.tap();
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExerciseDetailPage(exerciseName: '${_top[i]['name'] ?? ''}')));
@@ -220,12 +220,11 @@ class _SportHistoryPageState extends State<SportHistoryPage> with GlobalStateLis
   static String _times(String lang, int n) =>
       n == 1 ? 'sport_times_one'.tr(lang) : 'sport_times_n'.tr(lang).replaceAll('{n}', '$n');
 
-  static String? _best(dynamic e, UnitService units) {
+  static String? _best(dynamic e, UnitService units, String lang) {
     final w = (e['maxWeight'] as num?)?.toDouble() ?? 0;
     final r = (e['maxReps'] as num?)?.toInt() ?? 0;
     if (w <= 0) return null;
-    final v = units.displayWeight(w);
-    final ws = v.truncateToDouble() == v ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+    final ws = units.weightText(w, lang);
     return r > 0 ? '$ws ${units.weightUnit} × $r' : '$ws ${units.weightUnit}';
   }
 }

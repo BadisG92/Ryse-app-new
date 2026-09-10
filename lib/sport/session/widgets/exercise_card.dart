@@ -176,9 +176,7 @@ class ExerciseCard extends StatelessWidget {
   String _subtitle(BuildContext context, LiveSet? last, UnitService units) {
     final progress = 'session_sets_progress'.tr(lang).replaceAll('{done}', '${exercise.doneCount}').replaceAll('{total}', '${exercise.sets.length}');
     if (last == null) return progress;
-    final w = units.displayWeight(last.weightKg);
-    final ws = w.truncateToDouble() == w ? w.toStringAsFixed(0) : w.toStringAsFixed(1);
-    return '$progress · $ws ${units.weightUnit} × ${last.reps}';
+    return '$progress · ${units.weightText(last.weightKg, lang)} ${units.weightUnit} × ${last.reps}';
   }
 }
 

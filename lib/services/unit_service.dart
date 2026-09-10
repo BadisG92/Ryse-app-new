@@ -146,6 +146,39 @@ class UnitService extends ChangeNotifier {
     return displayWeight(kg).toStringAsFixed(decimals);
   }
 
+  /// Le poids tel qu'on le charge vraiment dans une salle.
+  ///
+  /// Une suggestion arrondie au multiple de 2,5 kg tombe, une fois
+  /// convertie, sur 5,5 ou 16,5 livres — des nombres qui n'existent sur
+  /// aucun disque. Dans une salle américaine, la barre fait 45 livres et
+  /// les disques 45, 35, 25, 10, 5 et 2,5. On arrondit donc dans l'unité de
+  /// celui qui charge : le pas de 2,5 kg en métrique, celui de 5 livres en
+  /// impérial.
+  ///
+  /// Ne s'applique qu'à ce que Ryze propose. Ce qui a été soulevé se garde
+  /// tel quel : arrondir l'historique de quelqu'un, c'est le réécrire.
+  double gymWeight(double kg) {
+    if (kg <= 0) return 0;
+    if (!_isImperial) return (kg / 2.5).round() * 2.5;
+    final pounds = (displayWeight(kg) / 5).round() * 5;
+    return storageWeight(pounds.toDouble());
+  }
+
+  /// Le poids tel qu'on l'écrit : dans l'unité affichée, arrondi au
+  /// dixième, sans décimale quand elle ne dit rien, avec le séparateur de
+  /// la langue.
+  ///
+  /// Quatre écrans refaisaient ce calcul chacun de leur côté, et aucun
+  /// n'arrondissait avant de décider s'il fallait une décimale : 45 livres
+  /// rangées en kilos puis reconverties donnent 44,99999, donc « 45.0 »
+  /// affiché avec un point, même en français.
+  String weightText(double kg, String lang) {
+    final shown = displayWeight(kg);
+    final rounded = (shown * 10).round() / 10;
+    final text = rounded.truncateToDouble() == rounded ? rounded.toStringAsFixed(0) : rounded.toStringAsFixed(1);
+    return lang == 'en' ? text : text.replaceAll('.', ',');
+  }
+
   /// Label de l'unité de poids
   String get weightUnit => _isImperial ? 'lbs' : 'kg';
 

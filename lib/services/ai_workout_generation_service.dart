@@ -9,6 +9,7 @@ import '../models/sport_models.dart';
 import 'database_service.dart';
 import 'exercise_resolver.dart';
 import 'localization_service.dart';
+import 'unit_service.dart';
 
 /// Service pour générer des séances d'entraînement avec Gemini AI
 class AIWorkoutGenerationService {
@@ -305,7 +306,7 @@ class AIWorkoutGenerationService {
           buffer.writeln('    * Best performance: ${stats['max_weight']}kg × ${stats['max_reps']} reps');
           buffer.writeln('    * Average: ${avgWeight.toStringAsFixed(1)}kg × ${stats['avg_reps']} reps');
           buffer.writeln('    * Times performed: ${stats['count']}');
-          buffer.writeln('    → Suggested weight: ${suggestedWeight}kg');
+          buffer.writeln('    → Suggested weight: ${suggestedWeight.toStringAsFixed(1)}kg');
         }
         // Calculer le niveau de force global de l'utilisateur
         final allWeights = exerciseStats.values.map((s) => s['avg_weight'] as double).toList();
@@ -644,14 +645,13 @@ Generate the workout now as valid JSON:
     }
   }
 
-  /// Arrondir le poids aux incréments de salle (2.5kg, 5kg, 7.5kg, 10kg, etc.)
-  static double _roundToGymWeight(double weight) {
-    if (weight <= 0) return 0;
-
-    // Arrondir au multiple de 2.5kg le plus proche
-    // Ex: 16.4 → 15.0, 18.7 → 20.0
-    return (weight / 2.5).round() * 2.5;
-  }
+  /// Arrondir le poids aux incréments de salle.
+  ///
+  /// C'était le multiple de 2,5 kg quelle que soit l'unité de
+  /// l'utilisateur : une suggestion tombait donc sur 5,5 ou 16,5 livres,
+  /// des nombres qu'aucun disque ne fait. Le service d'unités connaît le
+  /// bon pas des deux côtés.
+  static double _roundToGymWeight(double weight) => UnitService.instance.gymWeight(weight);
 
   /// Bâtir une séance à partir d'une liste d'exercices déjà choisie.
   ///
