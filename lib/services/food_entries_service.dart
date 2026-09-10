@@ -7,6 +7,7 @@ import 'dashboard_service.dart';
 import 'localization_service.dart';
 import 'translations.dart';
 import 'global_state_manager.dart';
+import 'ryze_gain.dart';
 import 'streak_service.dart';
 import 'meal_widget_data_provider.dart';
 import 'notification_service.dart';
@@ -623,6 +624,10 @@ class FoodEntriesService {
       final touchesToday = _isToday(now);
       touchedToday = touchesToday;
       if (touchesToday) {
+        // Ce qui vient d'être ajouté, gardé le temps que l'accueil le montre :
+        // son grand chiffre roulait à chaque visite, de la même façon qu'on
+        // vienne de noter un repas ou qu'on revienne des réglages.
+        RyzeGain.add((macronutrients['calories'] as num).round());
         GlobalStateManager.instance.updateCalories(macronutrients['calories'].toDouble());
         GlobalStateManager.instance.updateMacros(
           proteins: macronutrients['proteins'].toDouble(),

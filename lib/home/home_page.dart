@@ -18,6 +18,7 @@ import '../services/ryze_dates.dart';
 import '../services/water_service.dart';
 import '../services/weekly_planner_service.dart';
 import '../sport/sport_data.dart';
+import '../services/ryze_gain.dart';
 import '../sport/sport_start.dart';
 import 'home_slots.dart';
 import 'home_suggestion.dart';
@@ -83,6 +84,13 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   /// zero and rolls up.
   late bool _shown;
 
+  /// Ce qui vient d'être noté, le temps de le montrer une fois. Le grand
+  /// chiffre roulait à chaque visite, de la même façon qu'on vienne de
+  /// valider un repas ou qu'on revienne des réglages : l'animation ne
+  /// disait pas ce qu'elle célébrait.
+  int _gain = 0;
+  Timer? _gainTimer;
+
   /// True only the first time the home is shown on a given day.
   late final bool _greet;
 
@@ -113,6 +121,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   @override
   void dispose() {
     _ackTimer?.cancel();
+    _gainTimer?.cancel();
     super.dispose();
   }
 
@@ -145,6 +154,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   /// What is cached comes first, so the page is right within a frame; the
   /// history sync, which can take seconds, runs after and refreshes.
   Future<void> _load() async {
+    _catchGain();
     await _loadWeek();
     final user = Supabase.instance.client.auth.currentUser?.id;
     if (user == null || !mounted) return;
@@ -180,6 +190,17 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     if (mounted && (found != null) != _analysisReady) {
       setState(() => _analysisReady = found != null);
     }
+  }
+
+  /// Le gain déposé par l'écriture d'un aliment, ramassé une seule fois.
+  void _catchGain() {
+    final gain = RyzeGain.take();
+    if (gain <= 0) return;
+    _gainTimer?.cancel();
+    setState(() => _gain = gain);
+    _gainTimer = Timer(const Duration(milliseconds: 2600), () {
+      if (mounted) setState(() => _gain = 0);
+    });
   }
 
   Future<void> _loadWeek({bool force = false}) async {
@@ -618,6 +639,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                           calories: calories,
                           calorieGoal: goal,
                           shown: shown && ready,
+                          gain: _gain,
                         );
                       },
                     ),

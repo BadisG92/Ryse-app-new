@@ -5773,6 +5773,21 @@ class AppTranslations {
       'en': 'Coach Ryze Session',
       'de': 'Coach Ryze Training',
     },
+    'home_gain': {
+      'fr': '+{n} kcal',
+      'en': '+{n} kcal',
+      'de': '+{n} kcal',
+    },
+    'session_record_one': {
+      'fr': 'Record',
+      'en': 'Personal record',
+      'de': 'Bestleistung',
+    },
+    'session_record_n': {
+      'fr': '{n} records',
+      'en': '{n} personal records',
+      'de': '{n} Bestleistungen',
+    },
     'slot_kcal': {
       'fr': '{n} kcal',
       'en': '{n} kcal',

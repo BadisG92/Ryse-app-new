@@ -63,6 +63,14 @@ class _FinishState extends State<_Finish> {
 
   String get _intensityValue => FinishSheet.intensities[_intensity];
 
+  /// Les records de la séance, nommés. Rare par nature : c'est la seule
+  /// chose ici qui a le droit de se faire remarquer.
+  late final List<({String exercise, double weightKg})> _records = [
+    for (final e in widget.session.exercises)
+      for (final s in e.sets)
+        if (s.record) (exercise: e.exercise.name, weightKg: s.weightKg),
+  ];
+
   static String _intensityKey(int i) => const ['workout_intensity_low', 'workout_intensity_moderate', 'workout_intensity_high'][i];
 
   @override
@@ -77,13 +85,22 @@ class _FinishState extends State<_Finish> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Ce qui vient d'être fait monte devant les yeux, l'un après
+        // l'autre. C'était trois nombres posés là, et le seul qui bougeait
+        // était le sélecteur de durée — un réglage, pas un accomplissement.
+        // C'est pourtant le seul écran où l'on est assis, en sueur, prêt à
+        // regarder.
         Row(
           children: [
-            Expanded(child: _Stat(value: '${s.doneSets}', label: 'session_sets_done'.tr(lang))),
-            Expanded(child: _Stat(value: volume.round().toString(), label: '${'session_volume'.tr(lang)} · ${units.weightUnit}')),
-            Expanded(child: _Stat(value: '$kcal', label: 'session_kcal_estimated'.tr(lang), amber: true)),
+            Expanded(child: _Stat(value: s.doneSets, label: 'session_sets_done'.tr(lang), rank: 0)),
+            Expanded(child: _Stat(value: volume.round(), label: '${'session_volume'.tr(lang)} · ${units.weightUnit}', rank: 1)),
+            Expanded(child: _Stat(value: kcal, label: 'session_kcal_estimated'.tr(lang), amber: true, rank: 2)),
           ],
         ),
+        if (_records.isNotEmpty) ...[
+          SizedBox(height: context.vw(4.1)),
+          _RecordLine(lang: lang, records: _records),
+        ],
         SizedBox(height: context.vw(5.1)),
         Text('session_intensity'.tr(lang), style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
         SizedBox(height: context.vw(2.1)),
@@ -191,21 +208,29 @@ class _FinishState extends State<_Finish> {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, this.amber = false});
+  const _Stat({required this.value, required this.label, this.amber = false, this.rank = 0});
 
-  final String value;
+  final int value;
   final String label;
   final bool amber;
+
+  /// Sa place dans la rangée : les trois montent l'un après l'autre.
+  final int rank;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          value,
-          style: RyzeText.display(context, 7.2, weight: FontWeight.w600).copyWith(
-            color: amber ? RyzeColors.accInk : RyzeColors.ink,
-            fontFeatures: const [FontFeature.tabularFigures()],
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: value.toDouble()),
+          duration: Duration(milliseconds: 700 + rank * 140),
+          curve: RyzeCurves.out,
+          builder: (context, v, _) => Text(
+            '${v.round()}',
+            style: RyzeText.display(context, 7.2, weight: FontWeight.w600).copyWith(
+              color: amber ? RyzeColors.accInk : RyzeColors.ink,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ),
         SizedBox(height: context.vw(0.5)),
@@ -239,6 +264,60 @@ class _Step extends StatelessWidget {
           border: Border.all(color: RyzeColors.line),
         ),
         child: Icon(icon, size: context.vw(4.6), color: onTap == null ? RyzeColors.mute2 : RyzeColors.ink),
+      ),
+    );
+  }
+}
+
+/// Le record de la séance, dit une fois, avec l'onde ambre.
+///
+/// L'ambre est ce que Ryze rend : elle ne sert qu'ici et sur l'objectif de la
+/// semaine. Deux moments dans une semaine, pas un de plus — une récompense
+/// qui tombe à chaque tap n'en est plus une.
+class _RecordLine extends StatelessWidget {
+  const _RecordLine({required this.lang, required this.records});
+
+  final String lang;
+  final List<({String exercise, double weightKg})> records;
+
+  @override
+  Widget build(BuildContext context) {
+    final units = UnitService.instance;
+    final title = records.length == 1
+        ? 'session_record_one'.tr(lang)
+        : 'session_record_n'.tr(lang).replaceAll('{n}', '${records.length}');
+    return RyzeWave(
+      play: true,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
+        decoration: BoxDecoration(
+          color: RyzeColors.accTint,
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(LucideIcons.trophy, size: context.vw(4.6), color: RyzeColors.accInk),
+            SizedBox(width: context.vw(2.6)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: RyzeColors.accInk)),
+                  for (final r in records) ...[
+                    SizedBox(height: context.vw(0.5)),
+                    Text(
+                      '${r.exercise} · ${units.weightText(r.weightKg, lang)} ${units.weightUnit}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: RyzeText.body(context, 3.3, color: RyzeColors.ink),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

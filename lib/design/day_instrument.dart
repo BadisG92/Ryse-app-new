@@ -6,6 +6,7 @@ import 'motion.dart';
 import 'tokens.dart';
 import 'type.dart';
 import '../onboarding/widgets/pickers.dart';
+import '../services/translations.dart';
 
 /// The one number of the day, and how far it is of its goal.
 ///
@@ -28,6 +29,7 @@ class DayInstrument extends StatelessWidget {
     required this.calorieGoal,
     required this.shown,
     this.macros,
+    this.gain = 0,
   });
 
   /// La langue de l'app, celle qui met en forme le chiffre.
@@ -57,6 +59,11 @@ class DayInstrument extends StatelessWidget {
   /// Protein, carbs and fat, in that order, when the surface wants them.
   final List<MacroRail>? macros;
 
+  /// Ce qui vient d'être ajouté, quand ça vient de l'être. Le chiffre change
+  /// alors sous les yeux de celui qui l'a fait changer, au lieu d'arriver
+  /// déjà à jour.
+  final int gain;
+
   @override
   Widget build(BuildContext context) {
     final remaining = calorieGoal - calories;
@@ -70,7 +77,30 @@ class DayInstrument extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(lead, style: RyzeText.body(context, 3.9, color: RyzeColors.mute)),
+        Row(
+          children: [
+            Text(lead, style: RyzeText.body(context, 3.9, color: RyzeColors.mute)),
+            if (gain > 0) ...[
+              SizedBox(width: context.vw(2.1)),
+              // L'ambre est ce que Ryze rend : elle ne dit ici qu'une chose,
+              // et elle s'en va.
+              PopIn(
+                dy: 10,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: context.vw(2.3), vertical: context.vw(0.8)),
+                  decoration: BoxDecoration(
+                    color: RyzeColors.accTint,
+                    borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                  ),
+                  child: Text(
+                    'home_gain'.tr(lang).replaceAll('{n}', numbers.format(gain)),
+                    style: RyzeText.body(context, 3.2, weight: FontWeight.w600, color: RyzeColors.accInk),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
         if (showFigure) ...[
           SizedBox(height: context.vw(0.5)),
           // Hauteur figée : l'odomètre reconstruit ses colonnes à chaque
