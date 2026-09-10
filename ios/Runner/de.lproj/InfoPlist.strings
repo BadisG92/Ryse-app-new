@@ -22,5 +22,3 @@
 "NSPhotoLibraryAddUsageDescription" = "Diese App kann gescannte Fotos zur späteren Ansicht in deiner Mediathek speichern.";
 "NSPhotoLibraryUsageDescription" = "Diese App greift auf deine Fotos zu, um Lebensmittel zu analysieren und ihre Nährwerte zu berechnen.";
 
-/* Tracking */
-"NSUserTrackingUsageDescription" = "Diese App verfolgt keine personenbezogenen Daten. Die GPS-Erfassung dient ausschließlich dazu, deine sportliche Leistung lokal auf deinem Gerät zu messen.";

@@ -22,6 +22,4 @@
 "NSPhotoLibraryAddUsageDescription" = "This app can save scanned photos to your gallery for reference.";
 "NSPhotoLibraryUsageDescription" = "This app accesses your photos to analyze food and calculate nutritional values.";
 
-/* User Tracking */
-"NSUserTrackingUsageDescription" = "This app does not track your personal data. GPS tracking is only used to measure your sports performance locally on your device.";
 

@@ -1,3 +1,16 @@
+# Firebase sans identifiant publicitaire.
+#
+# Le SDK de mesure de Firebase reference l'API de suivi publicitaire, meme si
+# Ryze ne s'en sert pas. Apple le voit et reclame alors NSUserTrackingUsageDescription
+# (ITMS-90683) ; et des que cette phrase est dans le binaire, App Store Connect
+# refuse la soumission tant que la fiche de confidentialite ne declare pas de
+# suivi (BINARY_INDICATES_APP_TRACKS_USERS). Declarer un suivi qui n'existe pas
+# serait faux et afficherait « Donnees utilisees pour vous suivre » sur la fiche.
+#
+# Ce drapeau installe GoogleAppMeasurementWithoutAdIdSupport : plus d'IDFA, donc
+# plus de phrase a fournir et plus de suivi a declarer.
+$FirebaseAnalyticsWithoutAdIdSupport = true
+
 # Uncomment this line to define a global platform for your project
 platform :ios, '16.0'
 
