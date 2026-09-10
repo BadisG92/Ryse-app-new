@@ -179,10 +179,7 @@ class _MemoryBodyState extends State<_MemoryBody> {
               borderRadius: BorderRadius.circular(RyzeRadius.md),
               border: Border.all(color: RyzeColors.line),
             ),
-            child: Text(
-              insights,
-              style: RyzeText.body(context, 3.4, color: RyzeColors.mute, height: 1.5),
-            ),
+            child: _Insights(text: insights),
           ),
           Padding(
             padding: EdgeInsets.only(top: context.vw(1.6), left: context.vw(1)),
@@ -193,6 +190,55 @@ class _MemoryBodyState extends State<_MemoryBody> {
           ),
         ],
         SizedBox(height: context.vw(2.1)),
+      ],
+    );
+  }
+}
+
+/// Ce que l'onboarding a retenu, lisible.
+///
+/// C'était écrit en Markdown — « - **Objectif**: perdre du gras » — et posé
+/// tel quel dans un `Text` : l'utilisateur voyait les tirets, les étoiles et
+/// les deux-points. Ces lignes ne sont pas de la prose, ce sont des couples
+/// intitulé/valeur : elles se rendent comme tels, et une ligne qui n'a pas
+/// cette forme s'affiche telle quelle plutôt que de disparaître.
+class _Insights extends StatelessWidget {
+  const _Insights({required this.text});
+
+  final String text;
+
+  static final RegExp _line = RegExp(r'^\s*[-*]?\s*\*\*(.+?)\*\*\s*:?\s*(.*)$');
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <({String label, String value})>[];
+    for (final raw in text.split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty) continue;
+      final m = _line.firstMatch(line);
+      if (m == null) {
+        rows.add((label: '', value: line.replaceFirst(RegExp(r'^[-*]\s*'), '')));
+      } else {
+        rows.add((label: m.group(1)!.trim(), value: m.group(2)!.trim()));
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (i, r) in rows.indexed) ...[
+          if (i > 0) SizedBox(height: context.vw(3.1)),
+          if (r.label.isNotEmpty)
+            Text(
+              r.label,
+              style: RyzeText.body(context, 2.9, weight: FontWeight.w600, color: RyzeColors.mute2),
+            ),
+          if (r.label.isNotEmpty) SizedBox(height: context.vw(0.5)),
+          Text(
+            r.value,
+            style: RyzeText.body(context, 3.4, height: 1.4),
+          ),
+        ],
       ],
     );
   }
