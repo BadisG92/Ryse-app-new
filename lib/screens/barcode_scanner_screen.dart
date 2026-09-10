@@ -250,7 +250,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       busy: isProcessing,
       // Quand le flux lit, il n'y a rien à appuyer : c'est tout l'intérêt.
       shutter: _liveOn && !_liveStuck ? null : (isProcessing ? () {} : _scanBarcodeWithCamera),
-      leftIcon: LucideIcons.type,
+      leftIcon: LucideIcons.keyboard,
       leftLabel: 'enter_barcode_manually'.tr(lang),
       leftAction: _showManualBarcodeInput,
       overlay: isLoadingProduct
@@ -762,6 +762,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       context,
       title: 'enter_barcode_manually'.tr(lang),
       subtitle: 'barcode_manual_hint'.tr(lang),
+      // La feuille est ancrée en bas : sans ça, le pavé numérique la
+      // recouvre entièrement et il ne se passe visiblement rien.
+      keyboard: true,
       builder: (sheet) => StatefulBuilder(
         builder: (sheet, setSheetState) {
           final code = controller.text.trim();

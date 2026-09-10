@@ -84,13 +84,9 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
   /// Un creneau vide se remplit d'un tap. Un creneau qui porte un repas prevu
   /// s'ouvre d'abord : le plat que Ryze a prevu se lisait nulle part dans le
   /// journal, le tap proposait seulement d'ajouter un aliment par-dessus.
-  Future<void> _openOrAdd(WeekSlot slot) async {
-    final meal = _day?[slot];
-    final planned = meal?.plannedName;
-    if (planned == null || planned.isEmpty) {
-      await _add(slot);
-      return;
-    }
+  /// Ce qu'un créneau prévoit : le plat, ce qu'il pèse, et de quoi le valider
+  /// ou le retirer. Le « + » de la ligne, lui, ajoute sans passer par là.
+  Future<void> _openPlanned(WeekSlot slot) async {
     await MealSheet.show(context, day: _date, slot: slot, onAdd: () => _add(slot));
     if (mounted) await _load();
   }
@@ -456,7 +452,8 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
                     addLabel: 'nutri_add_food'.tr(lang),
                     open: _open,
                     onToggle: (slot) => setState(() => _open.contains(slot) ? _open.remove(slot) : _open.add(slot)),
-                    onAdd: _openOrAdd,
+                    onAdd: _add,
+                    onOpen: _openPlanned,
                     onRemoveItem: _removeItem,
                     onEditItem: _editItem,
                   ),

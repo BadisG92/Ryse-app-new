@@ -28,6 +28,7 @@ class MealTimeline extends StatelessWidget {
     required this.open,
     required this.onToggle,
     required this.onAdd,
+    this.onOpen,
     required this.onRemoveItem,
     this.onEditItem,
   });
@@ -48,6 +49,14 @@ class MealTimeline extends StatelessWidget {
   final Set<WeekSlot> open;
   final ValueChanged<WeekSlot> onToggle;
   final ValueChanged<WeekSlot> onAdd;
+
+  /// Ouvrir ce qu'un créneau prévoit, quand il prévoit quelque chose.
+  ///
+  /// Le rond « + » et la ligne appelaient tous deux [onAdd], et l'appelant
+  /// décidait ensuite d'ajouter ou d'ouvrir la feuille selon qu'un plat
+  /// était prévu. Le « + » montrait donc le plat prévu au lieu d'ajouter —
+  /// alors que sa forme ne promet qu'une chose.
+  final ValueChanged<WeekSlot>? onOpen;
   final void Function(WeekSlot slot, nutrition.FoodItem item) onRemoveItem;
 
   /// Taper un aliment déjà enregistré : corriger ce qu'il pesait. Absent
@@ -81,6 +90,7 @@ class MealTimeline extends StatelessWidget {
                 open: open.contains(slot),
                 onToggle: () => onToggle(slot),
                 onAdd: () => onAdd(slot),
+                onOpen: onOpen == null || (day[slot].plannedName ?? '').isEmpty ? null : () => onOpen!(slot),
                 onRemoveItem: (item) => onRemoveItem(slot, item),
                 onEditItem: onEditItem == null ? null : (item) => onEditItem!(slot, item),
               ),
@@ -102,6 +112,7 @@ class _MealRow extends StatelessWidget {
     required this.open,
     required this.onToggle,
     required this.onAdd,
+    this.onOpen,
     required this.onRemoveItem,
     this.onEditItem,
   });
@@ -115,6 +126,11 @@ class _MealRow extends StatelessWidget {
   final bool open;
   final VoidCallback onToggle;
   final VoidCallback onAdd;
+
+  /// Ouvrir le plat prévu. Nul quand il n'y en a pas : la ligne d'un créneau
+  /// vide n'a rien à montrer, elle ajoute.
+  final VoidCallback? onOpen;
+
   final ValueChanged<nutrition.FoodItem> onRemoveItem;
   final ValueChanged<nutrition.FoodItem>? onEditItem;
 
@@ -144,6 +160,11 @@ class _MealRow extends StatelessWidget {
                   if (done) {
                     RyzeFeedback.select();
                     onToggle();
+                  } else if (onOpen != null) {
+                    // Un plat est prévu : la ligne le montre, avec de quoi le
+                    // valider ou le retirer. Le « + » à côté, lui, ajoute.
+                    RyzeFeedback.select();
+                    onOpen!();
                   } else {
                     onAdd();
                   }

@@ -360,15 +360,18 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final side = context.vw(13.3);
+    final side = context.vw(20);
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.vw(10)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Le libellé n'existait que pour les lecteurs d'écran : à l'œil, il
+          // ne restait qu'une icône seule sur une image de caméra — un « T »
+          // dont personne ne peut deviner qu'il ouvre la saisie du code.
           SizedBox(
             width: side,
-            child: leftIcon == null ? null : _Round(icon: leftIcon!, onTap: leftAction, label: leftLabel, big: true),
+            child: leftIcon == null ? null : _Round(icon: leftIcon!, onTap: leftAction, label: leftLabel, big: true, caption: true),
           ),
           if (shutter != null) _Shutter(busy: busy, onTap: shutter!) else SizedBox(height: context.vw(19)),
           SizedBox(width: side),
@@ -433,7 +436,11 @@ class _Shutter extends StatelessWidget {
 /// A control on glass: an ink disc that keeps its 44 pt target whatever the
 /// icon inside it.
 class _Round extends StatelessWidget {
-  const _Round({required this.icon, required this.onTap, this.label, this.big = false});
+  const _Round({required this.icon, required this.onTap, this.label, this.big = false, this.caption = false});
+
+  /// Écrit le libellé sous le rond. Sur l'encre d'un viseur, une icône
+  /// seule ne dit pas ce qu'elle fait.
+  final bool caption;
 
   final IconData icon;
   final VoidCallback? onTap;
@@ -453,15 +460,31 @@ class _Round extends StatelessWidget {
                 RyzeFeedback.tap();
                 onTap!();
               },
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: RyzeColors.ink.withValues(alpha: 0.42),
-            shape: BoxShape.circle,
-            border: Border.all(color: RyzeColors.surf.withValues(alpha: 0.22)),
-          ),
-          child: Icon(icon, size: size * 0.44, color: RyzeColors.surf),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: RyzeColors.ink.withValues(alpha: 0.42),
+                shape: BoxShape.circle,
+                border: Border.all(color: RyzeColors.surf.withValues(alpha: 0.22)),
+              ),
+              child: Icon(icon, size: size * 0.44, color: RyzeColors.surf),
+            ),
+            if (caption && (label ?? '').isNotEmpty) ...[
+              SizedBox(height: context.vw(1.5)),
+              Text(
+                label!,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                style: RyzeText.body(context, 2.7, weight: FontWeight.w600, color: RyzeColors.surf, height: 1.2).copyWith(
+                  shadows: [Shadow(color: RyzeColors.ink.withValues(alpha: 0.6), blurRadius: 6)],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
