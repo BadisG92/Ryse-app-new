@@ -8,13 +8,16 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/subscription_config.dart';
 import '../../services/analytics_service.dart';
 import '../../services/haptic_service.dart';
 import '../../services/revenuecat_service.dart';
 import '../../services/unified_subscription_service.dart';
+import '../onboarding_state.dart';
 import '../onboarding_strings.dart';
 import '../onboarding_theme.dart';
 import '../widgets/onb_widgets.dart';
+import 'onboarding_exit_screen.dart';
 
 /// Hard paywall in the v2 direction. Purchase logic mirrors `PaywallScreen`
 /// (RevenueCat packages matched by identifier), only the presentation changes.
@@ -58,6 +61,19 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
   bool _trialEligible = true;
   late String _plan = widget.initialPlan;
 
+  /// L'abonnement est déjà actif sur ce compte : achat sur un autre appareil,
+  /// réinstallation, ou accès offert par un entitlement promotionnel. On ne
+  /// lui redemande pas de payer, et surtout on ne lui fait pas « restaurer un
+  /// achat » qu'il n'a jamais fait.
+  bool _granted = false;
+
+  /// L'offre servie. Elle peut être l'offre de retour quand la personne est
+  /// déjà repartie une fois.
+  bool _winback = false;
+
+  /// Les deux rappels ont été posés depuis la page de sortie.
+  bool _reminderSet = false;
+
   static const List<String> _plans = ['annual', 'monthly', 'weekly'];
 
   /// The store is what sends the end-of-trial reminder and takes the
@@ -76,7 +92,30 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
     if (mounted) setState(() => _loadFailed = false);
     try {
       await UnifiedSubscriptionService().initialize();
-      final packages = await RevenueCatService().getAvailablePackages();
+
+      // Un accès déjà ouvert se voit ici, avant même de charger des prix :
+      // achat sur un autre appareil, réinstallation, ou accès offert. On ne
+      // lit que la parole du store, jamais notre base.
+      if (UnifiedSubscriptionService().isPremiumConfirmed) {
+        AnalyticsService.logEvent('paywall_access_granted');
+        if (mounted) {
+          setState(() {
+            _granted = true;
+            _loaded = true;
+            _loadFailed = false;
+          });
+        }
+        return;
+      }
+
+      // Deuxième passage après un « non » : on demande l'offre de retour. Si
+      // elle n'existe pas dans RevenueCat, on retombe sur l'offre courante.
+      final exited = await OnbProgressStore.exitReason();
+      final offering = await RevenueCatService().getOffering(
+        offeringId: exited == null ? null : SubscriptionConfig.winBackOfferingId,
+      );
+      final packages = offering?.availablePackages ?? const <Package>[];
+      final winback = offering?.identifier == SubscriptionConfig.winBackOfferingId;
       // the trial is only real if the store has an intro offer and this Apple ID is still eligible
       var eligible = true;
       final annual = _findIn(packages, 'annual');
@@ -95,11 +134,16 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
         _loaded = true;
         _loadFailed = packages.isEmpty;
         _trialEligible = eligible;
+        _winback = winback;
         if (_packageFor(_plan) == null) {
           _plan = _plans.firstWhere((p) => _packageFor(p) != null, orElse: () => _plan);
         }
       });
-      AnalyticsService.logEvent('paywall_loaded', parameters: {'packages': packages.length, 'trial_eligible': eligible ? 1 : 0});
+      AnalyticsService.logEvent('paywall_loaded', parameters: {
+        'packages': packages.length,
+        'trial_eligible': eligible ? 1 : 0,
+        'offering': offering?.identifier ?? 'none',
+      });
     } catch (e) {
       debugPrint('❌ OnboardingPaywall load packages: $e');
       if (mounted) {
@@ -224,13 +268,36 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
     }
   }
 
-  void _toast(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating));
+  /// La croix. Elle ne quitte pas le paywall — elle ouvre la seule page où
+  /// un « non » peut se dire, et revient avec une réponse à ce non.
+  Future<void> _onClose() async {
+    if (_busy) return;
+    HapticService.instance.lightImpact();
+    final outcome = await OnboardingExitScreen.show(
+      context,
+      s: widget.s,
+      plan: _plan,
+      weeklyPrice: _price('weekly'),
+      trialEligible: _trialEligible && _packageFor('annual') != null,
+      store: _store,
+    );
+    if (!mounted) return;
+    switch (outcome) {
+      case OnbExitOutcome.stay:
+        break;
+      case OnbExitOutcome.weekly:
+        setState(() => _plan = _packageFor('weekly') != null ? 'weekly' : _plan);
+      case OnbExitOutcome.trial:
+        setState(() => _plan = _packageFor('annual') != null ? 'annual' : _plan);
+      case OnbExitOutcome.reminded:
+        setState(() => _reminderSet = true);
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final s = widget.s;
+  /// L'offre : ce que la semaine contient, ce qui se passe quand, et les trois
+  /// plans. La croix en tête ne quitte pas l'écran — elle ouvre la page où un
+  /// « non » peut enfin se dire.
+  Widget _offerBody(BuildContext context, OnbStrings s) {
     final trial = _hasTrial(_plan);
     final cta = trial
         ? s.t('cta_trial')
@@ -241,6 +308,157 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
             ? s.t('foot_annual_paid', {'p': _price('annual'), 'store': _store})
             : (_plan == 'monthly' ? s.t('foot_monthly', {'p': _price('monthly')}) : s.t('foot_weekly', {'p': _price('weekly')})));
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: WipeText(s.t('offer_title'), style: OnbText.display(context, 7.8))),
+            SizedBox(width: context.vw(2.6)),
+            PopIn(
+              delay: const Duration(milliseconds: 700),
+              child: _CloseDot(label: s.t('exit_close'), onTap: _busy ? null : _onClose),
+            ),
+          ],
+        ),
+        SizedBox(height: context.vh(1.8)),
+        Expanded(
+          child: ShaderMask(
+            shaderCallback: (rect) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.black, Colors.black, Colors.transparent],
+              stops: [0, 0.94, 1],
+            ).createShader(rect),
+            blendMode: BlendMode.dstIn,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(bottom: context.vh(3)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PopIn(
+                      delay: const Duration(milliseconds: 250),
+                      child: _LockedWeek(s: s, mealsPerDay: widget.mealsPerDay, workoutDays: widget.workoutDays, trial: trial)),
+                  SizedBox(height: context.vh(1.6)),
+                  Text(widget.goalLine ?? s.t('offer_oneliner', {'day': widget.bilanDayName}),
+                      textAlign: TextAlign.center, style: OnbText.body(context, 3.4, color: OnbColors.mute, height: 1.45)),
+                  SizedBox(height: context.vh(2.2)),
+                  PopIn(delay: const Duration(milliseconds: 400), child: _Timeline(s: s, trial: trial, price: _price(_plan), store: _store)),
+                  SizedBox(height: context.vh(2.2)),
+                  PopIn(
+                    delay: const Duration(milliseconds: 520),
+                    child: _loadFailed
+                        ? _StoreError(s: s, onRetry: _busy ? null : _load)
+                        : Column(
+                            children: [
+                              if (_winback) ...[
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(LucideIcons.gift, size: context.vw(4.1), color: OnbColors.accInk),
+                                    SizedBox(width: context.vw(1.8)),
+                                    Text(s.t('winback_note'),
+                                        style: OnbText.body(context, 3.3, weight: FontWeight.w600, color: OnbColors.accInk)),
+                                  ],
+                                ),
+                                SizedBox(height: context.vw(2.6)),
+                              ],
+                              for (final (i, plan) in _plans.indexed)
+                                if (_showPlan(plan)) ...[
+                                  if (i > 0) SizedBox(height: context.vw(1.8)),
+                                  _PlanRow(
+                                    name: s.t('plan_$plan'),
+                                    sub: s.t('plan_${plan}_sub'),
+                                    price: _price(plan),
+                                    unit: plan == 'annual' ? s.t('plan_annual_eq', {'p': _monthlyEquivalent()}) : s.t('plan_${plan}_unit'),
+                                    badge: plan == 'annual' && _hasTrial('annual') ? s.t('badge_trial') : null,
+                                    selected: _plan == plan,
+                                    onTap: () {
+                                      AnalyticsService.logEvent('paywall_plan_selected', parameters: {'plan': plan});
+                                      setState(() => _plan = plan);
+                                    },
+                                  ),
+                                ],
+                            ],
+                          ),
+                  ),
+                  SizedBox(height: context.vh(1.8)),
+                  // restore + the two legal links App Review expects on a subscription screen
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _link(context, s.t('restore'), _busy ? null : _restore),
+                      _dot(context),
+                      _link(context, s.t('legal_terms'), () => _open(s.lang == 'fr' ? 'https://coach-ryze.com/terms.html' : 'https://coach-ryze.com/terms_en.html')),
+                      _dot(context),
+                      _link(context, s.t('legal_privacy'), () => _open(s.lang == 'fr' ? 'https://coach-ryze.com/privacy.html' : 'https://coach-ryze.com/privacy_en.html')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: context.vh(1.2)),
+        PopIn(
+          delay: const Duration(milliseconds: 600),
+          child: _busy
+              ? Container(
+                  height: context.vw(14),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: OnbColors.acc, borderRadius: BorderRadius.circular(999)),
+                  child: SizedBox(
+                      width: context.vw(5), height: context.vw(5), child: CircularProgressIndicator(strokeWidth: 2.5, color: OnbColors.ink)),
+                )
+              : OnbButton(label: cta, gold: true, onPressed: _purchase),
+        ),
+        SizedBox(height: context.vh(1)),
+        Text(foot, textAlign: TextAlign.center, style: OnbText.body(context, 3.1, color: OnbColors.mute, height: 1.5)),
+        if (_reminderSet) ...[
+          SizedBox(height: context.vh(0.6)),
+          Text(s.t('exit_reminder_ok'),
+              textAlign: TextAlign.center,
+              style: OnbText.body(context, 3.1, weight: FontWeight.w600, color: OnbColors.accInk)),
+        ],
+      ],
+    );
+  }
+
+  /// L'accès est déjà ouvert : une phrase, un bouton, et on entre.
+  Widget _grantedBody(BuildContext context, OnbStrings s) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        WipeText(s.t('granted_title'), style: OnbText.display(context, 7.8)),
+        SizedBox(height: context.vh(1.6)),
+        Text(s.t('granted_sub'), style: OnbText.body(context, 3.6, color: OnbColors.mute, height: 1.55)),
+        SizedBox(height: context.vh(4)),
+        PopIn(
+          delay: const Duration(milliseconds: 260),
+          child: OnbButton(label: s.t('granted_cta'), gold: true, onPressed: _busy ? null : _enterGranted),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _enterGranted() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    HapticService.instance.mediumImpact();
+    await widget.onPurchased();
+    if (mounted) setState(() => _busy = false);
+  }
+
+  void _toast(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.s;
     return PopScope(
       canPop: false,
       child: Scaffold(
@@ -251,97 +469,42 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
             SafeArea(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(context.vw(6), context.vh(2.4), context.vw(6), context.vh(2)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    WipeText(s.t('offer_title'), style: OnbText.display(context, 7.8)),
-                    SizedBox(height: context.vh(1.8)),
-                    Expanded(
-                      child: ShaderMask(
-                        shaderCallback: (rect) => const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.black, Colors.black, Colors.transparent],
-                          stops: [0, 0.94, 1],
-                        ).createShader(rect),
-                        blendMode: BlendMode.dstIn,
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.only(bottom: context.vh(3)),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              PopIn(
-                                  delay: const Duration(milliseconds: 250),
-                                  child: _LockedWeek(s: s, mealsPerDay: widget.mealsPerDay, workoutDays: widget.workoutDays, trial: trial)),
-                              SizedBox(height: context.vh(1.6)),
-                              Text(widget.goalLine ?? s.t('offer_oneliner', {'day': widget.bilanDayName}),
-                                  textAlign: TextAlign.center, style: OnbText.body(context, 3.4, color: OnbColors.mute, height: 1.45)),
-                              SizedBox(height: context.vh(2.2)),
-                              PopIn(delay: const Duration(milliseconds: 400), child: _Timeline(s: s, trial: trial, price: _price(_plan), store: _store)),
-                              SizedBox(height: context.vh(2.2)),
-                              PopIn(
-                                delay: const Duration(milliseconds: 520),
-                                child: _loadFailed
-                                    ? _StoreError(s: s, onRetry: _busy ? null : _load)
-                                    : Column(
-                                        children: [
-                                          for (final (i, plan) in _plans.indexed)
-                                            if (_showPlan(plan)) ...[
-                                              if (i > 0) SizedBox(height: context.vw(1.8)),
-                                              _PlanRow(
-                                                name: s.t('plan_$plan'),
-                                                sub: s.t('plan_${plan}_sub'),
-                                                price: _price(plan),
-                                                unit: plan == 'annual' ? s.t('plan_annual_eq', {'p': _monthlyEquivalent()}) : s.t('plan_${plan}_unit'),
-                                                badge: plan == 'annual' && _hasTrial('annual') ? s.t('badge_trial') : null,
-                                                selected: _plan == plan,
-                                                onTap: () {
-                                                  AnalyticsService.logEvent('paywall_plan_selected', parameters: {'plan': plan});
-                                                  setState(() => _plan = plan);
-                                                },
-                                              ),
-                                            ],
-                                        ],
-                                      ),
-                              ),
-                              SizedBox(height: context.vh(1.8)),
-                              // restore + the two legal links App Review expects on a subscription screen
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  _link(context, s.t('restore'), _busy ? null : _restore),
-                                  _dot(context),
-                                  _link(context, s.t('legal_terms'), () => _open(s.lang == 'fr' ? 'https://coach-ryze.com/terms.html' : 'https://coach-ryze.com/terms_en.html')),
-                                  _dot(context),
-                                  _link(context, s.t('legal_privacy'), () => _open(s.lang == 'fr' ? 'https://coach-ryze.com/privacy.html' : 'https://coach-ryze.com/privacy_en.html')),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: context.vh(1.2)),
-                    PopIn(
-                      delay: const Duration(milliseconds: 600),
-                      child: _busy
-                          ? Container(
-                              height: context.vw(14),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(color: OnbColors.acc, borderRadius: BorderRadius.circular(999)),
-                              child: SizedBox(
-                                  width: context.vw(5), height: context.vw(5), child: CircularProgressIndicator(strokeWidth: 2.5, color: OnbColors.ink)),
-                            )
-                          : OnbButton(label: cta, gold: true, onPressed: _purchase),
-                    ),
-                    SizedBox(height: context.vh(1)),
-                    Text(foot, textAlign: TextAlign.center, style: OnbText.body(context, 3.1, color: OnbColors.mute, height: 1.5)),
-                  ],
-                ),
+                child: _granted ? _grantedBody(context, s) : _offerBody(context, s),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// La croix du paywall. Discrète — elle arrive après l'offre, elle ne la
+/// concurrence pas — mais elle existe, et c'est elle qui transforme un départ
+/// muet en une phrase.
+class _CloseDot extends StatelessWidget {
+  const _CloseDot({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: context.vw(9),
+          height: context.vw(9),
+          decoration: BoxDecoration(
+            color: OnbColors.surf,
+            shape: BoxShape.circle,
+            border: Border.all(color: OnbColors.line),
+          ),
+          child: Icon(LucideIcons.x, size: context.vw(4.1), color: OnbColors.mute),
         ),
       ),
     );

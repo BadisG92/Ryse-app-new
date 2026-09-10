@@ -172,21 +172,39 @@ class RevenueCatService {
   }
 
   /// Récupère les packages d'abonnement
-  Future<List<Package>> getAvailablePackages() async {
+  /// L'offre à présenter.
+  ///
+  /// `offeringId` est une demande, pas une exigence : si cette offre n'existe
+  /// pas dans le tableau de bord, on retombe sur l'offre courante. Une offre
+  /// de retour jamais créée ne doit pas vider le paywall.
+  Future<Offering?> getOffering({String? offeringId}) async {
+    if (!_isInitialized) return null;
+    try {
+      final offerings = await Purchases.getOfferings();
+      final wanted = offeringId == null ? null : offerings.all[offeringId];
+      if (wanted != null && wanted.availablePackages.isNotEmpty) return wanted;
+      return offerings.current;
+    } catch (e) {
+      debugPrint('Erreur getOffering: $e');
+      return null;
+    }
+  }
+
+  Future<List<Package>> getAvailablePackages({String? offeringId}) async {
     if (!_isInitialized) {
       debugPrint('⚠️ RevenueCat non initialisé');
       return [];
     }
 
     try {
-      final offerings = await Purchases.getOfferings();
+      final offering = await getOffering(offeringId: offeringId);
 
-      if (offerings.current == null) {
+      if (offering == null) {
         debugPrint('⚠️ Aucune offre disponible');
         return [];
       }
 
-      final packages = offerings.current!.availablePackages;
+      final packages = offering.availablePackages;
       debugPrint('📦 ${packages.length} packages disponibles');
 
       for (final package in packages) {

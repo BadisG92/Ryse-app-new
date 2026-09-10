@@ -10,6 +10,7 @@ import '../services/coach_personality_service.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/haptic_service.dart';
+import '../services/notification_service.dart';
 import '../services/revenuecat_service.dart';
 import '../services/translations.dart';
 import '../services/unified_subscription_service.dart';
@@ -381,6 +382,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('demo_partial_save')), duration: const Duration(seconds: 3)));
       }
     }
+    // La personne est entrée : les deux rappels qu'elle s'était posés en
+    // quittant le paywall n'ont plus de raison de partir.
+    unawaited(NotificationService().cancelWinBack());
     final synced = await _repo.markCompleted();
     AnalyticsService.logEvent('onb_chapter_done', parameters: {
       'chapter': _steps.isEmpty ? 0 : _steps.last.chapter,

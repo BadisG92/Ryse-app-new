@@ -580,6 +580,68 @@ class NotificationService {
   /// la programmer écrase la précédente.
   static const int restEndNotificationId = 90;
 
+  /// Les deux rappels que quelqu'un pose lui-même en quittant le paywall.
+  ///
+  /// Locaux, donc ils partent sans serveur et même hors ligne. Un seul jeu à
+  /// la fois : les reprogrammer écrase les précédents, et entrer dans l'app
+  /// les annule.
+  static const int winBackDay1Id = 91;
+  static const int winBackDay3Id = 92;
+
+  /// Pose les deux rappels, à J+1 et J+3, en début de soirée.
+  ///
+  /// Rien n'y promet de remise : la personne n'a pas demandé une offre, elle
+  /// a demandé qu'on lui rappelle que sa semaine existe encore.
+  Future<bool> scheduleWinBack({
+    required String day1Title,
+    required String day1Body,
+    required String day3Title,
+    required String day3Body,
+  }) async {
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      tz.TZDateTime evening(int days) {
+        final d = now.add(Duration(days: days));
+        return tz.TZDateTime(tz.local, d.year, d.month, d.day, 18);
+      }
+
+      await _notifications.zonedSchedule(
+        winBackDay1Id,
+        day1Title,
+        day1Body,
+        evening(1),
+        _notificationDetails(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'paywall_winback',
+      );
+      await _notifications.zonedSchedule(
+        winBackDay3Id,
+        day3Title,
+        day3Body,
+        evening(3),
+        _notificationDetails(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'paywall_winback',
+      );
+      return true;
+    } catch (e) {
+      if (kDebugMode) debugPrint('scheduleWinBack: $e');
+      return false;
+    }
+  }
+
+  /// Quelqu'un est entré : les rappels n'ont plus lieu d'être.
+  Future<void> cancelWinBack() async {
+    try {
+      await _notifications.cancel(winBackDay1Id);
+      await _notifications.cancel(winBackDay3Id);
+    } catch (e) {
+      if (kDebugMode) debugPrint('cancelWinBack: $e');
+    }
+  }
+
   /// Prévient à la fin du repos, quand l'app n'est pas au premier plan.
   ///
   /// L'haptique au retour reste le vrai signal ; ceci est un supplément, et

@@ -49,6 +49,14 @@ class SubscriptionConfig {
   /// À créer dans RevenueCat Dashboard > Offerings
   static const String defaultOfferingId = 'default';
 
+  /// L'offre présentée à quelqu'un qui est déjà reparti une fois du paywall.
+  ///
+  /// Facultative : tant qu'elle n'existe pas dans RevenueCat, l'app retombe
+  /// sur l'offre courante sans rien dire. C'est la seule façon honnête de
+  /// faire une remise, parce qu'un prix ne se baisse pas depuis l'app : il
+  /// faut un vrai produit, une offre introductive ou un code côté store.
+  static const String winBackOfferingId = 'winback';
+
   // ═══════════════════════════════════════════════════════════════════════════
   // TRIAL CONFIGURATION
   // ═══════════════════════════════════════════════════════════════════════════

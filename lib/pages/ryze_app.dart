@@ -165,7 +165,7 @@ class _RyzeAppState extends State<RyzeApp> {
   Future<bool> _hasActiveSubscription() async {
     try {
       await UnifiedSubscriptionService().initialize().timeout(const Duration(seconds: 5));
-      return UnifiedSubscriptionService().isPremium;
+      return UnifiedSubscriptionService().isPremiumConfirmed;
     } catch (e) {
       debugPrint('⚠️ Abonnement non vérifiable: $e');
       return false;

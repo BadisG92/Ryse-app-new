@@ -192,6 +192,24 @@ class UnifiedSubscriptionService extends ChangeNotifier {
     return _subscription.isPremium;
   }
 
+  /// Le même verdict que [isPremium], mais seulement quand il vient d'une
+  /// source qui fait foi.
+  ///
+  /// [isPremium] retombe sur notre base quand RevenueCat n'a pas pu
+  /// s'initialiser. C'est tolérable pour rouvrir une fonction à quelqu'un
+  /// qui a déjà payé ; ça ne l'est pas pour ouvrir l'app entière : neuf
+  /// lignes `user_subscriptions` écrites en mode test avant le paywall dur
+  /// disent premium jusqu'en 2027 pour des comptes qui n'ont jamais payé.
+  ///
+  /// RevenueCat reste consultable hors ligne : `configure` est local et le
+  /// SDK garde le dernier CustomerInfo. Un abonné réel ne perd donc pas son
+  /// accès dans le métro.
+  bool get isPremiumConfirmed {
+    if (EnvConfig.screenshotMode) return true;
+    if (testMode) return _subscription.isPremium;
+    return _revenueCat.isInitialized && _revenueCat.isPremium();
+  }
+
   /// Vérifie si l'utilisateur est en trial
   bool get isInTrial => _subscription.isInTrial;
 

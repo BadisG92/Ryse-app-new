@@ -457,6 +457,76 @@ class OnbStrings {
       'en': '{p} per year, billed today. Cancel anytime in {store}.',
       'de': '{p} pro Jahr, heute abgerechnet. Jederzeit in {store} kündbar.',
     },
+    // ---------- Accès offert ----------
+    // Un compte à qui on a ouvert l'accès (entitlement promotionnel RevenueCat)
+    // arrivait quand même sur le paywall et devait taper « Restaurer un achat »
+    // pour un achat qu'il n'a jamais fait.
+    'granted_title': {'fr': 'Ton accès est ouvert.', 'en': 'Your access is open.', 'de': 'Dein Zugang ist offen.'},
+    'granted_sub': {
+      'fr': 'Cet abonnement est déjà actif sur ton compte. Rien à payer, rien à restaurer.',
+      'en': 'This subscription is already active on your account. Nothing to pay, nothing to restore.',
+      'de': 'Dieses Abo ist auf deinem Konto bereits aktiv. Nichts zu zahlen, nichts wiederherzustellen.',
+    },
+    'granted_cta': {'fr': 'Entrer dans Ryze', 'en': 'Enter Ryze', 'de': 'Zu Ryze'},
+
+    // ---------- La sortie du paywall ----------
+    'exit_close': {'fr': 'Fermer', 'en': 'Close', 'de': 'Schließen'},
+    'exit_title': {'fr': 'Avant de partir.', 'en': 'Before you go.', 'de': 'Bevor du gehst.'},
+    'exit_sub': {
+      'fr': 'Ton compte existe et ta semaine est gardée. Dis-moi juste ce qui bloque : ça prend un tap.',
+      'en': 'Your account exists and your week is saved. Just tell me what’s in the way: one tap.',
+      'de': 'Dein Konto existiert und deine Woche ist gespeichert. Sag mir nur, was dich stoppt: ein Tipp.',
+    },
+    'exit_r_price': {'fr': 'C’est trop cher', 'en': 'Too expensive', 'de': 'Zu teuer'},
+    'exit_r_price_sub': {'fr': 'Le prix ne passe pas maintenant', 'en': 'The price doesn’t work right now', 'de': 'Der Preis passt gerade nicht'},
+    'exit_r_try': {'fr': 'Je veux essayer avant', 'en': 'I want to try first', 'de': 'Ich will erst testen'},
+    'exit_r_try_sub': {'fr': 'Voir ce que ça donne pour moi', 'en': 'See what it does for me', 'de': 'Sehen, was es mir bringt'},
+    'exit_r_now': {'fr': 'Pas maintenant', 'en': 'Not right now', 'de': 'Gerade nicht'},
+    'exit_r_now_sub': {'fr': 'J’y reviendrai plus tard', 'en': 'I’ll come back to it', 'de': 'Ich komme später darauf zurück'},
+    'exit_a_price': {
+      'fr': 'Le plan le plus court, c’est l’hebdo : {p}, facturé à la semaine, et il s’arrête quand tu veux dans {store}.',
+      'en': 'The shortest plan is weekly: {p}, billed by the week, and it stops whenever you want in {store}.',
+      'de': 'Der kürzeste Plan ist wöchentlich: {p}, wochenweise abgerechnet, jederzeit in {store} kündbar.',
+    },
+    'exit_cta_price': {'fr': 'Voir l’hebdo', 'en': 'See the weekly plan', 'de': 'Wöchentlich ansehen'},
+    'exit_a_try': {
+      'fr': 'Les 3 jours d’essai ne prélèvent rien. {store} te prévient avant la fin, et annuler prend un tap.',
+      'en': 'The 3-day trial charges nothing. {store} warns you before it ends, and cancelling takes one tap.',
+      'de': 'Die 3 Testtage kosten nichts. {store} warnt dich vor Ablauf, und Kündigen dauert einen Tipp.',
+    },
+    'exit_cta_try': {'fr': 'Commencer l’essai', 'en': 'Start the trial', 'de': 'Test starten'},
+    'exit_a_try_used': {
+      'fr': 'L’essai gratuit a déjà été utilisé avec ce compte {store} : il ne peut pas repartir. Le plus court sans engagement, c’est l’hebdo à {p}.',
+      'en': 'The free trial was already used with this {store} account, so it can’t start again. The shortest plan is weekly at {p}.',
+      'de': 'Die Gratis-Testphase wurde mit diesem {store}-Konto schon genutzt und kann nicht neu starten. Am kürzesten ist wöchentlich für {p}.',
+    },
+    'exit_a_now': {
+      'fr': 'On ne touche à rien : ton compte, tes réponses et ta semaine restent là. Je te fais signe demain, une fois.',
+      'en': 'Nothing moves: your account, your answers and your week stay put. I’ll ping you tomorrow, once.',
+      'de': 'Nichts geht verloren: Konto, Antworten und Woche bleiben. Ich melde mich morgen, einmal.',
+    },
+    'exit_cta_now': {'fr': 'Me le rappeler demain', 'en': 'Remind me tomorrow', 'de': 'Morgen erinnern'},
+    'exit_note': {'fr': 'Aucune de ces réponses ne t’engage.', 'en': 'None of these answers commits you to anything.', 'de': 'Keine dieser Antworten verpflichtet dich.'},
+    'exit_reminder_ok': {'fr': 'Rappel posé. À demain.', 'en': 'Reminder set. See you tomorrow.', 'de': 'Erinnerung gesetzt. Bis morgen.'},
+    'exit_reminder_off': {
+      'fr': 'Les notifications sont coupées pour Ryze : le rappel ne peut pas partir. Tu peux les rouvrir dans les réglages du téléphone.',
+      'en': 'Notifications are off for Ryze, so the reminder can’t be set. You can turn them back on in your phone settings.',
+      'de': 'Mitteilungen sind für Ryze aus, die Erinnerung kann nicht gesetzt werden. Du kannst sie in den Einstellungen wieder erlauben.',
+    },
+    'wb1_title': {'fr': 'Ta semaine est gardée', 'en': 'Your week is still there', 'de': 'Deine Woche ist noch da'},
+    'wb1_body': {
+      'fr': 'Le plan que tu as construit avec les coachs t’attend. Reprends quand tu veux.',
+      'en': 'The plan you built with the coaches is waiting. Pick it up whenever you want.',
+      'de': 'Der Plan, den du mit den Coaches gebaut hast, wartet. Mach weiter, wann du willst.',
+    },
+    'wb3_title': {'fr': 'On garde ta place', 'en': 'Your place is kept', 'de': 'Dein Platz bleibt frei'},
+    'wb3_body': {
+      'fr': 'Tes deux coachs, ta semaine et ton bilan sont prêts à démarrer.',
+      'en': 'Both coaches, your week and your check-in are ready to start.',
+      'de': 'Beide Coaches, deine Woche und deine Bilanz sind startbereit.',
+    },
+    'winback_note': {'fr': 'Ton offre de retour', 'en': 'Your come-back offer', 'de': 'Dein Rückkehr-Angebot'},
+
     'legal_terms': {'fr': 'Conditions', 'en': 'Terms', 'de': 'AGB'},
     'legal_privacy': {'fr': 'Confidentialité', 'en': 'Privacy', 'de': 'Datenschutz'},
     'offer_goal': {

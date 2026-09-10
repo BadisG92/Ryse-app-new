@@ -205,6 +205,36 @@ class OnboardingRepository {
   /// Port of `RyzeApp._completeOnboarding` (the persistence part).
   /// Returns false when the server could not be updated: the local flags are
   /// set anyway (the user has paid) and [retryPendingCompletion] replays it.
+  /// Le motif d'un « non » devant le paywall.
+  ///
+  /// Firebase donne l'agrégat ; ici le motif reste attaché au compte, parce
+  /// que le compte existe déjà à ce moment-là — il est créé à l'inscription,
+  /// avant l'onboarding. C'est ce qui permettra une relance qui parle de leur
+  /// objection plutôt que d'une remise envoyée à tout le monde.
+  ///
+  /// Ne lève jamais : personne ne doit rester bloqué devant une porte de
+  /// sortie parce que le réseau est absent.
+  Future<void> recordPaywallExit({
+    required String reason,
+    String? plan,
+    String? lang,
+    bool reminderSet = false,
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+    try {
+      await _supabase.from('paywall_exits').insert({
+        'user_id': user.id,
+        'reason': reason,
+        'plan': plan,
+        'lang': lang,
+        'reminder_set': reminderSet,
+      }).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('⚠️ recordPaywallExit: $e');
+    }
+  }
+
   Future<bool> markCompleted() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_intro', true);

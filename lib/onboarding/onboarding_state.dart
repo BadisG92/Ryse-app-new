@@ -221,9 +221,27 @@ class OnbProgressStore {
     return prefs.getBool(profileSavedKey) ?? false;
   }
 
+  /// Le motif du dernier « non » devant le paywall, garde sur le telephone.
+  ///
+  /// Il sert a deux choses au retour : montrer l'offre de retour plutot que
+  /// l'offre courante, et ne pas reposer la meme question a quelqu'un qui y a
+  /// deja repondu.
+  static const String exitReasonKey = 'onb_v2_paywall_exit';
+
+  static Future<void> markExit(String reason) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(exitReasonKey, reason);
+  }
+
+  static Future<String?> exitReason() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(exitReasonKey);
+  }
+
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
     await prefs.remove(profileSavedKey);
+    await prefs.remove(exitReasonKey);
   }
 }
