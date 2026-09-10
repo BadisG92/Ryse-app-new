@@ -1011,15 +1011,14 @@ class GlobalStateManager {
         debugPrint('   - Streak: $_currentStreak jours');
       }
 
-      // TRIGGER 1: Premier review - Si au moins 2 objectifs sont complétés
-      if (completedCount >= 2) {
-        await AppReviewService().requestReviewAfterDailyGoals(
-          completedGoalsCount: completedCount,
-          hasCaloriesAndWorkout: hasCaloriesAndWorkout,
-        );
-      }
-
-      // TRIGGER 2: Après 7 jours de streak
+      // On ne demande une note qu'après avoir donné quelque chose.
+      //
+      // Deux objectifs cochés — parfois le jour même de l'installation — ne
+      // sont pas un moment de fierté, c'est une journée ordinaire. Les
+      // moments qui valent la peine sont ailleurs : une série de sept jours
+      // ici, un record personnel et une semaine d'objectif atteinte dans
+      // l'onglet Sport. iOS n'accorde que trois fenêtres par an : elles vont
+      // à ces trois-là.
       if (_currentStreak == 7) {
         await AppReviewService().requestReviewAfterMilestone('7_day_streak');
       }
@@ -1064,10 +1063,6 @@ class GlobalStateManager {
 
       if (kDebugMode) debugPrint('💪 Total workouts historiques: $totalWorkouts');
 
-      // Si exactement 3 workouts → trigger review
-      if (totalWorkouts == 3) {
-        await AppReviewService().requestReviewAfterMilestone('3_workouts_completed');
-      }
 
     } catch (e) {
       if (kDebugMode) debugPrint('❌ GlobalState: Erreur _checkWorkoutMilestone - $e');
@@ -1102,10 +1097,6 @@ class GlobalStateManager {
 
       if (kDebugMode) debugPrint('🍽️ Total repas uniques trackés: $totalUniqueMeals');
 
-      // Si exactement 5 repas différents → trigger review
-      if (totalUniqueMeals == 5) {
-        await AppReviewService().requestReviewAfterMilestone('5_different_meals_tracked');
-      }
 
     } catch (e) {
       if (kDebugMode) debugPrint('❌ GlobalState: Erreur _checkMealsMilestone - $e');

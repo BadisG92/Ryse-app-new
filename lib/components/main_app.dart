@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../home/home_page.dart';
@@ -13,6 +15,7 @@ import '../design/design.dart';
 import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/workout_session_store.dart';
+import '../services/usage_stats.dart';
 import '../services/app_navigator.dart';
 import '../sport/session/session_models.dart';
 import '../sport/session/session_screen.dart';
@@ -72,6 +75,12 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     // Une séance gardée sur le téléphone repart dès que l'app revient.
     if (state == AppLifecycleState.resumed) {
       WorkoutSessionStore.instance.syncPending();
+      return;
+    }
+    // Et les compteurs d'usage se garent : ce qui n'est pas parti est écrit
+    // sur le téléphone, donc une app tuée en veille ne perd rien.
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      unawaited(UsageStats.park());
     }
   }
 

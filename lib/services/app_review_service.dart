@@ -31,9 +31,17 @@ class AppReviewService {
   static const String _keyInstallDate = 'app_install_date';
 
   // Configuration du timing
-  static const int _minDaysBetweenRequests = 15; // 15 jours (agressif pour le lancement)
+  static const int _minDaysBetweenRequests = 15;
   static const int _maxRequestsPerYear = 3; // Limite interne (iOS limite aussi)
-  // Note: PAS de délai minimum pour le premier review (peut être immédiat dès que 2 objectifs complétés)
+
+  /// Trois jours avant la toute première demande.
+  ///
+  /// Il n'y en avait aucun : deux objectifs cochés le jour de
+  /// l'installation suffisaient. Or iOS n'accorde que trois fenêtres par an
+  /// et par personne — en dépenser une sur quelqu'un qui n'a pas encore vu
+  /// l'app tenir sa promesse, c'est en gâcher une sur trois. On demande
+  /// après avoir donné quelque chose, pas avant.
+  static const int _minDaysBeforeFirst = 3;
 
   /// Vérifie si l'app peut afficher le prompt de review
   Future<bool> canRequestReview() async {
@@ -48,17 +56,18 @@ class AppReviewService {
         return false;
       }
 
-      // 2. Enregistrer la date d'installation (pour stats uniquement)
+      // 2. La date d'installation, et le plancher qu'elle impose.
       final installDateStr = prefs.getString(_keyInstallDate);
       if (installDateStr == null) {
-        // Première fois: enregistrer la date d'install
         await prefs.setString(_keyInstallDate, now.toIso8601String());
-        if (kDebugMode) debugPrint('📅 AppReview: Date d\'installation enregistrée');
-        // Pas de return false - on peut afficher le review immédiatement !
+        if (kDebugMode) debugPrint('📅 AppReview: date d\'installation enregistrée');
+        return false;
       }
-
-      // PAS de vérification de délai pour le premier review
-      // L'utilisateur peut voir le prompt dès le premier jour s'il complète 2 objectifs
+      final installed = DateTime.tryParse(installDateStr);
+      if (installed != null && now.difference(installed).inDays < _minDaysBeforeFirst) {
+        if (kDebugMode) debugPrint('⏳ AppReview: trop tôt (${now.difference(installed).inDays}j/${_minDaysBeforeFirst}j)');
+        return false;
+      }
 
       // 3. Vérifier le nombre de demandes déjà faites cette année
       final requestCount = prefs.getInt(_keyReviewRequestCount) ?? 0;

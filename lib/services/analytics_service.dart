@@ -1,4 +1,5 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'usage_stats.dart';
 // import 'package:firebase_crashlytics/firebase_crashlytics.dart';  // Temporairement désactivé
 import 'package:flutter/foundation.dart';
 
@@ -83,10 +84,16 @@ class AnalyticsService {
   // ==========================================
 
   /// Log un événement générique
+  /// Un événement part chez Firebase — les entonnoirs, les séquences — et
+  /// son compteur monte dans Supabase, où l'on peut l'interroger en SQL. Une
+  /// seule pose d'instrument, deux lectures : les cinquante événements déjà
+  /// placés dans l'app deviennent des statistiques d'usage sans qu'un seul
+  /// écran soit retouché.
   static Future<void> logEvent(
     String eventName, {
     Map<String, Object>? parameters,
   }) async {
+    UsageStats.bump(eventName);
     try {
       await _analytics.logEvent(
         name: eventName,
@@ -104,6 +111,7 @@ class AnalyticsService {
 
   /// Log une navigation d'écran
   static Future<void> logScreenView(String screenName) async {
+    UsageStats.bump('screen_$screenName');
     try {
       await _analytics.logScreenView(screenName: screenName);
       if (kDebugMode) {

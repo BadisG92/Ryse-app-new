@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +12,7 @@ import '../../services/localization_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/translations.dart';
 import '../../services/workout_session_store.dart';
+import '../../services/app_review_service.dart';
 import '../../widgets/exercise/exercise_detail_page.dart';
 import 'session_controller.dart';
 import 'session_history.dart';
@@ -279,6 +282,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> with Widget
         ? 'session_queued_ack'.tr(lang)
         : 'session_saved_ack'.tr(lang).replaceAll('{min}', '${choice.minutes}').replaceAll('{sets}', '${live.doneSets}');
     RyzeUndo.note(context, message: ack);
+
+    // Un record personnel, c'est le moment le plus fier de l'app, et le plus
+    // rare : c'est là qu'on peut demander une note. Après la pilule, jamais
+    // pendant la séance.
+    if (live.exercises.any((e) => e.sets.any((s) => s.record))) {
+      unawaited(AppReviewService().requestReviewAfterMilestone('personal_record'));
+    }
   }
 
   // ------------------------------------------------------------------ build

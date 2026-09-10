@@ -29,6 +29,7 @@ import 'design/tokens.dart';
 import 'design/feedback.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'services/ryze_connectivity.dart';
+import 'services/usage_stats.dart';
 import 'services/workout_session_store.dart';
 
 void main() async {
@@ -161,6 +162,10 @@ void main() async {
   // HORS LIGNE : une seule souscription réseau pour l'app, puis le catalogue
   // d'exercices, puis la file des séances (qui migre l'ancienne et rejoue ce
   // qui attend). Non bloquant : le lancement n'attend pas le réseau.
+  // Les compteurs d'usage reprennent ce que la dernière exécution n'a pas eu
+  // le temps d'envoyer.
+  unawaited(UsageStats.start());
+
   unawaited(RyzeConnectivity.instance.start().then((_) async {
     await OfflineWorkoutService().initialize();
     await WorkoutSessionStore.instance.initialize();

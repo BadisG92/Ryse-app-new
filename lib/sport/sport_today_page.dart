@@ -18,6 +18,7 @@ import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/weekly_planner_service.dart';
 import '../services/workout_session_store.dart';
+import '../services/app_review_service.dart';
 import 'sheets/goal_sheet.dart';
 import 'sheets/session_recap_sheet.dart';
 import 'sheets/start_session_sheet.dart';
@@ -143,6 +144,9 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
       setState(() => _celebrate = true);
       await Future<void>.delayed(const Duration(milliseconds: 1400));
       if (mounted) setState(() => _celebrate = false);
+      // Une semaine d'objectif tenue : l'app vient de donner quelque chose,
+      // elle peut demander une note.
+      unawaited(AppReviewService().requestReviewAfterMilestone('weekly_goal'));
     }
   }
 
