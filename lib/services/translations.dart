@@ -11308,6 +11308,21 @@ class AppTranslations {
       'en': "Adjust the split: the grams follow your calories.",
       'de': "Passe die Verteilung an: die Gramm folgen deinen Kalorien.",
     },
+    'daily_water_goal': {
+      'fr': 'Objectif d’hydratation',
+      'en': 'Water goal',
+      'de': 'Trinkziel',
+    },
+    'unit_liter': {
+      'fr': 'L',
+      'en': 'L',
+      'de': 'L',
+    },
+    'progress_weight_first': {
+      'fr': 'Première pesée notée. Note-toi une deuxième fois et la courbe commence.',
+      'en': 'First weigh-in saved. Log a second one and the curve begins.',
+      'de': 'Erste Wiegung gespeichert. Trag eine zweite ein, und die Kurve beginnt.',
+    },
     'settings_tone': {
       'fr': 'Comment il te parle',
       'en': 'How it talks to you',

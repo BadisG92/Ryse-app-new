@@ -227,7 +227,19 @@ class _ProgressPageState extends State<ProgressPage> with GlobalStateListener {
           onChanged: (i) => setState(() => _period = i),
         ),
         SizedBox(height: context.vw(3.1)),
-        WeightChart(progress: _windowed(w), animate: animate),
+        // Une courbe demande deux points. Avec un seul, le graphique ne
+        // dessinait rien — pas une phrase, rien : celui qui vient de se peser
+        // pour la première fois croyait que son geste s'était perdu.
+        if (w.entries.length < 2)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: context.vw(4.6)),
+            child: Text(
+              'progress_weight_first'.tr(lang),
+              style: RyzeText.body(context, 3.4, color: RyzeColors.mute, height: 1.45),
+            ),
+          )
+        else
+          WeightChart(progress: _windowed(w), animate: animate),
         SizedBox(height: context.vw(3.6)),
         // La projection n'apparaît que si les pesées la permettent : quatre
         // points sur deux semaines au moins, et une tendance qui va vers la

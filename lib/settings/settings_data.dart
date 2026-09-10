@@ -26,6 +26,7 @@ class SettingsProfile {
     required this.protein,
     required this.carbs,
     required this.fat,
+    required this.waterMl,
     required this.hasCustomMacros,
     required this.restrictions,
   });
@@ -42,6 +43,14 @@ class SettingsProfile {
   /// 'lose' | 'maintain' | 'gain'
   String mainGoal;
 
+  /// L'objectif d'hydratation, en millilitres.
+  ///
+  /// Il vivait en base depuis toujours, avec deux litres par défaut, et rien
+  /// dans l'app ne permettait d'y toucher : ni les réglages, ni l'onboarding.
+  /// Deux litres pour tout le monde, quel que soit le poids, la saison ou le
+  /// sport de la journée.
+  int waterMl;
+
   int calories;
   int protein;
   int carbs;
@@ -52,6 +61,7 @@ class SettingsProfile {
   static SettingsProfile empty() => SettingsProfile(
         gender: 'male', age: 30, heightCm: 175, weightKg: 70, targetWeightKg: 70,
         activityLevel: 'moderate', mainGoal: 'maintain',
+        waterMl: 2000,
         calories: 2000, protein: 150, carbs: 200, fat: 70,
         hasCustomMacros: false, restrictions: const [],
       );
@@ -128,7 +138,7 @@ class SettingsData {
         final row = await client
             .from('users')
             .select('gender, age, height, weight, target_weight, activity_level, fitness_goal, '
-                'daily_calories, daily_protein, daily_carbs, daily_fat, dietary_restrictions')
+                'daily_calories, daily_protein, daily_carbs, daily_fat, daily_water_goal, dietary_restrictions')
             .eq('id', userId)
             .maybeSingle()
             .timeout(const Duration(seconds: 4));
@@ -144,6 +154,7 @@ class SettingsData {
           p.protein = (row['daily_protein'] as num?)?.toInt() ?? p.protein;
           p.carbs = (row['daily_carbs'] as num?)?.toInt() ?? p.carbs;
           p.fat = (row['daily_fat'] as num?)?.toInt() ?? p.fat;
+          p.waterMl = (row['daily_water_goal'] as num?)?.toInt() ?? p.waterMl;
           final r = row['dietary_restrictions'];
           if (r is List) p.restrictions = r.map((e) => '$e').toList();
         }
@@ -176,6 +187,7 @@ class SettingsData {
           'daily_protein': p.protein,
           'daily_carbs': p.carbs,
           'daily_fat': p.fat,
+          'daily_water_goal': p.waterMl,
           'bmr': MetabolicCalculations.calculateBMR(p.userProfile),
           'dietary_restrictions': p.restrictions,
           'updated_at': DateTime.now().toIso8601String(),

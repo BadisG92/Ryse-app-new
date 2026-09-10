@@ -47,6 +47,7 @@ class _Body extends StatefulWidget {
 
 class _BodyState extends State<_Body> {
   late int _kcal = widget.p.calories;
+  late int _water = widget.p.waterMl;
   late double _pPct;
   late double _cPct;
   late double _fPct;
@@ -158,6 +159,15 @@ class _BodyState extends State<_Body> {
           onLess: _kcal > 1000 ? () => setState(() => _kcal -= 50) : null,
           onMore: _kcal < 6000 ? () => setState(() => _kcal += 50) : null,
         ),
+        // Deux litres pour tout le monde : c'était la valeur par défaut de la
+        // base, et rien nulle part ne permettait d'en changer.
+        SettingStepper(
+          label: 'daily_water_goal'.tr(lang),
+          value: numbers.format(_water / 1000),
+          unit: 'unit_liter'.tr(lang),
+          onLess: _water > 500 ? () => setState(() => _water -= 250) : null,
+          onMore: _water < 6000 ? () => setState(() => _water += 250) : null,
+        ),
         SettingLabel('macronutrient_distribution'.tr(lang)),
         _Macro(label: 'proteins'.tr(lang), grams: _protein, pct: _pPct, onChanged: (v) => _setPart(0, v)),
         _Macro(label: 'carbohydrates'.tr(lang), grams: _carbs, pct: _cPct, onChanged: (v) => _setPart(1, v)),
@@ -231,6 +241,7 @@ class _BodyState extends State<_Body> {
           label: 'save'.tr(lang),
           onTap: () {
             widget.p
+              ..waterMl = _water
               ..calories = _kcal
               ..protein = _protein
               ..carbs = _carbs

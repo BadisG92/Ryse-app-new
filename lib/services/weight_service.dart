@@ -171,7 +171,7 @@ class WeightService {
       // Marquer l'entrée actuelle comme non-courante si elle existe
       await _supabase
           .from('user_profile_history')
-          .update({'is_current': false, 'valid_until': DateTime.now().toIso8601String()})
+          .update({'is_current': false, 'valid_until': DateTime.now().toUtc().toIso8601String()})
           .eq('user_id', user.id)
           .eq('is_current', true);
 
@@ -193,7 +193,13 @@ class WeightService {
         'daily_fat': currentProfile['daily_fat'],
         'bmr': currentProfile['bmr'],
         'dietary_restrictions': currentProfile['dietary_restrictions'],
-        'valid_from': DateTime.now().toIso8601String(),
+        // En temps universel, comme la colonne l'attend.
+        //
+        // L'heure locale y était écrite sans son décalage : Postgres la lisait
+        // donc comme de l'UTC, et une pesée de vingt-trois heures à Paris
+        // atterrissait à une heure du matin — le lendemain, sur le mauvais
+        // point de la courbe.
+        'valid_from': DateTime.now().toUtc().toIso8601String(),
         'is_current': true,
         'change_source': 'weight_update',
         'weight_modified': true,
