@@ -150,8 +150,12 @@ class _CoachBodyState extends State<_CoachBody> {
             ),
           ),
         ],
-        SettingLabel('weekly_bilan_enabled'.tr(lang)),
-        SettingToggle(label: 'settings_notif_recap'.tr(lang), value: _bilan, onChanged: (v) => setState(() => _bilan = v)),
+        // « Bilan hebdomadaire » en titre de section, puis « Bilan de la
+        // semaine » sur l'interrupteur juste dessous : la même chose dite
+        // deux fois, à deux niveaux. L'interrupteur nomme la section, et ce
+        // qui en dépend n'apparaît que lorsqu'il est ouvert.
+        SizedBox(height: context.vw(2.6)),
+        SettingToggle(label: 'weekly_bilan_enabled'.tr(lang), value: _bilan, onChanged: (v) => setState(() => _bilan = v)),
         if (_bilan) ...[
           SettingChoice(
             label: 'weekly_bilan_day'.tr(lang),

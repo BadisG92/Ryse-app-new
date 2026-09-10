@@ -126,8 +126,13 @@ class SettingChoice extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Un choix est un réglage, comme l'interrupteur et le pas : son
+        // intitulé s'écrit comme les leurs. Il portait le style d'un titre de
+        // section, donc « Jour du bilan » s'affichait en petit et en gris
+        // juste au-dessus d'« Heure du bilan » en grand et en encre — deux
+        // réglages voisins, deux niveaux de titre.
         if (label != null) ...[
-          Text(label!, style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
+          Text(label!, style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
           SizedBox(height: context.vw(1.5)),
         ],
         Wrap(
