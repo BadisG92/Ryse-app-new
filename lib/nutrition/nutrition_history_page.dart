@@ -16,6 +16,7 @@ import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
 import 'add_food_sheet.dart';
+import 'meal_sheet.dart';
 
 /// A past day, read exactly the way today is read.
 ///
@@ -158,6 +159,15 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage>
       _ => prefs.dinnerTime,
     };
     return '$hour h';
+  }
+
+  /// Le plat prévu d'un jour passé : ce qu'il était, sa recette, ce qu'il
+  /// pesait. La journée d'aujourd'hui l'ouvrait déjà ; l'historique, non.
+  Future<void> _openPlanned(WeekSlot slot) async {
+    await MealSheet.show(context, day: _selected, slot: slot, onAdd: () => _add(slot));
+    if (!mounted) return;
+    await _load();
+    await _loadStrip();
   }
 
   Future<void> _add(WeekSlot slot) async {
@@ -339,6 +349,7 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage>
                   open: _open,
                   onToggle: (slot) => setState(() => _open.contains(slot) ? _open.remove(slot) : _open.add(slot)),
                   onAdd: _add,
+                  onOpen: _openPlanned,
                   onRemoveItem: _removeItem,
                   onEditItem: _editItem,
                 ),

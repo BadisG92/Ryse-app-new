@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../components/weekly_planner/week_strip.dart';
@@ -75,6 +76,11 @@ class DayMeal {
 /// calories were above zero.
 class DayMeals {
   const DayMeals._(this.date, this.meals);
+
+  /// Une journée montée à la main. L'application passe toujours par
+  /// [forDate] ; un test, lui, ne peut pas ouvrir Supabase.
+  @visibleForTesting
+  factory DayMeals.of(DateTime date, Map<WeekSlot, DayMeal> meals) => DayMeals._(date, meals);
 
   final DateTime date;
   final Map<WeekSlot, DayMeal> meals;

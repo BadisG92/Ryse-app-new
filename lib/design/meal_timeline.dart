@@ -205,12 +205,7 @@ class _MealRow extends StatelessWidget {
                             // et c'est ce que l'accueil montre deja.
                             if (done && (meal.plannedName?.isNotEmpty ?? false)) ...[
                               SizedBox(height: context.vw(0.5)),
-                              Text(
-                                '$plannedPrefix · ${meal.plannedName}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: RyzeText.body(context, 3.1, color: RyzeColors.mute2),
-                              ),
+                              _PlannedLine(text: '$plannedPrefix · ${meal.plannedName}', onOpen: onOpen),
                             ],
                           ],
                         ),
@@ -280,6 +275,50 @@ class _MealRow extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Ce qui était prévu, sous un repas déjà noté — et la porte pour y aller.
+///
+/// La rangée distingue deux gestes : le « + » ajoute, la ligne ouvre le plat
+/// prévu. Mais une fois le repas noté, la ligne entière passait à déplier le
+/// journal, et le plat prévu — le valider, le retirer, lire sa recette —
+/// n'était plus atteignable nulle part. Il garde donc sa propre porte,
+/// exactement là où il s'affiche.
+class _PlannedLine extends StatelessWidget {
+  const _PlannedLine({required this.text, this.onOpen});
+
+  final String text;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final line = Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: RyzeText.body(context, 3.1, color: RyzeColors.mute2),
+    );
+    // Sans porte, pas de bouton : un Pressable sans action gagnerait quand
+    // même le tap et la rangée cesserait de se déplier.
+    if (onOpen == null) return line;
+    return Pressable(
+      onTap: () {
+        RyzeFeedback.select();
+        onOpen!();
+      },
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: context.vw(1)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(child: line),
+            SizedBox(width: context.vw(1)),
+            Icon(LucideIcons.chevronRight, size: 12, color: RyzeColors.mute2),
+          ],
+        ),
       ),
     );
   }

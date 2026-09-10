@@ -56,7 +56,12 @@ class MealSheet {
     // Un repas prevu qu'on n'a pas encore mange : le valider en un geste est
     // la facon la plus rapide de noter un repas, et elle n'existait nulle
     // part. Le service savait pourtant le faire depuis toujours.
-    final waiting = prevu != null && prevu.status != PlannedStatus.completed && (meal.logged?.items.isEmpty ?? true);
+    final canValidate = prevu != null && prevu.status != PlannedStatus.completed && (meal.logged?.items.isEmpty ?? true);
+
+    // Retirer, c'est autre chose que valider : un plat prévu qu'on n'a pas
+    // suivi reste affiché sous le repas noté, et rien ne permettait de s'en
+    // débarrasser une fois qu'on avait mangé autre chose.
+    final canRemove = prevu != null && prevu.status != PlannedStatus.completed;
 
     final action = await showRyzeSheet<_Action>(
       context,
@@ -64,7 +69,7 @@ class MealSheet {
       subtitle: RyzeDates.full(day, lang),
       builder: (_) => _Body(lang: lang, meal: meal, dish: dish, data: data),
       actions: [
-        if (waiting)
+        if (canValidate)
           OnbButton(
             label: 'planner_validate_meal'.tr(lang),
             icon: LucideIcons.check,
@@ -77,7 +82,7 @@ class MealSheet {
             icon: LucideIcons.plus,
             onPressed: () => Navigator.pop(context, _Action.add),
           ),
-        if (waiting)
+        if (canRemove)
           OnbButton(
             label: 'planner_delete_meal'.tr(lang),
             ghost: true,
@@ -94,7 +99,10 @@ class MealSheet {
         onAdd?.call();
         return true;
       case _Action.validate:
-        final id = await MealPlannerSyncService.validateMeal(planned!);
+        // `prevu` et non `planned` : l'onglet Nutrition et le calendrier ne
+        // passent pas le repas prévu, la feuille le trouve elle-même. Valider
+        // depuis là tombait sur un null.
+        final id = await MealPlannerSyncService.validateMeal(prevu!);
         if (!context.mounted) return id != null;
         if (id == null) {
           RyzeUndo.failed(context, message: 'error_generic'.tr(lang));
@@ -107,7 +115,7 @@ class MealSheet {
         );
         return true;
       case _Action.remove:
-        final ok = await WeeklyPlannerService.deletePlannedActivity(planned!.id);
+        final ok = await WeeklyPlannerService.deletePlannedActivity(prevu!.id);
         if (!context.mounted) return ok;
         if (ok) {
           RyzeFeedback.removed();
@@ -185,6 +193,40 @@ class _Body extends StatelessWidget {
 
         if (!eaten && (dish?.isEmpty ?? true))
           Text('nutri_nothing_logged'.tr(lang), style: RyzeText.body(context, 3.6, color: RyzeColors.mute)),
+
+        // Ce qui était prévu, quand on a mangé autre chose.
+        //
+        // Le plat prévu ne s'affichait que tant que rien n'était noté : ouvrir
+        // « Prévu · … » sous un repas fait aurait montré le journal sans jamais
+        // nommer le plat qu'on venait de toucher. Les comptes, eux, restent
+        // ceux du journal : c'est lui qui fait foi.
+        if (eaten && (dish?.isNotEmpty ?? false)) ...[
+          SizedBox(height: context.vw(1)),
+          Container(height: 1, color: RyzeColors.line),
+          SizedBox(height: context.vw(3.6)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: context.vw(2.6), vertical: context.vw(1.2)),
+                decoration: BoxDecoration(color: RyzeColors.paper2, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
+                child: Text(
+                  'planner_planned'.tr(lang),
+                  style: RyzeText.body(context, 2.9, weight: FontWeight.w600, color: RyzeColors.mute),
+                ),
+              ),
+              SizedBox(width: context.vw(2.6)),
+              Expanded(
+                child: Text(
+                  dish!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: RyzeColors.mute),
+                ),
+              ),
+            ],
+          ),
+        ],
 
         if (description.isNotEmpty) ...[
           SizedBox(height: context.vw(3.6)),
