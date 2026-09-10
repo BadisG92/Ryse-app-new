@@ -106,7 +106,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
         setState(() {
           _workout = result.exercises;
           _suggestions = result.aiSuggestions;
-          _name = workoutNameFor(result.exercises, lang);
+          _name = sessionNameFrom(result.sessionName, result.exercises, lang);
         });
       } else {
         setState(() => _error = result.error ?? 'ai_workout_error_unknown'.tr(lang));
@@ -664,4 +664,32 @@ String workoutNameFor(List<WorkoutExercise> exercises, String lang) {
 
   final parts = top.take(2).map((e) => e.key[0].toUpperCase() + e.key.substring(1)).toList();
   return parts.join(' & ');
+}
+
+/// Le nom d'une séance générée : celui du modèle s'il tient debout, sinon
+/// celui que ses groupes musculaires dictent.
+///
+/// Le modèle sait ce qui a été demandé — « une séance de foot », « du full
+/// body » — et le comptage des groupes, non. Mais il sait aussi vendre du
+/// rêve : un nom trop long, criard ou décoré passe à la trappe et le
+/// comptage reprend la main.
+@visibleForTesting
+String sessionNameFrom(String? proposed, List<WorkoutExercise> exercises, String lang) {
+  final clean = _tidy(proposed);
+  if (clean != null) return clean;
+  return workoutNameFor(exercises, lang);
+}
+
+/// Ce qui reste du nom proposé une fois nettoyé, ou nul s'il n'en reste rien
+/// d'utilisable.
+String? _tidy(String? raw) {
+  if (raw == null) return null;
+  var name = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+  // les guillemets que le modèle ajoute parfois autour de sa réponse
+  name = name.replaceAll(RegExp(r'''^["“”'']+|["“”'']+$'''), '').trim();
+  // emoji et symboles : le système n'en met nulle part ailleurs
+  name = name.replaceAll(RegExp(r'[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]', unicode: true), '').trim();
+  name = name.replaceAll(RegExp(r'[!]+'), '').trim();
+  if (name.length < 3 || name.length > 28) return null;
+  return name;
 }

@@ -41,4 +41,30 @@ void main() {
   test('sans groupe connu, le nom générique', () {
     expect(workoutNameFor(workout(['', '  ']), 'fr'), 'Séance créée par Coach Ryze');
   });
+
+  group('le nom que le modèle propose', () {
+    final fullBody = workout(['legs', 'chest', 'back', 'shoulders', 'arms']);
+
+    test('un nom sobre passe tel quel', () {
+      expect(sessionNameFrom('Séance de foot', fullBody, 'fr'), 'Séance de foot');
+    });
+
+    test('les guillemets du modèle tombent', () {
+      expect(sessionNameFrom('"Haut du corps"', fullBody, 'fr'), 'Haut du corps');
+    });
+
+    test('les emoji tombent', () {
+      expect(sessionNameFrom('Corps entier 💪', fullBody, 'fr'), 'Corps entier');
+    });
+
+    test('un nom qui vend du rêve est écarté', () {
+      expect(sessionNameFrom('🔥 ULTIMATE FULL BODY BEAST MODE BLAST!!!', fullBody, 'fr'), 'Corps entier');
+    });
+
+    test('rien, trop court, ou vide : le comptage reprend la main', () {
+      expect(sessionNameFrom(null, fullBody, 'fr'), 'Corps entier');
+      expect(sessionNameFrom('   ', fullBody, 'fr'), 'Corps entier');
+      expect(sessionNameFrom('Go', fullBody, 'fr'), 'Corps entier');
+    });
+  });
 }

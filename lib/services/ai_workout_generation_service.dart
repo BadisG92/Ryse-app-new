@@ -153,6 +153,7 @@ class AIWorkoutGenerationService {
         exercises: workoutExercises,
         processingTime: stopwatch.elapsedMilliseconds / 1000.0,
         aiSuggestions: response['suggestions'] ?? '',
+        sessionName: response['session_name'] as String?,
       );
 
     } catch (e) {
@@ -492,7 +493,7 @@ CRITICAL REQUIREMENTS:
 
 OUTPUT FORMAT (JSON):
 {
-  "session_name": "Creative name for this workout in $userLanguage",
+  "session_name": "Plain name for this session, in $userLanguage, at most 28 characters. Say what it is: the muscle groups, the goal the user asked for, or simply Full body. No superlative, no emoji, no exclamation mark.",
   "description": "Brief workout description",
   "estimated_duration_minutes": $durationText (use the EXACT requested duration),
   "exercises": [
@@ -1032,24 +1033,35 @@ class AIWorkoutResult {
   final double processingTime;
   final String? aiSuggestions;
 
+  /// Le nom que le modèle donne à la séance, dans la langue du compte.
+  ///
+  /// Il était demandé dans le format de sortie depuis toujours, le modèle le
+  /// renvoyait, et rien ici ne l'accueillait : on payait des jetons pour un
+  /// nom jeté, puis on nommait la séance en comptant ses groupes
+  /// musculaires. « Séance de foot » redevenait « Legs & Abs ».
+  final String? sessionName;
+
   AIWorkoutResult({
     required this.success,
     required this.exercises,
     this.error,
     required this.processingTime,
     this.aiSuggestions,
+    this.sessionName,
   });
 
   factory AIWorkoutResult.success({
     required List<WorkoutExercise> exercises,
     required double processingTime,
     String? aiSuggestions,
+    String? sessionName,
   }) {
     return AIWorkoutResult(
       success: true,
       exercises: exercises,
       processingTime: processingTime,
       aiSuggestions: aiSuggestions,
+      sessionName: sessionName,
     );
   }
 
