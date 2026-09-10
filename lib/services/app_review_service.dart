@@ -100,11 +100,13 @@ class AppReviewService {
 
   /// Demande une review à l'utilisateur (affiche le prompt natif iOS)
   ///
-  /// Cette méthode doit être appelée uniquement après un accomplissement positif:
-  /// - Après avoir complété 2 objectifs quotidiens (première fois)
-  /// - Après 3 workouts complétés
-  /// - Après 7 jours de streak
-  /// - Après avoir atteint un objectif de poids
+  /// Uniquement après un moment qui se mérite, et il n'y en a que trois :
+  /// un record personnel, une semaine d'objectif atteinte, sept jours de
+  /// série. iOS n'accorde que trois fenêtres par an et par personne.
+  ///
+  /// Ce qui s'affiche est la feuille d'Apple, pas la nôtre : on choisit le
+  /// moment, jamais les mots ni le dessin, et on n'apprend jamais si elle a
+  /// été montrée.
   ///
   /// ⚠️ IMPORTANT: Le prompt iOS peut ne PAS s'afficher même si on l'appelle
   /// iOS décide lui-même si le timing est approprié (limite 3x/an)
