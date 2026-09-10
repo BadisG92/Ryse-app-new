@@ -9,6 +9,8 @@ import 'package:ryze_app/nutrition/meal_sheet.dart';
 /// qu'il annonçait. Il devenait indéracinable, et « Prévu · Bol d'avoine »
 /// restait sous le poke bowl pour toujours.
 void main() {
+  _pages();
+
   test('rien de noté : le plat prévu est tout ce qu’il y a', () {
     expect(MealSheet.plannedApart('Bol d’avoine et fruits', const []), isTrue);
   });
@@ -37,5 +39,30 @@ void main() {
     expect(MealSheet.plannedApart(null, const ['Poke bowl']), isFalse);
     expect(MealSheet.plannedApart('', const []), isFalse);
     expect(MealSheet.plannedApart('   ', const []), isFalse);
+  });
+}
+
+/// Le repas note et le plat prevu sont deux pages, pas deux moities.
+///
+/// Ouvrir un petit-dejeuner note affichait le journal, et il fallait faire
+/// defiler pour trouver le plat prevu sous un trait. Deux choses differentes
+/// empilees dans la meme page.
+void _pages() {
+  group('Les pages d’un creneau', () {
+    test('mange autre chose que ce qui etait prevu : deux pages', () {
+      expect(MealSheet.pagesFor(eaten: true, apart: true), [MealPage.logged, MealPage.planned]);
+    });
+
+    test('mange ce qui etait prevu : une seule', () {
+      expect(MealSheet.pagesFor(eaten: true, apart: false), [MealPage.logged]);
+    });
+
+    test('rien de note, un plat prevu : la page du plan', () {
+      expect(MealSheet.pagesFor(eaten: false, apart: true), [MealPage.planned]);
+    });
+
+    test('creneau vide : la page du journal, qui dira qu’il n’y a rien', () {
+      expect(MealSheet.pagesFor(eaten: false, apart: false), [MealPage.logged]);
+    });
   });
 }

@@ -9210,6 +9210,16 @@ class AppTranslations {
       'en': 'Save',
       'de': 'Speichern',
     },
+    'meal_page_logged': {
+      'fr': 'Ce que tu as mangé',
+      'en': 'What you ate',
+      'de': 'Was du gegessen hast',
+    },
+    'meal_page_planned': {
+      'fr': 'Ce qui était prévu',
+      'en': 'What was planned',
+      'de': 'Was geplant war',
+    },
     'planner_remove_planned': {
       'fr': 'Retirer le repas prévu',
       'en': 'Remove the planned meal',
