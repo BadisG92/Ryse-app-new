@@ -41,13 +41,22 @@ class MealSheet {
 
     final meal = meals[slot];
     final label = 'slot_${slot.name}'.tr(lang);
-    final data = planned?.mealData;
+
+    // Le repas prévu, que l'appelant le connaisse ou non.
+    //
+    // Il fallait le lui passer : l'accueil le faisait, l'onglet Nutrition et
+    // le calendrier du planificateur non. La même feuille proposait donc de
+    // valider et de retirer d'un côté, et seulement d'ajouter de l'autre.
+    // Elle le trouve maintenant dans la journée qu'elle vient de lire, sans
+    // requête de plus.
+    final prevu = planned ?? (meal.plannedActivities.isEmpty ? null : meal.plannedActivities.first);
+    final data = prevu?.mealData;
     final dish = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : meal.plannedName;
 
     // Un repas prevu qu'on n'a pas encore mange : le valider en un geste est
     // la facon la plus rapide de noter un repas, et elle n'existait nulle
     // part. Le service savait pourtant le faire depuis toujours.
-    final waiting = planned != null && planned.status != PlannedStatus.completed && (meal.logged?.items.isEmpty ?? true);
+    final waiting = prevu != null && prevu.status != PlannedStatus.completed && (meal.logged?.items.isEmpty ?? true);
 
     final action = await showRyzeSheet<_Action>(
       context,

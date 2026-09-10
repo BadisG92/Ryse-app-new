@@ -15,6 +15,7 @@ class DayMeal {
     required this.plannedName,
     required this.logged,
     this.plannedCalories,
+    this.plannedActivities = const [],
   });
 
   final WeekSlot slot;
@@ -34,6 +35,14 @@ class DayMeal {
   /// Tous les plats du créneau, pas seulement le premier : deux collations
   /// prévues n'en montraient qu'une.
   final String? plannedName;
+
+  /// Les repas prévus de ce créneau, tels quels.
+  ///
+  /// Seuls leurs noms étaient gardés : la feuille d'un repas ne pouvait donc
+  /// ni valider ni retirer ce qui était prévu, faute d'avoir l'objet sous la
+  /// main. L'accueil, lui, le passait — d'où deux écrans qui ouvraient la
+  /// même feuille et n'y proposaient pas la même chose.
+  final List<PlannedActivity> plannedActivities;
 
   /// Ce que le plan prévoit pour ce créneau, en calories.
   ///
@@ -169,6 +178,7 @@ class DayMeals {
         at: hasFood ? block.at : null,
         plannedName: noms.isEmpty ? null : noms.join(', '),
         plannedCalories: kcal <= 0 ? null : kcal,
+        plannedActivities: visibles,
         logged: hasFood ? block : null,
       );
     }
