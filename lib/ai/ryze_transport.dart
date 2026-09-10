@@ -9,6 +9,7 @@ import '../config/gemini_config.dart';
 import '../config/supabase_config.dart';
 import '../core/config/feature_flags.dart';
 import '../services/unified_subscription_service.dart';
+import 'ryze_meter.dart';
 
 /// Ce qu'un tour de génération a coûté.
 class RyzeUsage {
@@ -199,6 +200,9 @@ class RyzeTransport {
     required String surface,
   }) async* {
     final name = model ?? GeminiConfig.modelName;
+    // Gemini renvoie le compte de jetons au fil du flux ; le dernier reçu est
+    // celui du tour entier, comme le fait la fonction serveur.
+    RyzeUsage? counted;
 
     final request = http.Request('POST', _uri(name))
       ..headers.addAll(_headers())
@@ -229,13 +233,28 @@ class RyzeTransport {
       sink.close();
     });
 
-    await for (final line in lines) {
-      if (!line.startsWith('data:')) continue;
-      final raw = line.substring(5).trim();
-      if (raw.isEmpty || raw == '[DONE]') continue;
+    try {
+      await for (final line in lines) {
+        if (!line.startsWith('data:')) continue;
+        final raw = line.substring(5).trim();
+        if (raw.isEmpty || raw == '[DONE]') continue;
 
-      final chunk = parseChunk(raw);
-      if (chunk != null) yield chunk;
+        final chunk = parseChunk(raw);
+        if (chunk == null) continue;
+        if (chunk.usage != null) counted = chunk.usage;
+        yield chunk;
+      }
+    } finally {
+      // Même si le flux s'interrompt : les jetons déjà consommés sont dus.
+      if (counted != null) {
+        RyzeMeter.record(
+          surface: surface,
+          model: name,
+          promptTokens: counted.promptTokens,
+          outputTokens: counted.outputTokens,
+          serverSide: mode == RyzeTransportMode.edge,
+        );
+      }
     }
   }
 
@@ -290,6 +309,16 @@ class RyzeTransport {
     final decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (decoded is! Map<String, dynamic>) {
       throw const RyzeTransportException('réponse illisible');
+    }
+    final counted = usageOf(decoded);
+    if (counted != null) {
+      RyzeMeter.record(
+        surface: surface,
+        model: name,
+        promptTokens: counted.promptTokens,
+        outputTokens: counted.outputTokens,
+        serverSide: mode == RyzeTransportMode.edge,
+      );
     }
     return decoded;
   }
