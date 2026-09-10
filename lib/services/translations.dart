@@ -5773,6 +5773,11 @@ class AppTranslations {
       'en': 'Coach Ryze Session',
       'de': 'Coach Ryze Training',
     },
+    'slot_kcal': {
+      'fr': '{n} kcal',
+      'en': '{n} kcal',
+      'de': '{n} kcal',
+    },
     'ai_workout_full_body': {
       'fr': 'Corps entier',
       'en': 'Full body',

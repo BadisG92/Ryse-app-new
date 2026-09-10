@@ -6,6 +6,7 @@ import '../components/ui/motion.dart';
 import '../components/weekly_planner/meal_proposal_page.dart';
 import '../components/weekly_planner/session_proposal_sheet.dart';
 import '../components/weekly_planner/proposal_card.dart';
+import '../components/weekly_planner/slot_entries_sheet.dart';
 import '../components/weekly_planner/week_strip.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -15,6 +16,8 @@ import '../services/weekly_planner_service.dart';
 import '../services/global_state_manager.dart';
 import '../design/design.dart';
 import '../home/home_slots.dart';
+import '../nutrition/meal_sheet.dart';
+import '../services/ryze_dates.dart';
 import '../sport/sport_data.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
@@ -1078,38 +1081,111 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
 
   /// A tile in the unfolded week opens what it holds: the session recap, or
   /// the dish with its ingredients, its recipe and its macros.
-  void _openSlot(int day, WeekSlot slot) {
-    final plan = _weekData.getDayPlan(_weekData.weekStart.add(Duration(days: day)));
+  /// Ce qu'une case de la semaine ouvre.
+  ///
+  /// Elle n'ouvrait que sa première entrée — la première séance du jour, le
+  /// premier plat du créneau. Les autres existaient dans les données, se
+  /// comptaient dans les totaux, et n'étaient atteignables nulle part depuis
+  /// le calendrier. Elles défilent maintenant, chacune disant si elle est
+  /// faite ou prévue ; une seule entrée va toujours droit au détail.
+  Future<void> _openSlot(int day, WeekSlot slot) async {
+    final date = _weekData.weekStart.add(Duration(days: day));
+    final plan = _weekData.getDayPlan(date);
     if (plan == null) return;
+    final lang = LocalizationService.instance.currentLanguageCode;
+
+    final entries = <SlotEntry>[];
+    final opens = <VoidCallback>[];
+
     if (slot == WeekSlot.sport) {
-      if (plan.workouts.isNotEmpty) {
-        _showWorkoutRecap(plan.workouts.first);
-      } else if (plan.cardios.isNotEmpty) {
-        _showCardioRecap(plan.cardios.first);
+      for (final w in plan.workouts) {
+        entries.add((
+          title: w.workoutName,
+          detail: _sportDetail(w.exercises.length, w.durationMinutes, lang),
+          done: w.status == PlannedStatus.completed,
+          sport: true,
+        ));
+        opens.add(() => _showWorkoutRecap(w));
       }
+      for (final c in plan.cardios) {
+        final data = c.cardioData;
+        entries.add((
+          title: data?.activityName ?? '',
+          detail: _sportDetail(0, data?.targetMinutes, lang),
+          done: c.status == PlannedStatus.completed,
+          sport: true,
+        ));
+        opens.add(() => _showCardioRecap(c));
+      }
+    } else {
+      for (final meal in plan.meals) {
+        if (_slotOf(meal.activityType) != slot) continue;
+        final data = meal.activityData;
+        entries.add((
+          title: (data['dish_name'] as String?) ?? '',
+          detail: 'slot_kcal'.tr(lang).replaceAll('{n}', '${(data['calories'] as num?)?.round() ?? 0}'),
+          done: meal.status == PlannedStatus.completed,
+          sport: false,
+        ));
+        opens.add(() => _showMealDetailPage(
+              PendingMeal(
+                plannedDate: meal.plannedDate,
+                mealType: meal.activityType,
+                dishName: (data['dish_name'] as String?) ?? '',
+                dishDescription: (data['dish_description'] as String?) ?? '',
+                calories: (data['calories'] as num?)?.round() ?? 0,
+                proteins: (data['proteins'] as num?)?.toDouble() ?? 0,
+                carbs: (data['carbs'] as num?)?.toDouble() ?? 0,
+                fats: (data['fats'] as num?)?.toDouble() ?? 0,
+                estimatedQuantityG: (data['estimated_quantity_g'] as num?)?.toDouble() ?? 0,
+                aiReasoning: data['ai_reasoning'] as String?,
+              ),
+              lang,
+            ));
+      }
+      // Ce qui a vraiment été mangé sur ce créneau : le journal. Il n'était
+      // atteignable que depuis l'accueil et Nutrition.
+      for (final e in plan.journalEntries) {
+        if (e.mealType != slot.name) continue;
+        entries.add((
+          title: e.name,
+          detail: 'slot_kcal'.tr(lang).replaceAll('{n}', '${e.calories}'),
+          done: true,
+          sport: false,
+        ));
+        opens.add(() => MealSheet.show(context, day: date, slot: slot));
+      }
+    }
+
+    if (entries.isEmpty) return;
+    if (entries.length == 1) {
+      opens.first();
       return;
     }
-    for (final meal in plan.meals) {
-      if (_slotOf(meal.activityType) != slot) continue;
-      final data = meal.activityData;
-      _showMealDetailPage(
-        PendingMeal(
-          plannedDate: meal.plannedDate,
-          mealType: meal.activityType,
-          dishName: (data['dish_name'] as String?) ?? '',
-          dishDescription: (data['dish_description'] as String?) ?? '',
-          calories: (data['calories'] as num?)?.round() ?? 0,
-          proteins: (data['proteins'] as num?)?.toDouble() ?? 0,
-          carbs: (data['carbs'] as num?)?.toDouble() ?? 0,
-          fats: (data['fats'] as num?)?.toDouble() ?? 0,
-          estimatedQuantityG: (data['estimated_quantity_g'] as num?)?.toDouble() ?? 0,
-          aiReasoning: data['ai_reasoning'] as String?,
-        ),
-        LocalizationService.instance.currentLanguageCode,
-      );
-      return;
-    }
+
+    final chosen = await SlotEntriesSheet.show(
+      context,
+      title: _slotLabel(slot, lang),
+      subtitle: RyzeDates.full(date, lang),
+      lang: lang,
+      entries: entries,
+    );
+    if (chosen == null || !mounted) return;
+    opens[chosen]();
   }
+
+  /// « 5 exercices · 45 min », ou la durée seule pour un cardio. Mêmes mots
+  /// que la carte du jour dans l'onglet Sport.
+  String _sportDetail(int exercises, int? minutes, String lang) {
+    final min = minutes ?? 0;
+    if (exercises > 0) {
+      return 'sport_exercises_n_min'.tr(lang).replaceAll('{n}', '$exercises').replaceAll('{min}', '$min');
+    }
+    return min > 0 ? '$min ${'minutes'.tr(lang)}' : '';
+  }
+
+  String _slotLabel(WeekSlot slot, String lang) =>
+      slot == WeekSlot.sport ? 'slot_sport'.tr(lang) : 'meal_name_${slot.name}'.tr(lang);
 
   // ---------------------------------------------------------------- landing
 
