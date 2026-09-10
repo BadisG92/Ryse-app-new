@@ -13,6 +13,7 @@ import 'exercise_resolver.dart';
 import 'localization_service.dart';
 import 'translations.dart';
 import 'global_state_manager.dart';
+import 'streak_service.dart';
 import 'food_cache_service.dart';
 
 class DatabaseService {
@@ -1579,6 +1580,12 @@ class DatabaseService {
       } catch (e) {
         debugPrint('⚠️ GlobalStateManager workout update failed: $e');
       }
+
+      // La série avance, comme pour un cardio, un repas ou un verre d'eau.
+      //
+      // Elle ne bougeait pas pour la musculation : on pouvait s'entraîner
+      // tous les jours de la semaine et voir la flamme s'éteindre.
+      StreakService.notifyActivity().catchError((_) {});
 
       // Invalide le cache pour cet utilisateur après une nouvelle séance
       WorkoutCacheService.invalidateUserCache(userId);

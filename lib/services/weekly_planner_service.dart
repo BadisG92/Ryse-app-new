@@ -1095,6 +1095,19 @@ class WeeklyPlannerService {
   }
 
   /// Trouver une activité cardio planifiée pour une date
+  /// Le type d'un cardio prévu, quel que soit le nom sous lequel il a été
+  /// écrit.
+  ///
+  /// Tout ce qui planifie un cardio écrit `activity_key` : le coach, le
+  /// HIIT, les modèles. Seule la synchronisation d'une séance terminée pose
+  /// `cardio_type`, et c'était la seule clé que la recherche lisait. Une
+  /// course prévue n'était donc jamais reconnue : elle restait « à faire »
+  /// pour toujours, et la course faite s'ajoutait à côté. Deux lignes dans
+  /// la journée pour une seule sortie.
+  @visibleForTesting
+  static String? cardioTypeOf(Map<String, dynamic>? data) =>
+      (data?['cardio_type'] ?? data?['activity_key']) as String?;
+
   static Future<PlannedActivity?> findPlannedCardioForDate(
     DateTime date, {
     String? activityType,
@@ -1125,7 +1138,7 @@ class WeeklyPlannerService {
         final row = Map<String, dynamic>.from(raw as Map);
         if (activityType != null) {
           final activityData = row['activity_data'] as Map<String, dynamic>?;
-          if (activityData != null && activityData['cardio_type'] != activityType) {
+          if (activityData != null && cardioTypeOf(activityData) != activityType) {
             continue; // Ne correspond pas au type demandé
           }
         }
