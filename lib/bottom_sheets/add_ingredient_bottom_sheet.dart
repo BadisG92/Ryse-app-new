@@ -27,6 +27,13 @@ class AddIngredientBottomSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      // La feuille monte au-dessus du clavier. C'est le seul endroit qui
+      // compte sa hauteur : le pied de la feuille l'ajoutait une seconde
+      // fois, et un clavier de 340 points retiré deux fois d'un écran qui
+      // en fait 850 ne laissait plus rien au contenu. La liste — le nom, les
+      // unités, la quantité — se retrouvait écrasée à zéro : il ne restait
+      // que les deux boutons, collés sous le titre, au-dessus d'un grand
+      // vide gris.
       builder: (context) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -377,7 +384,7 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
             ),
 
             Padding(
-              padding: EdgeInsets.fromLTRB(gutter, 0, gutter, MediaQuery.of(context).viewInsets.bottom + context.vw(4.6)),
+              padding: EdgeInsets.fromLTRB(gutter, 0, gutter, context.vw(4.6)),
               child: Row(
                 children: [
                   Expanded(

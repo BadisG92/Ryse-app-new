@@ -333,13 +333,19 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
     );
   }
 
-  /// La séance du jour : en cours, prévue, faite, ou rien. Un seul bouton
-  /// dans chaque état ; le « + » du titre sert à commencer autre chose.
+  /// Les séances du jour : en cours, prévues, faites, ou rien.
+  ///
+  /// Il n'y en avait qu'une, parce que la lecture n'en rendait qu'une. Une
+  /// journée avec une course et une séance de dos n'en montrait donc
+  /// qu'une seule, et l'autre n'existait nulle part dans l'onglet Sport.
+  /// Elles se suivent maintenant, à faire d'abord, faites ensuite.
   Widget _todayBlock(BuildContext context, String lang) {
     final draft = _draft;
-    final planned = HomeSlots.session(_plan?.getDayPlan(DateTime.now()));
-    final waiting = planned != null && planned.status != PlannedStatus.completed;
-    final showPlus = draft == null && (waiting || _today.isNotEmpty);
+    final waiting = [
+      for (final s in HomeSlots.sessions(_plan?.getDayPlan(DateTime.now())))
+        if (s.status != PlannedStatus.completed) s,
+    ];
+    final showPlus = draft == null && (waiting.isNotEmpty || _today.isNotEmpty);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -366,17 +372,24 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
         SizedBox(height: context.vw(2.6)),
         if (draft != null)
           ResumeSessionCard(lang: lang, draft: draft, onResume: _resume, onDiscard: _discardDraft)
-        else if (waiting)
-          _PlannedCard(
-            lang: lang,
-            session: planned,
-            onOpen: () => _showPlanned(planned),
-            onStart: () => _startPlanned(planned),
-          )
-        else if (_today.isNotEmpty)
+        else if (waiting.isNotEmpty || _today.isNotEmpty)
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [for (final row in _today) SessionRow(lang: lang, row: row, onTap: () => _open(row), showDate: false)],
+            children: [
+              for (final (i, s) in waiting.indexed) ...[
+                if (i > 0) SizedBox(height: context.vw(2.6)),
+                _PlannedCard(
+                  lang: lang,
+                  session: s,
+                  onOpen: () => _showPlanned(s),
+                  onStart: () => _startPlanned(s),
+                ),
+              ],
+              // Ce qui est déjà fait aujourd'hui reste sous ce qui reste à
+              // faire : la journée se lit d'un coup, sans changer d'onglet.
+              if (waiting.isNotEmpty && _today.isNotEmpty) SizedBox(height: context.vw(2.6)),
+              for (final row in _today) SessionRow(lang: lang, row: row, onTap: () => _open(row), showDate: false),
+            ],
           )
         else if (!_loaded)
           // Tant qu'on n'a pas lu, on ne dit rien. La carte « rien de prevu »

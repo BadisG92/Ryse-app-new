@@ -42,17 +42,33 @@ class HomeSlots {
     return null;
   }
 
-  static HomeSession? session(DayPlanData? day) {
-    if (day == null) return null;
+  /// Toutes les séances d'une journée, musculation et cardio mêlées.
+  ///
+  /// Une journée en porte souvent plusieurs — une course le matin, le dos
+  /// le soir — et l'app n'en montrait qu'une : [session] rendait la
+  /// première à faire et l'onglet Sport n'affichait que celle-là. Les
+  /// séances qui restent à faire passent devant, dans l'ordre où elles ont
+  /// été prévues ; celles qui sont finies ferment la marche.
+  static List<HomeSession> sessions(DayPlanData? day) {
+    if (day == null) return const [];
     final items = <HomeSession>[
       for (final w in day.workouts) (workout: w, cardio: null, status: w.status, label: w.workoutName),
       for (final c in day.cardios) (workout: null, cardio: c, status: c.status, label: c.cardioData?.activityName ?? ''),
     ];
-    if (items.isEmpty) return null;
-    for (final item in items) {
-      if (item.status != PlannedStatus.completed) return item;
-    }
-    return items.first;
+    items.sort((a, b) {
+      final da = a.status == PlannedStatus.completed ? 1 : 0;
+      final db = b.status == PlannedStatus.completed ? 1 : 0;
+      return da.compareTo(db);
+    });
+    return items;
+  }
+
+  /// La séance qui mène la journée : la première à faire, sinon la
+  /// première tout court. C'est ce que porte la marque unique d'un jour
+  /// dans la bande de la semaine, qui n'a la place que pour une.
+  static HomeSession? session(DayPlanData? day) {
+    final all = sessions(day);
+    return all.isEmpty ? null : all.first;
   }
 
   /// [done] : ce qui a vraiment eu lieu ce jour-la, lu dans l'historique du

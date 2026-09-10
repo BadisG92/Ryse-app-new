@@ -412,13 +412,11 @@ class _NoteBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Le viseur vit dans le corps d'un `Scaffold`, qui se redimensionne au
+    // clavier et retire `viewInsets` de son `MediaQuery` : l'ajouter ici
+    // n'ajoutait rien, et laissait croire que la barre s'en occupait.
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        context.vw(4.1),
-        0,
-        context.vw(4.1),
-        MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: context.vw(4.1)),
       child: Container(
         padding: EdgeInsets.all(context.vw(4.1)),
         decoration: BoxDecoration(

@@ -233,7 +233,9 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
             ),
 
           Padding(
-            padding: EdgeInsets.fromLTRB(gutter, context.vw(4.6), gutter, MediaQuery.of(context).viewInsets.bottom + context.vw(4.6)),
+            // Pas d'insertion de clavier ici : `Scaffold` redimensionne déjà son
+            // corps et lui retire `viewInsets`, qui y vaut donc toujours zéro.
+            padding: EdgeInsets.fromLTRB(gutter, context.vw(4.6), gutter, context.vw(4.6)),
             child: Row(
               children: [
                 Expanded(
