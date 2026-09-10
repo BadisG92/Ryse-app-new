@@ -106,7 +106,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
         setState(() {
           _workout = result.exercises;
           _suggestions = result.aiSuggestions;
-          _name = _nameFor(result.exercises, lang);
+          _name = workoutNameFor(result.exercises, lang);
         });
       } else {
         setState(() => _error = result.error ?? 'ai_workout_error_unknown'.tr(lang));
@@ -116,21 +116,6 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
     } finally {
       if (mounted) setState(() => _generating = false);
     }
-  }
-
-  /// Le nom vient des groupes musculaires que la séance travaille le plus.
-  /// Ils arrivent déjà traduits de Supabase, donc pas de table par langue.
-  static String _nameFor(List<WorkoutExercise> exercises, String lang) {
-    final counts = <String, int>{};
-    for (final e in exercises) {
-      final g = e.exercise.muscleGroup.trim();
-      if (g.isEmpty) continue;
-      counts[g] = (counts[g] ?? 0) + 1;
-    }
-    if (counts.isEmpty) return 'ai_workout_generated_session'.tr(lang);
-    final top = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final parts = top.take(2).map((e) => e.key[0].toUpperCase() + e.key.substring(1)).toList();
-    return parts.join(' & ');
   }
 
   void _start() {
@@ -646,4 +631,37 @@ class _Icon extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Le nom vient des groupes musculaires que la séance travaille le plus.
+/// Ils arrivent déjà traduits de Supabase, donc pas de table par langue.
+///
+/// Les deux premiers étaient pris quoi qu'il arrive. Une séance corps
+/// entier — un squat, un développé couché, un rowing, un développé
+/// épaules, un curl, un exercice par groupe — s'appelait donc
+/// « Legs & Chest », du nom de ses deux premiers exercices. Le nom disait
+/// jambes et pectoraux, la séance faisait tout le corps, et on ne pouvait
+/// plus s'y retrouver dans l'historique.
+///
+/// Deux groupes ne nomment la séance que s'ils la portent vraiment : au
+/// moins soixante-dix pour cent des exercices. En dessous, c'est un corps
+/// entier, et ça se dit.
+@visibleForTesting
+String workoutNameFor(List<WorkoutExercise> exercises, String lang) {
+  final counts = <String, int>{};
+  for (final e in exercises) {
+    final g = e.exercise.muscleGroup.trim();
+    if (g.isEmpty) continue;
+    counts[g] = (counts[g] ?? 0) + 1;
+  }
+  if (counts.isEmpty) return 'ai_workout_generated_session'.tr(lang);
+
+  final top = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  final total = counts.values.fold<int>(0, (s, n) => s + n);
+  final lead = top.take(2).fold<int>(0, (s, e) => s + e.value);
+  if (top.length > 2 && lead < total * 0.7) return 'ai_workout_full_body'.tr(lang);
+
+  final parts = top.take(2).map((e) => e.key[0].toUpperCase() + e.key.substring(1)).toList();
+  return parts.join(' & ');
 }

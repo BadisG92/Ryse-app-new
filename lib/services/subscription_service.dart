@@ -134,6 +134,28 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
+  /// L'abonnement tel que la boutique le donne.
+  ///
+  /// La synchronisation passait par `upgradeToPremium(testBypass: true)`,
+  /// qui marque la ligne `isTestMode` — pour un vrai achat comme pour un
+  /// contournement. Or ce drapeau court-circuite la date de fin dans le
+  /// modèle : la ligne disait premium pour toujours. Dix comptes de la base
+  /// sont dans cet état, dont des abonnements arrêtés depuis des mois, et
+  /// ils redeviennent premium chaque fois que RevenueCat n'est pas
+  /// joignable et que le repli sur notre base s'applique.
+  Future<void> applyStoreSubscription({
+    required SubscriptionPeriod period,
+    DateTime? expiry,
+  }) async {
+    _currentSubscription = UserSubscription.premium(
+      period: period,
+      isTestMode: TEST_MODE,
+      expiryDate: expiry,
+    );
+    await _saveSubscriptionToDatabase();
+    notifyListeners();
+  }
+
   /// Vérifier si l'utilisateur a déjà eu un trial
   Future<bool> _hasHadTrial() async {
     final prefs = await SharedPreferences.getInstance();

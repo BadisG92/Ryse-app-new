@@ -5773,6 +5773,11 @@ class AppTranslations {
       'en': 'Coach Ryze Session',
       'de': 'Coach Ryze Training',
     },
+    'ai_workout_full_body': {
+      'fr': 'Corps entier',
+      'en': 'Full body',
+      'de': 'Ganzkörper',
+    },
     'ai_workout_generated_session': {
       'fr': 'Séance créée par Coach Ryze',
       'en': 'Coach Ryze Generated Workout',

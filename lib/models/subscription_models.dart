@@ -89,9 +89,13 @@ class UserSubscription {
   }
 
   /// Factory: Premium payant
+  /// [expiryDate] : la fin telle que la boutique la donne. Sans elle, la fin
+  /// est déduite de la période — une approximation qui suffit tant que
+  /// personne ne s'y fie pour couper un accès.
   factory UserSubscription.premium({
     required SubscriptionPeriod period,
     bool isTestMode = false,
+    DateTime? expiryDate,
   }) {
     final now = DateTime.now();
     DateTime? expiry;
@@ -110,6 +114,9 @@ class UserSubscription {
         expiry = null; // Jamais d'expiration
         break;
     }
+
+    // Ce que la boutique dit l'emporte sur ce qu'on déduit.
+    if (expiryDate != null) expiry = expiryDate;
 
     return UserSubscription(
       tier: SubscriptionTier.premium,

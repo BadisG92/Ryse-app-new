@@ -125,7 +125,12 @@ class UnifiedSubscriptionService extends ChangeNotifier {
         }
 
         // Mettre à jour notre DB
-        await _subscription.upgradeToPremium(period: period, testBypass: true);
+        // La fin que la boutique annonce, pas une deduction, et sans le
+        // drapeau de test qui rendait la ligne premium pour toujours.
+        await _subscription.applyStoreSubscription(
+          period: period,
+          expiry: _revenueCat.getExpirationDate(),
+        );
       }
       // Si RevenueCat dit gratuit mais notre DB dit premium, mettre à jour
       else if (!isPremium && _subscription.isPremium) {
@@ -293,7 +298,12 @@ class UnifiedSubscriptionService extends ChangeNotifier {
 
       if (result != null && _revenueCat.isPremium()) {
         // Mettre à jour notre DB
-        await _subscription.upgradeToPremium(period: period, testBypass: true);
+        // La fin que la boutique annonce, pas une deduction, et sans le
+        // drapeau de test qui rendait la ligne premium pour toujours.
+        await _subscription.applyStoreSubscription(
+          period: period,
+          expiry: _revenueCat.getExpirationDate(),
+        );
         notifyListeners();
         return true;
       }
