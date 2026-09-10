@@ -14,6 +14,17 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- Les traductions vivent dans des dictionnaires Dart, pas dans des .lproj :
+	     sans cette clé, iOS ne voit que la langue de développement et l'App Store
+	     annonce « Langues : anglais » sous une fiche allemande qui se dit
+	     entièrement traduite. Elle active aussi le réglage de langue par app
+	     dans Réglages. À garder aligné sur `supportedLocales` de main.dart. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>fr</string>
+		<string>de</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>ryze_app</string>
 	<key>CFBundlePackageType</key>
