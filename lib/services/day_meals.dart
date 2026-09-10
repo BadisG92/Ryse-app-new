@@ -157,20 +157,22 @@ class DayMeals {
       // moyen d'y remettre quelque chose.
       final hasFood = block != null && block.items.isNotEmpty;
 
-      final SlotState state;
-      if (hasFood) {
-        state = SlotState.done;
-      } else if (planned.isNotEmpty || plannedDone) {
-        state = SlotState.planned;
-      } else {
-        state = SlotState.empty;
-      }
-
       // Le plan appartient au présent et à l'avenir. Un repas prévu et jamais
       // mangé, trois jours plus tard, n'est plus une information sur laquelle
       // on agit : la journée passée montre ce qui a eu lieu.
       final aVenir = plan == null || !plan.isPast;
       final visibles = aVenir ? planned : const <PlannedActivity>[];
+
+      final SlotState state;
+      if (hasFood) {
+        state = SlotState.done;
+      } else if (visibles.isNotEmpty || (plannedDone && aVenir)) {
+        // Le créneau d'un jour passé dont le plan n'a pas été suivi restait
+        // dessiné « prévu », avec « Rien d'enregistré » écrit dessous.
+        state = SlotState.planned;
+      } else {
+        state = SlotState.empty;
+      }
 
       final noms = [
         for (final m in visibles)

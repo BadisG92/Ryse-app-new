@@ -886,6 +886,13 @@ class FoodEntriesService {
 
       await _notifyNutritionUpdate(row['user_id'] as String, consumedAt);
       await MealWidgetDataProvider.updateWidgetData();
+
+      // La semaine est en cache, et c'est elle que l'accueil et le
+      // planificateur lisent. Sans ce vidage, une portion refixée dans
+      // Nutrition laissait l'ancien chiffre sur les deux autres écrans
+      // jusqu'à ce que le cache expire de lui-même.
+      WeeklyPlannerService.invalidateCache();
+      GlobalStateManager.instance.invalidateWeeklyData();
       return true;
     } catch (e) {
       debugPrint('❌ updateFoodEntryQuantity: $e');

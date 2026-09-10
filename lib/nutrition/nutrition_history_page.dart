@@ -11,11 +11,11 @@ import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/notification_service.dart';
-import '../services/portions.dart';
 import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
 import 'add_food_sheet.dart';
+import 'food_item_actions.dart';
 import 'meal_sheet.dart';
 
 /// A past day, read exactly the way today is read.
@@ -190,72 +190,30 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage>
   /// existait là-bas seulement : sur un jour passé, se tromper de portion
   /// obligeait à supprimer puis ressaisir.
   Future<void> _editItem(WeekSlot slot, nutrition.FoodItem item) async {
-    if (item.id == null) return;
-    final parts = item.portion.trim().split(RegExp(r'\s+'));
-    final current = double.tryParse(parts.first.replaceAll(',', '.')) ?? 100;
-    final unit = parts.length > 1 ? parts.sublist(1).join(' ') : 'g';
-    final steps = <double>{...RyzePortions.presets(unit: unit, reference: current), current}.toList()..sort();
-
-    final chosen = await showRyzeSheet<double>(
-      context,
-      title: item.name,
-      subtitle: 'nutri_fix_portion'.tr(_lang),
-      builder: (sheet) => Wrap(
-        spacing: sheet.vw(2),
-        runSpacing: sheet.vw(2),
-        children: [
-          for (final value in steps)
-            _Chip(
-              label: RyzePortions.label(value, unit, _lang),
-              selected: (value - current).abs() < 0.05,
-              onTap: () => Navigator.pop(sheet, value),
-            ),
-        ],
-      ),
-    );
-    if (chosen == null || !mounted || (chosen - current).abs() < 0.05) return;
-
-    final ok = await FoodEntriesService.updateFoodEntryQuantity(item.id!, chosen);
+    await FoodItemActions.editPortion(context, item: item, lang: _lang);
     if (!mounted) return;
-    if (ok) {
-      RyzeFeedback.confirm();
-    } else {
-      RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
-    }
-    _load();
-    _loadStrip();
+    await _load();
+    await _loadStrip();
   }
 
   Future<void> _removeItem(WeekSlot slot, nutrition.FoodItem item) async {
-    if (item.id == null) return;
-    RyzeFeedback.removed();
-    final ok = await FoodEntriesService.removeFoodEntry(item.id!);
+    await FoodItemActions.remove(
+      context,
+      item: item,
+      slot: slot,
+      day: _selected,
+      lang: _lang,
+      onUndone: () {
+        if (!mounted) return;
+        _load();
+        _loadStrip();
+      },
+    );
     if (!mounted) return;
-    if (ok) {
-      RyzeUndo.show(
-        context,
-        message: 'undo_item_removed'.tr(_lang).replaceAll('{name}', item.name),
-        undoLabel: 'undo'.tr(_lang),
-        onUndo: () async {
-          final userId = Supabase.instance.client.auth.currentUser?.id;
-          if (userId == null) return;
-          await FoodEntriesService.addFoodEntry(
-            userId: userId,
-            mealName: 'meal_name_${slot.name}'.tr(_lang),
-            foodItem: item,
-            consumedAt: _selected,
-          );
-          _load();
-          _loadStrip();
-        },
-      );
-    } else {
-      RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
-    }
-    _load();
+    await _load();
     // La jauge du jour dans la bande restait sur son ancienne valeur : elle
     // n'était relue qu'à l'ajout, jamais au retrait.
-    _loadStrip();
+    await _loadStrip();
   }
 
   @override
@@ -384,35 +342,6 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage>
 /// empty.
 /// Une valeur possible, dans la feuille de correction de portion. Le même
 /// jeton que sur la page du jour.
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.onTap, this.selected = false});
-
-  final String label;
-  final VoidCallback onTap;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      child: Container(
-        height: 44,
-        padding: EdgeInsets.symmetric(horizontal: context.vw(4.1)),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? RyzeColors.ink : RyzeColors.surf,
-          borderRadius: BorderRadius.circular(RyzeRadius.pill),
-          border: Border.all(color: RyzeColors.ink, width: 1.5),
-        ),
-        child: Text(
-          label,
-          style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: selected ? RyzeColors.surf : RyzeColors.ink),
-        ),
-      ),
-    );
-  }
-}
-
 class _Gauge extends StatelessWidget {
   const _Gauge({required this.fill, required this.selected});
 

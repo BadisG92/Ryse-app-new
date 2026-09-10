@@ -1135,21 +1135,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
           done: meal.status == PlannedStatus.completed,
           sport: false,
         ));
-        opens.add(() => _showMealDetailPage(
-              PendingMeal(
-                plannedDate: meal.plannedDate,
-                mealType: meal.activityType,
-                dishName: (data['dish_name'] as String?) ?? '',
-                dishDescription: (data['dish_description'] as String?) ?? '',
-                calories: (data['calories'] as num?)?.round() ?? 0,
-                proteins: (data['proteins'] as num?)?.toDouble() ?? 0,
-                carbs: (data['carbs'] as num?)?.toDouble() ?? 0,
-                fats: (data['fats'] as num?)?.toDouble() ?? 0,
-                estimatedQuantityG: (data['estimated_quantity_g'] as num?)?.toDouble() ?? 0,
-                aiReasoning: data['ai_reasoning'] as String?,
-              ),
-              lang,
-            ));
+        // La même feuille que l'accueil et Nutrition, et non plus une page
+        // de lecture seule : depuis le calendrier, un plat prévu ne pouvait
+        // ni se valider ni se retirer, alors que c'est l'écran où on le
+        // regarde en décidant de sa semaine.
+        opens.add(() async {
+          final change = await MealSheet.show(context, day: date, slot: slot, planned: meal);
+          if (change && mounted) await _refreshWeekData();
+        });
       }
       // Ce qui a vraiment été mangé sur ce créneau : le journal. Il n'était
       // atteignable que depuis l'accueil et Nutrition.
@@ -1160,7 +1153,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
           done: true,
           sport: false,
         ));
-        opens.add(() => MealSheet.show(context, day: date, slot: slot));
+        opens.add(() async {
+          final change = await MealSheet.show(context, day: date, slot: slot);
+          if (change && mounted) await _refreshWeekData();
+        });
       }
     }
 

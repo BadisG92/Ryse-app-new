@@ -107,7 +107,10 @@ class HomeSlots {
 
       if (hasFood) {
         states[slot] = SlotState.done;
-      } else if (planned.isNotEmpty) {
+      } else if (planned.isNotEmpty && !day.isPast) {
+        // Le plan appartient au présent et à l'avenir : la marque d'un jour
+        // passé disait « prévu » pour un repas jamais mangé, pendant que le
+        // panneau du même jour, lui, n'affichait plus rien.
         states[slot] = SlotState.planned;
       }
 

@@ -79,4 +79,18 @@ void main() {
       expect(out.map((l) => l.title), ['Poulet']);
     });
   });
+
+  group('La marque du jour dans la bande', () {
+    SlotState etat(DayPlanData plan) => HomeSlots.ofDay(plan).state(WeekSlot.lunch);
+
+    test('suit le plan tant que le jour n’est pas passé', () {
+      expect(etat(jour(passe: false, repas: [repas(status: PlannedStatus.planned)])), SlotState.planned);
+    });
+
+    test('ne promet plus rien sur un jour passé', () {
+      // Le panneau du jour n’affichait déjà plus le plan d’hier ; la marque,
+      // elle, restait dessinée « prévu ». Le même mardi, deux réponses.
+      expect(etat(jour(passe: true, repas: [repas(status: PlannedStatus.planned)])), SlotState.empty);
+    });
+  });
 }

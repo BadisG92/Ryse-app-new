@@ -10,6 +10,7 @@ import '../services/weekly_planner_service.dart';
 import '../services/localization_service.dart';
 import '../services/ryze_dates.dart';
 import '../services/translations.dart';
+import 'food_item_actions.dart';
 
 /// Un repas, ouvert : ce qui a été mangé, ce qui était prévu, et le compte.
 ///
@@ -80,7 +81,13 @@ class MealSheet {
     // Un repas prevu qu'on n'a pas encore mange : le valider en un geste est
     // la facon la plus rapide de noter un repas, et elle n'existait nulle
     // part. Le service savait pourtant le faire depuis toujours.
-    final canValidate = prevu != null && prevu.status != PlannedStatus.completed && !eaten;
+    //
+    // Pas pour un jour à venir : valider, c'est dire « je l'ai mangé », et le
+    // calendrier ouvre aussi bien demain qu'hier.
+    final aujourdhui = DateTime.now();
+    final passe = !DateTime(day.year, day.month, day.day)
+        .isAfter(DateTime(aujourdhui.year, aujourdhui.month, aujourdhui.day));
+    final canValidate = prevu != null && prevu.status != PlannedStatus.completed && !eaten && passe;
 
     // Retirer, c'est autre chose que valider : un plat prévu qu'on n'a pas
     // suivi reste affiché sous le repas noté, et rien ne permettait de s'en
@@ -88,11 +95,24 @@ class MealSheet {
     // à part, elle propose de l'enlever.
     final canRemove = prevu != null && aPart;
 
+    // Ce que la feuille a changé pendant qu'elle était ouverte : une portion
+    // refixée, un aliment retiré. L'appelant doit se recharger même si elle
+    // se ferme sans bouton.
+    bool touche = false;
+
     final action = await showRyzeSheet<_Action>(
       context,
       title: label,
       subtitle: RyzeDates.full(day, lang),
-      builder: (_) => _Body(lang: lang, meal: meal, dish: aPart ? dish : null, data: data),
+      builder: (_) => _Body(
+        lang: lang,
+        day: day,
+        slot: slot,
+        meal: meal,
+        dish: aPart ? dish : null,
+        data: data,
+        onChanged: () => touche = true,
+      ),
       actions: [
         if (canValidate)
           OnbButton(
@@ -119,7 +139,7 @@ class MealSheet {
       ],
     );
 
-    if (action == null || !context.mounted) return false;
+    if (action == null || !context.mounted) return touche;
 
     switch (action) {
       case _Action.add:
@@ -154,15 +174,64 @@ class MealSheet {
   }
 }
 
-class _Body extends StatelessWidget {
-  const _Body({required this.lang, required this.meal, required this.dish, required this.data});
+class _Body extends StatefulWidget {
+  const _Body({
+    required this.lang,
+    required this.day,
+    required this.slot,
+    required this.meal,
+    required this.dish,
+    required this.data,
+    required this.onChanged,
+  });
 
   final String lang;
+  final DateTime day;
+  final WeekSlot slot;
   final DayMeal meal;
 
   /// Le plat prévu, quel que soit l'endroit d'où il vient.
   final String? dish;
   final PlannedMealData? data;
+
+  /// Quelque chose a bougé : l'écran qui a ouvert la feuille devra relire.
+  final VoidCallback onChanged;
+
+  @override
+  State<_Body> createState() => _BodyState();
+}
+
+class _BodyState extends State<_Body> {
+  late DayMeal _meal = widget.meal;
+
+  String get lang => widget.lang;
+  DayMeal get meal => _meal;
+  String? get dish => widget.dish;
+  PlannedMealData? get data => widget.data;
+
+  /// Relire la journée après une correction. Une requête, et la feuille
+  /// redit tout juste : les aliments, mais aussi le compte au-dessus.
+  Future<void> _reload() async {
+    widget.onChanged();
+    final jour = await DayMeals.forDate(widget.day);
+    if (mounted) setState(() => _meal = jour[widget.slot]);
+  }
+
+  Future<void> _edit(nutrition.FoodItem item) async {
+    if (await FoodItemActions.editPortion(context, item: item, lang: lang)) await _reload();
+  }
+
+  Future<void> _remove(nutrition.FoodItem item) async {
+    final ok = await FoodItemActions.remove(
+      context,
+      item: item,
+      slot: widget.slot,
+      day: widget.day,
+      lang: lang,
+      onUndone: _reload,
+    );
+    if (ok) await _reload();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,8 +284,18 @@ class _Body extends StatelessWidget {
 
         // Ce qui a vraiment été mangé, aliment par aliment. C'est la raison
         // d'être de cette feuille.
+        // Un repas ouvert se corrige ici aussi. Les deux gestes n'existaient
+        // que dans la ligne de temps de Nutrition : ouvrir le même repas
+        // depuis l'accueil ou le planificateur, c'était le lire sans pouvoir
+        // y toucher.
         if (eaten)
-          for (final item in items) _Item(lang: lang, item: item),
+          for (final item in items)
+            _Item(
+              lang: lang,
+              item: item,
+              onEdit: item.id == null ? null : () => _edit(item),
+              onRemove: item.id == null ? null : () => _remove(item),
+            ),
 
         if (!eaten && (dish?.isEmpty ?? true))
           Text('nutri_nothing_logged'.tr(lang), style: RyzeText.body(context, 3.6, color: RyzeColors.mute)),
@@ -284,10 +363,15 @@ class _Body extends StatelessWidget {
 
 /// Un aliment du journal : son nom, ce qu'il pesait, ce qu'il vaut.
 class _Item extends StatelessWidget {
-  const _Item({required this.lang, required this.item});
+  const _Item({required this.lang, required this.item, this.onEdit, this.onRemove});
 
   final String lang;
   final nutrition.FoodItem item;
+
+  /// Refixer la portion, et enlever. Nuls pour un aliment sans identifiant :
+  /// il n'y a rien à corriger dans la base.
+  final VoidCallback? onEdit;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -300,15 +384,18 @@ class _Item extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.name, style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
-                if (quantity.isNotEmpty) ...[
-                  SizedBox(height: context.vw(0.5)),
-                  Text(quantity, style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
+            child: Pressable(
+              onTap: onEdit,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.name, style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
+                  if (quantity.isNotEmpty) ...[
+                    SizedBox(height: context.vw(0.5)),
+                    Text(quantity, style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           SizedBox(width: context.vw(3.1)),
@@ -321,6 +408,15 @@ class _Item extends StatelessWidget {
               ],
             ),
           ),
+          if (onRemove != null)
+            Pressable(
+              onTap: onRemove,
+              child: SizedBox(
+                width: 34,
+                height: 34,
+                child: Icon(LucideIcons.x, size: 15, color: RyzeColors.mute2),
+              ),
+            ),
         ],
       ),
     );

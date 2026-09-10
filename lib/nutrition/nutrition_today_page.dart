@@ -7,6 +7,7 @@ import '../design/design.dart';
 import '../models/nutrition_models.dart' as nutrition;
 import '../models/notification_models.dart';
 import 'add_food_sheet.dart';
+import 'food_item_actions.dart';
 import 'meal_sheet.dart';
 import '../services/day_meals.dart';
 import '../services/food_add_flow.dart';
@@ -15,7 +16,6 @@ import '../services/global_state_manager.dart';
 import 'day_analysis.dart';
 import 'water_pending_line.dart';
 import '../services/localization_service.dart';
-import '../services/portions.dart';
 import '../services/notification_service.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
@@ -296,68 +296,22 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
   /// Taper un aliment enregistré : refixer ce qu'il pesait. Les calories et
   /// les macros suivent au prorata, du côté du service.
   Future<void> _editItem(WeekSlot slot, nutrition.FoodItem item) async {
-    if (item.id == null) return;
-    final parts = item.portion.trim().split(RegExp(r'\s+'));
-    final current = double.tryParse(parts.first.replaceAll(',', '.')) ?? 100;
-    final unit = parts.length > 1 ? parts.sublist(1).join(' ') : 'g';
-    // Les portions plausibles pour cet aliment, plus celle qui est enregistrée
-    // si elle n'y figure pas : on doit toujours pouvoir revenir en arrière.
-    final steps = <double>{...RyzePortions.presets(unit: unit, reference: current), current}.toList()..sort();
-
-    final chosen = await showRyzeSheet<double>(
-      context,
-      title: item.name,
-      subtitle: 'nutri_fix_portion'.tr(_lang),
-      builder: (context) => Wrap(
-        spacing: context.vw(2),
-        runSpacing: context.vw(2),
-        children: [
-          for (final value in steps)
-            _Chip(
-              label: RyzePortions.label(value, unit, _lang),
-              selected: (value - current).abs() < 0.05,
-              onTap: () => Navigator.pop(context, value),
-            ),
-        ],
-      ),
-    );
-    if (chosen == null || !mounted || (chosen - current).abs() < 0.05) return;
-
-    final ok = await FoodEntriesService.updateFoodEntryQuantity(item.id!, chosen);
-    if (!mounted) return;
-    if (ok) {
-      RyzeFeedback.confirm();
-    } else {
-      RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
-    }
-    _load();
+    await FoodItemActions.editPortion(context, item: item, lang: _lang);
+    if (mounted) _load();
   }
 
   Future<void> _removeItem(WeekSlot slot, nutrition.FoodItem item) async {
-    if (item.id == null) return;
-    RyzeFeedback.removed();
-    final ok = await FoodEntriesService.removeFoodEntry(item.id!);
-    if (!mounted) return;
-    if (ok) {
-      RyzeUndo.show(
-        context,
-        message: 'undo_item_removed'.tr(_lang).replaceAll('{name}', item.name),
-        undoLabel: 'undo'.tr(_lang),
-        onUndo: () async {
-          final userId = Supabase.instance.client.auth.currentUser?.id;
-          if (userId == null) return;
-          await FoodEntriesService.addFoodEntry(
-            userId: userId,
-            mealName: 'meal_name_${slot.name}'.tr(_lang),
-            foodItem: item,
-            consumedAt: _date,
-          );
-        },
-      );
-    } else {
-      RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
-    }
-    _load();
+    await FoodItemActions.remove(
+      context,
+      item: item,
+      slot: slot,
+      day: _date,
+      lang: _lang,
+      onUndone: () {
+        if (mounted) _load();
+      },
+    );
+    if (mounted) _load();
   }
 
   String _hourOf(WeekSlot slot) {

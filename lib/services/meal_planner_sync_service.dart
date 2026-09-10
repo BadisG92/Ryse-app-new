@@ -599,6 +599,12 @@ class MealPlannerSyncService {
         GlobalStateManager.instance.invalidateWeeklyData();
         return;
       }
+
+      // Aucune activité liée : l'aliment n'en avait pas, ou il vit hors de la
+      // semaine en cache. Le vidage reste nécessaire — l'accueil lit le
+      // journal de cette semaine, et il vient de perdre une ligne.
+      WeeklyPlannerService.invalidateCache();
+      GlobalStateManager.instance.invalidateWeeklyData();
     } catch (e) {
       debugPrint('❌ onFoodEntryDeleted error: $e');
     }
