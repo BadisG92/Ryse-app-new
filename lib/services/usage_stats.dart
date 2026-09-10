@@ -78,8 +78,17 @@ class UsageStats {
   /// Envoie ce qui est en attente. Appelé aussi quand l'app passe en veille.
   static Future<void> flush() async {
     if (_sending || _pending.isEmpty) return;
-    final client = Supabase.instance.client;
-    if (client.auth.currentUser == null) return;
+
+    // Lire le client avant que Supabase soit initialisé lève : ces compteurs
+    // partent de partout, y compris d'un événement posé au tout début du
+    // lancement. Rien ici ne doit pouvoir faire tomber l'application.
+    final SupabaseClient client;
+    try {
+      client = Supabase.instance.client;
+      if (client.auth.currentUser == null) return;
+    } catch (_) {
+      return;
+    }
 
     _sending = true;
     final batch = Map<String, int>.from(_pending);
