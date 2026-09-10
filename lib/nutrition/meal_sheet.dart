@@ -26,6 +26,21 @@ import '../services/translations.dart';
 class MealSheet {
   MealSheet._();
 
+  /// Le plat prévu dit-il autre chose que ce qui a été noté ?
+  ///
+  /// Noter un aliment sur un créneau prévu coche le plat prévu et le relie à
+  /// l'aliment. Quand les deux portent le même nom, il n'y a qu'un repas :
+  /// l'afficher une deuxième fois sous l'étiquette « Prévu » n'apprend rien,
+  /// et proposer de « retirer le repas prévu » là où il n'y en a pas est un
+  /// bouton qui ne veut rien dire. Quand ils diffèrent, le plan est une chose
+  /// à part : on le montre, et on peut l'enlever.
+  @visibleForTesting
+  static bool plannedApart(String? dish, List<String> logged) {
+    if (dish == null || dish.trim().isEmpty) return false;
+    if (logged.isEmpty) return true;
+    return dish != logged.join(', ');
+  }
+
   /// Ouvre le repas [slot] du jour [day]. Rend vrai quand quelque chose a
   /// changé et que l'appelant doit se recharger.
   static Future<bool> show(
@@ -53,21 +68,31 @@ class MealSheet {
     final data = prevu?.mealData;
     final dish = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : meal.plannedName;
 
+    final items = meal.logged?.items ?? const [];
+    final eaten = items.isNotEmpty;
+
+    // Le plat prévu ne se distingue de ce qui a été mangé que s'il dit autre
+    // chose. Noter un aliment sur un créneau prévu coche le plat prévu et le
+    // relie à l'aliment ; quand les deux portent le même nom, il n'y a qu'un
+    // repas, et l'afficher deux fois n'apprend rien.
+    final aPart = plannedApart(dish, [for (final i in items) i.name]);
+
     // Un repas prevu qu'on n'a pas encore mange : le valider en un geste est
     // la facon la plus rapide de noter un repas, et elle n'existait nulle
     // part. Le service savait pourtant le faire depuis toujours.
-    final canValidate = prevu != null && prevu.status != PlannedStatus.completed && (meal.logged?.items.isEmpty ?? true);
+    final canValidate = prevu != null && prevu.status != PlannedStatus.completed && !eaten;
 
     // Retirer, c'est autre chose que valider : un plat prévu qu'on n'a pas
     // suivi reste affiché sous le repas noté, et rien ne permettait de s'en
-    // débarrasser une fois qu'on avait mangé autre chose.
-    final canRemove = prevu != null && prevu.status != PlannedStatus.completed;
+    // débarrasser. Partout où la feuille montre le plat prévu comme une chose
+    // à part, elle propose de l'enlever.
+    final canRemove = prevu != null && aPart;
 
     final action = await showRyzeSheet<_Action>(
       context,
       title: label,
       subtitle: RyzeDates.full(day, lang),
-      builder: (_) => _Body(lang: lang, meal: meal, dish: dish, data: data),
+      builder: (_) => _Body(lang: lang, meal: meal, dish: aPart ? dish : null, data: data),
       actions: [
         if (canValidate)
           OnbButton(
@@ -84,7 +109,9 @@ class MealSheet {
           ),
         if (canRemove)
           OnbButton(
-            label: 'planner_delete_meal'.tr(lang),
+            // « Supprimer ce repas » à côté d'un repas noté se lirait comme
+            // « supprime ce que j'ai mangé ». C'est le plan qu'on retire.
+            label: (eaten ? 'planner_remove_planned' : 'planner_delete_meal').tr(lang),
             ghost: true,
             icon: LucideIcons.trash2,
             onPressed: () => Navigator.pop(context, _Action.remove),
@@ -115,7 +142,7 @@ class MealSheet {
         );
         return true;
       case _Action.remove:
-        final ok = await WeeklyPlannerService.deletePlannedActivity(prevu!.id);
+        final ok = await WeeklyPlannerService.deletePlannedActivity(prevu!.id, evenIfCompleted: true);
         if (!context.mounted) return ok;
         if (ok) {
           RyzeFeedback.removed();

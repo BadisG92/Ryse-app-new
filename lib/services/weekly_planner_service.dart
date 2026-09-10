@@ -639,12 +639,19 @@ class WeeklyPlannerService {
 
   /// Supprimer une activité planifiée (uniquement si status = planned)
   /// Les séances completed doivent être supprimées via l'historique
-  static Future<bool> deletePlannedActivity(String activityId) async {
+  /// [evenIfCompleted] : retirer un repas prévu déjà coché.
+  ///
+  /// Noter un aliment sur un créneau prévu coche le plat prévu. Ce plat
+  /// devenait alors indéracinable : on avait mangé autre chose, la ligne
+  /// « Prévu · Bol d'avoine » restait sous le repas pour toujours. La règle
+  /// ne cède que pour un repas : un cardio coché, lui, *est* la trace de la
+  /// séance, et se supprime par l'historique.
+  static Future<bool> deletePlannedActivity(String activityId, {bool evenIfCompleted = false}) async {
     try {
       // Vérifier que la séance est encore supprimable (status = planned)
       final existing = await _client
           .from('planned_activities')
-          .select('status')
+          .select('status, activity_type')
           .eq('id', activityId)
           .maybeSingle();
 
@@ -653,7 +660,8 @@ class WeeklyPlannerService {
         return false;
       }
 
-      if (existing['status'] != 'planned') {
+      final repas = (existing['activity_type'] as String?) != 'cardio';
+      if (existing['status'] != 'planned' && !(evenIfCompleted && repas)) {
         debugPrint('❌ deletePlannedActivity: Cannot delete completed/missed activity - use history to delete');
         return false;
       }

@@ -9210,6 +9210,11 @@ class AppTranslations {
       'en': 'Save',
       'de': 'Speichern',
     },
+    'planner_remove_planned': {
+      'fr': 'Retirer le repas prévu',
+      'en': 'Remove the planned meal',
+      'de': 'Geplante Mahlzeit entfernen',
+    },
     'planner_delete_meal': {
       'fr': 'Supprimer ce repas',
       'en': 'Delete this meal',
