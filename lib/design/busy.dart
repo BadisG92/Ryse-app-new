@@ -124,11 +124,20 @@ class _RyzeBusyState extends State<RyzeBusy> with TickerProviderStateMixin {
     // Le sol est sombre : les icônes de la barre d'état doivent passer en
     // clair, sinon l'heure et la batterie s'écrivent en presque-noir sur
     // l'encre et disparaissent.
+    //
+    // Et le style par défaut est posé ici, parce que cette attente est
+    // parfois montrée dans un `OverlayEntry` — l'analyse de la journée — où
+    // il n'y a aucun Material au-dessus. Sans lui, Flutter écrit ses textes
+    // avec son style de secours : souligné d'un double trait jaune. C'est
+    // exactement la tête qu'avait l'écran « Coach Ryze lit ta journée ».
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: FadeTransition(
-        opacity: CurvedAnimation(parent: _in, curve: RyzeCurves.out),
-        child: body,
+      child: DefaultTextStyle(
+        style: RyzeText.body(context, 3.9, color: RyzeColors.surf),
+        child: FadeTransition(
+          opacity: CurvedAnimation(parent: _in, curve: RyzeCurves.out),
+          child: body,
+        ),
       ),
     );
   }
