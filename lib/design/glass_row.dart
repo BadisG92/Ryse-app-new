@@ -42,15 +42,28 @@ class GlassRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final goal = goalLitres > 0 ? (goalLitres / glassLitres).round().clamp(4, 12) : 8;
     final full = shown ? (litres / glassLitres).floor().clamp(0, goal) : 0;
+    final gap = context.vw(1.8);
 
-    return Row(
+    // Un verre garde ses proportions quel que soit leur nombre.
+    //
+    // Seule la largeur s'adaptait : les verres se partagent la rangée, mais la
+    // hauteur était fixe. À huit, la silhouette est juste ; à douze — trois
+    // litres — chacun devenait deux fois plus haut que large, une lamelle qui
+    // ne ressemble plus à un verre. La hauteur suit maintenant la largeur, sans
+    // jamais dépasser celle d'avant.
+    return LayoutBuilder(
+      builder: (context, box) {
+        final width = (box.maxWidth - gap * (goal - 1)) / goal;
+        final height = math.min(width * 1.27, context.vw(12.3));
+        return Row(
       children: [
         for (var i = 0; i < goal; i++) ...[
-          if (i > 0) SizedBox(width: context.vw(1.8)),
+          if (i > 0) SizedBox(width: gap),
           Expanded(
             child: _Glass(
               filled: i < full,
               next: i == full,
+              height: height,
               // Chaque verre part un cran après celui de gauche : la rangée se
               // remplit de gauche à droite au lieu de basculer d'un coup.
               delay: Duration(milliseconds: 40 * i),
@@ -75,12 +88,24 @@ class GlassRow extends StatelessWidget {
           ),
         ],
       ],
+        );
+      },
     );
   }
 }
 
 class _Glass extends StatefulWidget {
-  const _Glass({required this.filled, required this.next, required this.onTap, required this.delay, this.onLongPress});
+  const _Glass({
+    required this.filled,
+    required this.next,
+    required this.onTap,
+    required this.delay,
+    required this.height,
+    this.onLongPress,
+  });
+
+  /// Calculée par la rangée, d'après la place que chaque verre y prend.
+  final double height;
 
   final bool filled;
   final bool next;
@@ -97,7 +122,7 @@ class _GlassState extends State<_Glass> {
 
   @override
   Widget build(BuildContext context) {
-    final height = context.vw(12.3);
+    final height = widget.height;
     return Semantics(
       button: true,
       child: GestureDetector(
