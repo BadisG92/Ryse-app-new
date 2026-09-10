@@ -115,7 +115,38 @@ class SessionController extends ChangeNotifier {
     final last = await LastSets.load(e.exercise);
     if (last != null) {
       ghosts[key] = last;
+      // La dernière fois arrive parfois après la première série validée : une
+      // requête de quatre secondes, et le record était jugé sur un historique
+      // vide. On rejuge dès qu'il est là.
+      _refreshRecords(e);
       notifyListeners();
+    }
+  }
+
+  /// Le plus lourd de la dernière fois sur cet exercice. Zéro quand il n'y a
+  /// pas de dernière fois : la première séance ne s'auto-félicite pas.
+  double _historyBest(LiveExercise e) {
+    final previous = ghosts[_key(e.exercise)];
+    if (previous == null || previous.isEmpty) return 0;
+    return previous.map((p) => p.weightKg).reduce((a, b) => a > b ? a : b);
+  }
+
+  /// Qui porte le record sur cet exercice.
+  ///
+  /// Une seule série : la plus lourde de la séance, et seulement si elle passe
+  /// devant la dernière fois. La règle ne regardait que l'historique, donc
+  /// chaque série plus lourde que la dernière fois décrochait sa pastille —
+  /// trente-cinq puis quarante en portaient deux, alors que le record de
+  /// trente-cinq avait déjà été battu dans la même séance. Un ancien record
+  /// n'en est plus un : la pastille se déplace au lieu de se multiplier.
+  ///
+  /// À poids égal, c'est la première qui garde la pastille : elle l'a fait
+  /// d'abord.
+  void _refreshRecords(LiveExercise e) {
+    final history = _historyBest(e);
+    final holder = recordHolder(history, [for (final s in e.sets) s.done ? s.weightKg : 0]);
+    for (var i = 0; i < e.sets.length; i++) {
+      e.sets[i].record = i == holder;
     }
   }
 
@@ -256,14 +287,7 @@ class SessionController extends ChangeNotifier {
     }
     s.done = true;
 
-    // Un record, c'est plus lourd que tout ce qu'on a de la dernière fois sur
-    // cet exercice. Sans dernière fois, il n'y a rien à battre : la première
-    // séance ne s'auto-félicite pas.
-    final previous = ghosts[_key(e.exercise)];
-    final best = previous == null || previous.isEmpty
-        ? 0.0
-        : previous.map((p) => p.weightKg).reduce((a, b) => a > b ? a : b);
-    s.record = best > 0 && s.weightKg > best;
+    _refreshRecords(e);
     if (setIndex + 1 < e.sets.length) {
       final n = e.sets[setIndex + 1];
       if (!n.done && n.isEmpty) {
@@ -389,4 +413,25 @@ class SessionController extends ChangeNotifier {
     rest.dispose();
     super.dispose();
   }
+}
+
+/// L'index de la série qui porte le record, ou −1 s'il n'y en a pas.
+///
+/// Une seule série le porte : la plus lourde de la séance, et seulement si
+/// elle passe devant [history], le plus lourd de la dernière fois. Sans
+/// dernière fois, personne — la première séance ne s'auto-félicite pas.
+///
+/// À poids égal, la première garde la pastille : elle l'a fait d'abord. Une
+/// série non validée compte pour zéro.
+@visibleForTesting
+int recordHolder(double history, List<double> weights) {
+  if (history <= 0) return -1;
+  var best = history;
+  var holder = -1;
+  for (var i = 0; i < weights.length; i++) {
+    if (weights[i] <= best) continue;
+    best = weights[i];
+    holder = i;
+  }
+  return holder;
 }
