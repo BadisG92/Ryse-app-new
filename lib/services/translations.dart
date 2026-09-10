@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 
 class AppTranslations {
   static const Map<String, Map<String, String>> _translations = {
@@ -12065,8 +12064,7 @@ extension StringTranslation on String {
   }
 }
 
-// Helper function to get translations with BuildContext
-String tr(BuildContext context, String key) {
-  final languageCode = Localizations.localeOf(context).languageCode;
-  return AppTranslations.get(key, languageCode);
-}
+// Il y avait ici un `tr(BuildContext, String)` que personne n'appelait et
+// qui lisait `Localizations.localeOf(context)` : sans locale sur
+// MaterialApp, il aurait rendu de l'anglais à tout le monde. Un piège posé
+// pour le prochain qui l'aurait trouvé pratique.

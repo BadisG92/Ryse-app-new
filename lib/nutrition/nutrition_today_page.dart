@@ -397,6 +397,7 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
             delay: const Duration(milliseconds: 60),
             dy: 8,
             child: DayInstrument(
+              lang: lang,
               lead: remaining < 0 ? 'nutri_over_goal'.tr(lang) : (remaining == 0 ? 'nutri_goal_met'.tr(lang) : 'nutri_left_today'.tr(lang)),
               unit: 'nutri_kcal'.tr(lang),
               eatenLabel: 'nutri_eaten'.tr(lang).replaceAll('{n}', numbers.format(calories)),

@@ -603,6 +603,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                         final remaining = goal - calories;
                         final numbers = NumberFormat.decimalPattern(lang);
                         return DayInstrument(
+                          lang: lang,
                           // With no goal yet, "goal reached" would be a lie
                           // told to every new subscriber whose targets are
                           // still loading.

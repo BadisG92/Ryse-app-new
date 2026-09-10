@@ -19,6 +19,7 @@ import '../onboarding/widgets/pickers.dart';
 class DayInstrument extends StatelessWidget {
   const DayInstrument({
     super.key,
+    required this.lang,
     required this.lead,
     required this.unit,
     required this.eatenLabel,
@@ -28,6 +29,18 @@ class DayInstrument extends StatelessWidget {
     required this.shown,
     this.macros,
   });
+
+  /// La langue de l'app, celle qui met en forme le chiffre.
+  ///
+  /// Il était mis en forme d'après `Localizations.localeOf(context)`, c'est-à-dire
+  /// d'après Flutter — or `MaterialApp` n'a ni `locale` ni `supportedLocales`,
+  /// donc Flutter répondait `en_US` sur tous les téléphones, dans toutes les
+  /// langues. En français le plus gros chiffre de l'écran s'affichait
+  /// « 1,334 kcal » — une virgule décimale : mille trois cent trente-quatre
+  /// millièmes de kilocalorie — au-dessus d'une légende « objectif 1 334 »
+  /// mise en forme, elle, dans la bonne langue. Deux formats, deux sens, une
+  /// même valeur.
+  final String lang;
 
   /// The line above the figure: what is left, over the goal, or goal reached.
   final String lead;
@@ -47,7 +60,7 @@ class DayInstrument extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final remaining = calorieGoal - calories;
-    final numbers = NumberFormat.decimalPattern(Localizations.localeOf(context).languageCode);
+    final numbers = NumberFormat.decimalPattern(lang);
     // the goal met exactly deserves the words, not a giant zero
     final showFigure = remaining != 0;
     final figure = numbers.format(remaining.abs());

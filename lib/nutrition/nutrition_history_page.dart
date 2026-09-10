@@ -299,6 +299,7 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage>
                 SizedBox(height: context.vw(40), child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)))
               else ...[
                 DayInstrument(
+                  lang: lang,
                   lead: remaining < 0 ? 'nutri_over_that_day'.tr(lang) : 'nutri_left_that_day'.tr(lang),
                   unit: 'nutri_kcal'.tr(lang),
                   eatenLabel: 'nutri_eaten'.tr(lang).replaceAll('{n}', numbers.format(eaten)),

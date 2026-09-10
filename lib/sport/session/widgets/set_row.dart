@@ -52,7 +52,7 @@ class SetRow extends StatelessWidget {
     String weightText;
     bool weightGhost;
     if (editing == EditField.weight && buffer.isNotEmpty) {
-      weightText = buffer.replaceAll('.', _decimal(context));
+      weightText = buffer.replaceAll('.', _decimal());
       weightGhost = false;
     } else if (set.weightKg > 0) {
       weightText = _w(units.displayWeight(set.weightKg));
@@ -164,9 +164,17 @@ class SetRow extends StatelessWidget {
     );
   }
 
-  static String _w(double v) => v.truncateToDouble() == v ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+  /// Le poids affiché, avec le séparateur décimal de la langue de l'app.
+  ///
+  /// `toStringAsFixed` écrit toujours un point : le pavé proposait une
+  /// virgule à un francophone (`number_pad`, lui, lisait la bonne langue) et
+  /// la rangée réaffichait un point juste au-dessus.
+  static String _w(double v) =>
+      (v.truncateToDouble() == v ? v.toStringAsFixed(0) : v.toStringAsFixed(1)).replaceAll('.', _decimal());
 
-  static String _decimal(BuildContext context) => Localizations.localeOf(context).languageCode == 'en' ? '.' : ',';
+  /// La langue de l'app, pas celle de Flutter : `Localizations.localeOf`
+  /// répond `en` partout tant que `MaterialApp` n'a pas de locale.
+  static String _decimal() => LocalizationService.instance.currentLanguageCode == 'en' ? '.' : ',';
 }
 
 /// Une valeur qu'on presse pour la changer.
