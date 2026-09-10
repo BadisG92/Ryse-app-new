@@ -371,9 +371,9 @@ class PlanTools {
               'suggested_weight_kg': {
                 'type': 'number',
                 'description':
-                    'Load in kilos, a multiple of 2.5. This is what is added to the bar, '
-                    'never counting the bar itself: a bench press at 10 means two plates of '
-                    '5, on an empty bar. Zero for bodyweight.',
+                    'Total load in kilos, a multiple of 2.5, bar included: a bench press at '
+                    '60 is an empty 20 kg bar plus 20 a side. It is the number people say out '
+                    'loud. Zero for bodyweight.',
               },
             },
             'required': ['exercise_name', 'canonical_name_en', 'sets', 'target_reps'],
