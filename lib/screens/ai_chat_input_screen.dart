@@ -233,9 +233,12 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
             ),
 
           Padding(
-            // Pas d'insertion de clavier ici : `Scaffold` redimensionne déjà son
-            // corps et lui retire `viewInsets`, qui y vaut donc toujours zéro.
-            padding: EdgeInsets.fromLTRB(gutter, context.vw(4.6), gutter, context.vw(4.6)),
+            // Cet écran est une feuille modale, pas une route : son `Scaffold`
+            // ne retire donc pas `viewInsets`, et c'est ce rembourrage qui le
+            // tient au-dessus du clavier. Je l'avais retiré en croyant qu'il
+            // ajoutait zéro — vrai dans le corps d'une route, faux ici : la
+            // feuille se repliait derrière le clavier et l'écran restait vide.
+            padding: EdgeInsets.fromLTRB(gutter, context.vw(4.6), gutter, MediaQuery.of(context).viewInsets.bottom + context.vw(4.6)),
             child: Row(
               children: [
                 Expanded(
