@@ -90,7 +90,7 @@ class MealTimeline extends StatelessWidget {
                 open: open.contains(slot),
                 onToggle: () => onToggle(slot),
                 onAdd: () => onAdd(slot),
-                onOpen: onOpen == null || (day[slot].plannedName ?? '').isEmpty ? null : () => onOpen!(slot),
+                onOpen: onOpen == null || !day[slot].plannedApart ? null : () => onOpen!(slot),
                 onRemoveItem: (item) => onRemoveItem(slot, item),
                 onEditItem: onEditItem == null ? null : (item) => onEditItem!(slot, item),
               ),
@@ -203,7 +203,7 @@ class _MealRow extends StatelessWidget {
                             // Ce qui etait prevu ne disparait pas parce qu'on a
                             // mange : c'est ce qui permet de voir si on l'a suivi,
                             // et c'est ce que l'accueil montre deja.
-                            if (done && (meal.plannedName?.isNotEmpty ?? false)) ...[
+                            if (done && meal.plannedApart) ...[
                               SizedBox(height: context.vw(0.5)),
                               _PlannedLine(text: '$plannedPrefix · ${meal.plannedName}', onOpen: onOpen),
                             ],

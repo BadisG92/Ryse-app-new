@@ -59,7 +59,7 @@ class MealPlannerSyncService {
         userId: user.id,
         mealName: mealName,
         foodItem: foodItem,
-        consumedAt: activity.plannedDate,
+        consumedAt: _validationTime(activity.plannedDate),
         skipPlannerSync: true, // On gère déjà le lien planner ici
       );
 
@@ -96,6 +96,19 @@ class MealPlannerSyncService {
       debugPrint('❌ MealPlannerSyncService.validateMeal error: $e');
       return null;
     }
+  }
+
+  /// L'heure d'un repas qu'on vient de valider.
+  ///
+  /// C'était la date prévue, donc minuit : la journée affichait « 0 h 00 »
+  /// pour un déjeuner, et le repas se rangeait avant tous les autres. Valider
+  /// aujourd'hui, c'est dire « je viens de le manger » : l'heure est celle
+  /// qu'il est. Sur un autre jour, midi — une heure neutre qui ne déborde ni
+  /// sur la veille ni sur le lendemain.
+  static DateTime _validationTime(DateTime day) {
+    final now = DateTime.now();
+    final aujourdhui = day.year == now.year && day.month == now.month && day.day == now.day;
+    return aujourdhui ? now : DateTime(day.year, day.month, day.day, 12);
   }
 
   /// Valider un repas planifié avec des macros modifiées
@@ -151,7 +164,7 @@ class MealPlannerSyncService {
         userId: user.id,
         mealName: mealName,
         foodItem: foodItem,
-        consumedAt: activity.plannedDate,
+        consumedAt: _validationTime(activity.plannedDate),
         mealId: existingMealId, // Utiliser le bloc existant si trouvé
         skipPlannerSync: true,
       );

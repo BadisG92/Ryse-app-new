@@ -57,6 +57,20 @@ class DayMeal {
 
   bool get isDone => state == SlotState.done;
 
+  /// Le plat prévu dit-il autre chose que ce qui a été noté ?
+  ///
+  /// Valider un repas prévu note exactement le plat prévu : la rangée
+  /// affichait alors « Protein Power Oats » puis « Prévu · Protein Power
+  /// Oats » juste en dessous, le même plat écrit deux fois. Le plan ne se
+  /// montre à part que lorsqu'il raconte autre chose.
+  bool get plannedApart {
+    final dish = plannedName?.trim() ?? '';
+    if (dish.isEmpty) return false;
+    final items = logged?.items ?? const <nutrition.FoodItem>[];
+    if (items.isEmpty) return true;
+    return dish != items.map((i) => i.name).join(', ');
+  }
+
   int get calories => logged?.items.fold<int>(0, (s, i) => s + i.calories) ?? 0;
   double get proteins => logged?.items.fold<double>(0, (s, i) => s + i.proteins) ?? 0;
   double get carbs => logged?.items.fold<double>(0, (s, i) => s + i.carbs) ?? 0;
