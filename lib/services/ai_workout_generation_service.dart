@@ -67,7 +67,7 @@ class AIWorkoutGenerationService {
       final exercisesList = _buildExercisesList(allExercises, locService);
 
       // Construire le prompt pour Gemini
-      final prompt = _buildGeminiPrompt(
+      final prompt = buildGeminiPrompt(
         userRequest: userRequest,
         constraints: constraints,
         exercisesList: exercisesList,
@@ -415,7 +415,10 @@ class AIWorkoutGenerationService {
   }
 
   /// Construire le prompt Gemini complet avec instructions améliorées
-  static String _buildGeminiPrompt({
+  /// Le prompt tel qu'il part, pour que le banc mesure ce que le modèle en
+  /// fait plutôt qu'une copie qui dériverait.
+  @visibleForTesting
+  static String buildGeminiPrompt({
     required String userRequest,
     required String exercisesList,
     required String userContext,

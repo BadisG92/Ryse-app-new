@@ -467,6 +467,57 @@ Jambes : Squat, Fentes, Presse à cuisses''';
       verifier(await reponseApres('Fais-moi une séance dos pour vendredi, 45 minutes'));
     });
   });
+  group('La séance dictée par la conversation', () {
+    // L'autre chemin : ici c'est le modèle du chat qui écrit les exercices,
+    // dans l'appel d'outil, et ce sont eux qui partent dans la semaine.
+    List<String> exercicesDe(_Tour tour) {
+      final appel = tour.premier('plan.create_workout');
+      if (appel == null) return const [];
+      final liste = appel.args['exercises'];
+      if (liste is! List) return const [];
+      return liste.map((e) => (e as Map)['exercise_name'].toString()).toList();
+    }
+
+    test('épaules et bras : ni pectoraux ni dos', () async {
+      final tour = await demande('Fais-moi une séance épaules et bras pour vendredi, 45 minutes');
+      final noms = exercicesDe(tour);
+      // ignore: avoid_print
+      print('\n  → ${noms.join(', ')}\n');
+
+      expect(noms, isNotEmpty, reason: 'aucun exercice dicté');
+
+      const horsSujet = ['développé couché', 'bench press', 'rowing', 'barbell row',
+        'tirage', 'squat', 'soulevé de terre', 'deadlift', 'presse à cuisses'];
+      final fautifs = noms.where((n) {
+        final bas = n.toLowerCase();
+        // Le développé couché prise serrée est un triceps : il a le droit.
+        if (bas.contains('serrée') || bas.contains('close grip')) return false;
+        return horsSujet.any(bas.contains);
+      }).toList();
+
+      expect(fautifs, isEmpty, reason: 'hors sujet : $fautifs\ndans : $noms');
+    });
+
+    test('jambes : le haut du corps reste dehors', () async {
+      final tour = await demande('Fais-moi une séance jambes pour samedi, 45 minutes');
+      final noms = exercicesDe(tour);
+      // ignore: avoid_print
+      print('\n  → ${noms.join(', ')}\n');
+
+      expect(noms, isNotEmpty, reason: 'aucun exercice dicté');
+
+      const horsSujet = ['développé couché', 'bench press', 'curl', 'élévation latérale',
+        'lateral raise', 'rowing', 'tirage', 'pushdown'];
+      final fautifs = noms.where((n) {
+        final bas = n.toLowerCase();
+        // « Leg curl » est un ischio-jambier, pas un biceps.
+        if (bas.contains('leg curl')) return false;
+        return horsSujet.any(bas.contains);
+      }).toList();
+      expect(fautifs, isEmpty, reason: 'hors sujet : $fautifs\ndans : $noms');
+    });
+  });
+
   group('Le temps de réponse', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
     test('un tour simple aboutit dans un délai tenable', () async {
       // Le nombre est imprimé à chaque passage : c'est lui qui informe, pas le
