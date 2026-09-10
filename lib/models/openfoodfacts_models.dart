@@ -53,7 +53,17 @@ class OpenFoodFactsProduct {
     return 100.0;
   }
 
-  // Get unit from quantity (e.g., "170g" -> "g", "41,5 g e" -> "g")
+  /// L'unité du produit, ramenée à l'une des deux que l'app sait manipuler.
+  ///
+  /// OpenFoodFacts écrit la quantité en toutes lettres — « 1 l », « 170 g »,
+  /// « 33 cl ». Nous n'en gardons que deux, le gramme et le millilitre, parce
+  /// que ce sont les deux bases dans lesquelles OFF donne ses valeurs : pour
+  /// cent grammes d'un solide, pour cent millilitres d'un liquide.
+  ///
+  /// Seul « ml » était reconnu comme un liquide : un lait d'amande vendu au
+  /// litre revenait donc en grammes, et il partait dans les aliments
+  /// personnels avec « l » comme unité de référence — un « 100 l » que
+  /// personne ne peut relire.
   String get unit {
     if (quantity == null) return 'g';
     
@@ -62,17 +72,24 @@ class OpenFoodFactsProduct {
     final RegExp regExp = RegExp(r'\d+(?:[,\.]\d+)?\s*(\w+)');
     final match = regExp.firstMatch(quantity!);
     if (match != null && match.group(1)!.isNotEmpty) {
-      return match.group(1)!.trim();
+      return normalizeUnit(match.group(1)!);
     }
-    
+
     // Fallback: if no clear unit found, try to extract first alphabetic sequence
     final RegExp fallbackRegExp = RegExp(r'[a-zA-Z]+');
     final fallbackMatch = fallbackRegExp.firstMatch(quantity!);
     if (fallbackMatch != null) {
-      return fallbackMatch.group(0)!.trim();
+      return normalizeUnit(fallbackMatch.group(0)!);
     }
-    
+
     return 'g';
+  }
+
+  /// Le millilitre pour tout ce qui se boit, le gramme pour le reste.
+  static String normalizeUnit(String raw) {
+    final u = raw.trim().toLowerCase();
+    const liquides = {'ml', 'l', 'cl', 'dl', 'litre', 'litres', 'liter', 'liters', 'lt'};
+    return liquides.contains(u) ? 'ml' : 'g';
   }
 }
 
