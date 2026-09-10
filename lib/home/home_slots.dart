@@ -18,6 +18,9 @@ typedef PlannedLine = ({
   SlotState state,
   String title,
   String detail,
+
+  /// Ce qui était prévu, sous ce qui a été mangé. Vide le reste du temps.
+  String note,
   PlannedWorkout? workout,
   PlannedActivity? activity,
 });
@@ -87,12 +90,7 @@ class HomeSlots {
     final states = <WeekSlot, SlotState>{};
     final labels = <WeekSlot, String>{};
 
-    // journal entries already linked to a planned meal are that meal
-    final linked = <String>{
-      for (final m in day.meals)
-        if (m.mealData?.linkedFoodEntryId != null) m.mealData!.linkedFoodEntryId!,
-    };
-    final eatenTypes = day.journalEntries.where((e) => !linked.contains(e.id)).map((e) => normalizeMealType(e.mealType)).toSet();
+    final eatenTypes = day.journalEntries.map((e) => normalizeMealType(e.mealType)).toSet();
 
     // Le journal fait foi, exactement comme dans `DayMeals` : un créneau est
     // fait s'il y a quelque chose dans l'assiette, quoi que dise le plan.
@@ -152,10 +150,51 @@ class HomeSlots {
     bool visible(PlannedStatus status) =>
         !day.isPast || status == PlannedStatus.completed;
 
+    // Le journal fait foi, le plan est le contexte.
+    //
+    // Noter un aliment sur un créneau déjà prévu coche le plat prévu et le
+    // relie à l'aliment. La ligne se construisait alors depuis le plan :
+    // l'accueil annonçait « Bol d'avoine et fruits · 505 kcal » pour un poke
+    // bowl à 934, et le plat réellement mangé n'apparaissait nulle part,
+    // pendant que Nutrition affichait les deux correctement.
     for (final slot in kFoodSlots) {
-      for (final meal in day.meals) {
-        if (meal.activityType.value != slot.name) continue;
+      final plans = [for (final m in day.meals) if (m.activityType.value == slot.name) m];
+      final eaten = [for (final e in day.journalEntries) if (normalizeMealType(e.mealType) == slot.name) e];
+
+      // Ce qu'il y a eu dans l'assiette : une ligne, quoi que dise le plan.
+      if (eaten.isNotEmpty) {
+        final energy = eaten.fold<int>(0, (n, e) => n + e.calories);
+        final title = eaten.map((e) => e.name).where((n) => n.isNotEmpty).join(', ');
+
+        // Le plat prévu que ce repas a coché, quand il ne dit pas la même
+        // chose : c'est le « Prévu · … » de la deuxième ligne.
+        PlannedActivity? coche;
+        for (final p in plans) {
+          final id = p.mealData?.linkedFoodEntryId;
+          if (id != null && eaten.any((e) => e.id == id)) {
+            coche = p;
+            break;
+          }
+        }
+        final dish = coche?.mealData?.dishName ?? '';
+        final note = dish.isEmpty || dish == title || plannedPrefix == null ? '' : '$plannedPrefix · $dish';
+
+        lines.add((
+          slot: slot,
+          state: SlotState.done,
+          title: title,
+          detail: energy <= 0 ? '' : '$energy $kcal',
+          note: note,
+          workout: null,
+          activity: coche,
+        ));
+      }
+
+      // Ce qui reste prévu. Un plat coché dont le journal vient de parler
+      // n'est pas une ligne de plus : il est déjà dit, au-dessus.
+      for (final meal in plans) {
         if (!visible(meal.status)) continue;
+        if (meal.status == PlannedStatus.completed && eaten.isNotEmpty) continue;
         final data = meal.mealData;
         final dish = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : slotLabel(slot);
         final waiting = meal.status != PlannedStatus.completed;
@@ -168,34 +207,11 @@ class HomeSlots {
           state: waiting ? SlotState.planned : SlotState.done,
           title: name,
           detail: energy == null || energy <= 0 ? '' : '$energy $kcal',
+          note: '',
           workout: null,
           activity: meal,
         ));
       }
-    }
-
-    // Ce qui a ete mange hors plan. La bande le savait deja — un carre plein
-    // sur le jour — mais le jour deplie, lui, ne lisait que le planifie : on
-    // notait un repas, la marque se remplissait, et le detail restait vide.
-    final linked = <String>{
-      for (final m in day.meals)
-        if (m.mealData?.linkedFoodEntryId != null) m.mealData!.linkedFoodEntryId!,
-    };
-    for (final slot in kFoodSlots) {
-      final eaten = [
-        for (final e in day.journalEntries)
-          if (!linked.contains(e.id) && normalizeMealType(e.mealType) == slot.name) e,
-      ];
-      if (eaten.isEmpty) continue;
-      final energy = eaten.fold<int>(0, (n, e) => n + e.calories);
-      lines.add((
-        slot: slot,
-        state: SlotState.done,
-        title: eaten.map((e) => e.name).where((n) => n.isNotEmpty).join(', '),
-        detail: energy <= 0 ? '' : '$energy $kcal',
-        workout: null,
-        activity: null,
-      ));
     }
 
     for (final w in day.workouts) {
@@ -205,6 +221,7 @@ class HomeSlots {
         state: w.status == PlannedStatus.completed ? SlotState.done : SlotState.planned,
         title: w.workoutName,
         detail: w.exercises.isEmpty ? '' : '${w.exercises.length} $exercises',
+        note: '',
         workout: w,
         activity: null,
       ));
@@ -217,6 +234,7 @@ class HomeSlots {
         state: c.status == PlannedStatus.completed ? SlotState.done : SlotState.planned,
         title: data?.activityName ?? '',
         detail: data?.targetMinutes == null ? '' : '${data!.targetMinutes} min',
+        note: '',
         workout: null,
         activity: c,
       ));

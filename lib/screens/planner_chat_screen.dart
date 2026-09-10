@@ -1118,8 +1118,16 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
         opens.add(() => _showCardioRecap(c));
       }
     } else {
+      // Ce qui a été mangé sur ce créneau. Le journal remonte maintenant en
+      // entier, liens compris : un plat prévu coché n'est plus une entrée à
+      // part, sinon le même repas s'affiche deux fois.
+      final mange = [
+        for (final e in plan.journalEntries)
+          if (HomeSlots.normalizeMealType(e.mealType) == slot.name) e,
+      ];
       for (final meal in plan.meals) {
         if (_slotOf(meal.activityType) != slot) continue;
+        if (meal.status == PlannedStatus.completed && mange.isNotEmpty) continue;
         final data = meal.activityData;
         entries.add((
           title: (data['dish_name'] as String?) ?? '',
@@ -1145,8 +1153,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
       }
       // Ce qui a vraiment été mangé sur ce créneau : le journal. Il n'était
       // atteignable que depuis l'accueil et Nutrition.
-      for (final e in plan.journalEntries) {
-        if (e.mealType != slot.name) continue;
+      for (final e in mange) {
         entries.add((
           title: e.name,
           detail: 'slot_kcal'.tr(lang).replaceAll('{n}', '${e.calories}'),

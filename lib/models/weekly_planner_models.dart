@@ -644,12 +644,16 @@ class DayPlanData {
   final DateTime date;
   final List<PlannedActivity> activities;
   final List<PlannedWorkout> workouts;
-  final List<JournalFoodEntry> journalEntries; // Aliments du journal non planifiés
+  /// Le journal du jour, en entier.
+  ///
+  /// Les aliments liés à un repas prévu en étaient écartés, pour éviter de
+  /// les compter deux fois. Mais un plat prévu coché garde son propre nom et
+  /// ses propres calories : l'écran qui lisait le plan annonçait donc le plat
+  /// prévu à la place de celui qu'on avait mangé. Le journal remonte entier,
+  /// et chaque écran décide de ce qu'il montre.
+  final List<JournalFoodEntry> journalEntries;
 
-  /// Les types de repas que le journal porte vraiment ce jour-là — repas
-  /// planifiés cochés compris, que [journalEntries] écarte pour ne pas les
-  /// compter deux fois. C'est la seule façon de savoir qu'un créneau « coché »
-  /// dans le plan a encore quelque chose dans l'assiette.
+  /// Les types de repas que le journal porte vraiment ce jour-là.
   final Set<String> eatenMealTypes;
 
   final bool isToday;

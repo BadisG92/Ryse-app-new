@@ -50,22 +50,19 @@ class WeeklyPlannerService {
 
       debugPrint('📅 WeeklyPlannerService: Fetching week ${weekStart.toIso8601String()} to ${weekEnd.toIso8601String()}');
 
-      // Fetch activities, workouts, linked IDs et food_entries en parallèle
-      // OPTIMISATION: Récupérer les linked IDs en parallèle (pas en séquence dans _fetchJournalEntries)
+      // Fetch activities, workouts et food_entries en parallèle
       final results = await Future.wait([
         _fetchActivities(userId, weekStart, weekEnd),
         _fetchWorkouts(userId, weekStart, weekEnd),
         _fetchRawFoodEntries(userId, weekStart, weekEnd),
-        _getLinkedFoodEntryIds(userId, weekStart, weekEnd),
       ]);
 
       final activities = results[0] as List<PlannedActivity>;
       final workouts = results[1] as List<PlannedWorkout>;
       final rawFoodEntries = results[2] as List<Map<String, dynamic>>;
-      final linkedIds = results[3] as Set<String>;
 
-      // Filtrer et grouper les food_entries (sans requête supplémentaire)
-      final journalEntriesByDate = _processJournalEntries(rawFoodEntries, linkedIds);
+      // Grouper les food_entries par jour
+      final journalEntriesByDate = _processJournalEntries(rawFoodEntries);
       // Ce que le journal porte vraiment, liens compris : un repas prévu coché
       // dont l'aliment a été retiré ne doit plus compter comme fait.
       final eatenMealTypesByDate = _eatenMealTypes(rawFoodEntries);
@@ -179,7 +176,6 @@ class WeeklyPlannerService {
   /// OPTIMISATION: Pas de requête supplémentaire, juste du traitement en mémoire
   static Map<DateTime, List<JournalFoodEntry>> _processJournalEntries(
     List<Map<String, dynamic>> rawEntries,
-    Set<String> linkedIds,
   ) {
     if (rawEntries.isEmpty) {
       debugPrint('📊 _processJournalEntries: No food_entries to process');
@@ -187,17 +183,8 @@ class WeeklyPlannerService {
     }
 
     final Map<DateTime, List<JournalFoodEntry>> result = {};
-    int skippedCount = 0;
 
     for (final entry in rawEntries) {
-      final entryId = entry['id'] as String;
-
-      // Exclure les entries déjà liées à des planned_activities (pour éviter doublons)
-      if (linkedIds.contains(entryId)) {
-        skippedCount++;
-        continue;
-      }
-
       final consumedAt = entry['consumed_at'] != null
           ? DateTime.parse(entry['consumed_at'] as String)
           : DateTime.now();
@@ -215,8 +202,6 @@ class WeeklyPlannerService {
       result[dateKey]!.add(journalEntry);
     }
 
-    final totalKept = result.values.fold(0, (sum, list) => sum + list.length);
-    debugPrint('📋 Journal entries: ${rawEntries.length} total, $skippedCount skipped (linked), $totalKept kept');
     return result;
   }
 
@@ -237,50 +222,6 @@ class WeeklyPlannerService {
       out.putIfAbsent(DateTime(at.year, at.month, at.day), () => <String>{}).add(type);
     }
     return out;
-  }
-
-  /// Récupérer les IDs des food_entries liées aux planned_activities
-  static Future<Set<String>> _getLinkedFoodEntryIds(
-    String userId,
-    DateTime weekStart,
-    DateTime weekEnd,
-  ) async {
-    try {
-      final startStr = weekStart.toIso8601String().split('T')[0];
-      final endStr = weekEnd.toIso8601String().split('T')[0];
-
-      // Récupérer les planned_activities avec un linkedFoodEntryId
-      final response = await _client
-          .from('planned_activities')
-          .select('activity_data')
-          .eq('user_id', userId)
-          .gte('planned_date', startStr)
-          .lte('planned_date', endStr);
-
-      final Set<String> linkedIds = {};
-
-      for (final activity in response) {
-        final activityData = activity['activity_data'] as Map<String, dynamic>?;
-        if (activityData != null) {
-          // Vérifier linked_food_entry_id (nouvelle nomenclature - snake_case)
-          final linkedId = activityData['linked_food_entry_id'] as String?;
-          if (linkedId != null) {
-            linkedIds.add(linkedId);
-          }
-
-          // Vérifier aussi linked_entry_id (ancienne nomenclature)
-          final linkedEntryId = activityData['linked_entry_id'] as String?;
-          if (linkedEntryId != null) {
-            linkedIds.add(linkedEntryId);
-          }
-        }
-      }
-
-      return linkedIds;
-    } catch (e) {
-      debugPrint('❌ _getLinkedFoodEntryIds error: $e');
-      return {};
-    }
   }
 
   // =====================================================

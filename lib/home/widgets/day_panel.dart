@@ -270,6 +270,27 @@ class _LineText extends StatelessWidget {
         if (onTap != null) Icon(LucideIcons.chevronRight, size: context.vw(3.9), color: RyzeColors.mute2),
       ],
     );
-    return onTap == null ? row : Pressable(onTap: onTap, child: row);
+
+    // « Prévu · Bol d'avoine et fruits », sous ce qui a vraiment été mangé.
+    // C'est la deuxième ligne du journal de Nutrition, au même endroit et
+    // dans le même gris : les deux écrans racontent enfin le même repas.
+    final body = line.note.isEmpty
+        ? row
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              row,
+              Padding(
+                padding: EdgeInsets.only(left: context.vw(4.4), top: context.vw(0.3)),
+                child: Text(
+                  line.note,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: RyzeText.body(context, 2.9, color: RyzeColors.mute2),
+                ),
+              ),
+            ],
+          );
+    return onTap == null ? body : Pressable(onTap: onTap, child: body);
   }
 }
