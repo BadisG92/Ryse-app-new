@@ -22,15 +22,20 @@ import 'mlkit_barcode_service.dart';
 class BarcodeStreamService {
   BarcodeStreamService(this._controller);
 
-  /// Allumé, et à l'essai.
+  /// Éteint. L'essai a rendu son verdict.
   ///
-  /// Ce chemin avait fait sortir l'application, et un crash natif ne se
-  /// rattrape pas depuis Dart. Les trois causes connues sont fermées : on
-  /// n'arrête plus la diffusion depuis sa propre trame, le contrôleur n'est
-  /// plus détruit pendant qu'il diffuse, et on ne photographie plus pendant
-  /// qu'il diffuse. Si l'application quitte en visant un code, c'est ici
-  /// qu'on repasse à false — le déclencheur reprend seul.
-  static const bool enabled = true;
+  /// Trois causes de sortie brutale avaient été fermées — la diffusion
+  /// arrêtée depuis sa propre trame, le contrôleur détruit pendant qu'il
+  /// diffuse, la photo prise pendant qu'il diffuse. Il en restait une : sur
+  /// appareil, ouvrir le scanner fait encore quitter l'application. Un crash
+  /// natif ne se rattrape pas depuis Dart, et on ne soumet pas un plantage
+  /// sur une fonction payante.
+  ///
+  /// Le déclencheur reprend seul : on vise, on touche l'écran, la photo est
+  /// décodée. C'est ce que l'app faisait avant l'essai, et ça marchait.
+  /// Repasser à true le jour où la cause est comprise — tout le reste du
+  /// chemin est intact et attend derrière ce mot.
+  static const bool enabled = false;
 
   final CameraController _controller;
 
