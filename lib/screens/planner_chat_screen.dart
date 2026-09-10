@@ -1042,10 +1042,18 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
       // Les tuiles de la bande sont étroites : le libellé y tient en un mot.
       final labels = {for (final e in day.labels.entries) e.key: _shortLabel(e.value)};
 
-      // while a mark is in the air, its slot shows nothing, whatever the data
-      // already says: the tile appears when the mark lands, not before
+      // Tant qu'une marque est en l'air, sa case ne montre rien : la tuile
+      // apparaît quand la marque se pose, pas avant.
+      //
+      // Mais seulement si la case est vide. Une deuxième séance le même jour
+      // effaçait la première pendant tout le vol : le jour se vidait sous
+      // les yeux, et la marque avait l'air de chercher une case libre. Elle
+      // se pose maintenant sur ce qui est déjà là.
       for (final slot in WeekSlot.values) {
-        if (_incomingSlots.contains('$i-${slot.name}')) states[slot] = SlotState.incoming;
+        final deja = states[slot] ?? SlotState.empty;
+        if (deja == SlotState.empty && _incomingSlots.contains('$i-${slot.name}')) {
+          states[slot] = SlotState.incoming;
+        }
       }
       return DaySlots(states: states, labels: labels);
     });
@@ -1185,8 +1193,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     final source = from ?? Rect.fromCenter(center: Offset(end.center.dx, end.center.dy + 240), width: 34, height: 34);
     // the icon tile at the left of a proposal row is where the eye already is
     final start = Rect.fromLTWH(source.left + 14, source.center.dy - 20, 40, 40);
+    // La cible est relue à chaque image plutôt que figée au décollage : la
+    // bande se réorganise pendant les 620 ms du vol — une tuile qui
+    // apparaît, une relecture de la semaine après l'écriture — et la
+    // marque se posait alors là où la case était, c'est-à-dire à côté.
     final entry = OverlayEntry(
-      builder: (context) => _FlyingMark(start: start, end: end, slot: slot),
+      builder: (context) => _FlyingMark(start: start, end: end, target: to, slot: slot),
     );
     overlay.insert(entry);
     Future<void>.delayed(const Duration(milliseconds: 620), onArrived);
@@ -2227,9 +2239,16 @@ String _mealTypeKey(PlannedActivityType t, {bool short = false}) {
 
 /// A mark travelling from the proposal card to its day in the week.
 class _FlyingMark extends StatefulWidget {
-  const _FlyingMark({required this.start, required this.end, required this.slot});
+  const _FlyingMark({required this.start, required this.end, required this.slot, this.target});
   final Rect start;
+
+  /// Où la case était au décollage. Sert de repli quand la tuile a disparu
+  /// de l'arbre en cours de vol.
   final Rect end;
+
+  /// La tuile visée. Relue à chaque image : si la bande bouge pendant le
+  /// vol, la marque la suit au lieu d'atterrir à côté.
+  final GlobalKey? target;
   final WeekSlot slot;
 
   @override
@@ -2246,6 +2265,13 @@ class _FlyingMarkState extends State<_FlyingMark> with SingleTickerProviderState
     super.dispose();
   }
 
+  /// Où la tuile visée se trouve maintenant.
+  Rect? _here() {
+    final box = widget.target?.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || !box.attached) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
   @override
   Widget build(BuildContext context) {
     final sport = widget.slot == WeekSlot.sport;
@@ -2253,7 +2279,7 @@ class _FlyingMarkState extends State<_FlyingMark> with SingleTickerProviderState
       animation: _t,
       builder: (context, _) {
         final v = _t.value;
-        final rect = Rect.lerp(widget.start, widget.end, v)!;
+        final rect = Rect.lerp(widget.start, _here() ?? widget.end, v)!;
         final size = rect.shortestSide.clamp(6.0, 44.0);
         return Positioned(
           left: rect.center.dx - size / 2,

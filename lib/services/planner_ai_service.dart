@@ -930,10 +930,18 @@ class PlannerAIService {
           return {'success': true, 'message': askMsg, 'needs_clarification': true};
         }
 
+        // Le groupe musculaire arrive du modèle en anglais — c'est ce que le
+        // schéma demande, et c'est ce qui part au générateur d'exercices.
+        // Mais il servait tel quel de nom de séance : un compte français
+        // lisait « Back - 45min » sur sa carte du jour, sur l'accueil, dans
+        // le récapitulatif et dans l'historique. Le cardio, lui, était traduit
+        // depuis toujours.
+        final typeLabel = _getWorkoutTypeName(workoutType, langCode);
+
         PendingWorkout built(List<WorkoutExercise> exercises) => PendingWorkout(
               plannedDate: day,
-              workoutName: '$workoutType - ${duration}min',
-              workoutType: workoutType,
+              workoutName: '$typeLabel - ${duration}min',
+              workoutType: typeLabel,
               durationMinutes: duration,
               workoutPrompt: focus,
               exercises: exercises,
@@ -1175,7 +1183,7 @@ class PlannerAIService {
               // Sauvegarder directement
               await WeeklyPlannerService.addPlannedWorkout(
                 plannedDate: currentDay,
-                workoutName: '$newType - ${duration}min',
+                workoutName: '${_getWorkoutTypeName(newType, langCode)} - ${duration}min',
                 exercises: result.exercises,
                 durationMinutes: duration,
                 userPrompt: newType,
@@ -1282,7 +1290,7 @@ class PlannerAIService {
             // Mettre à jour avec le nouveau type ET les nouveaux exercices
             await WeeklyPlannerService.updatePlannedWorkout(
               existingWorkout.id,
-              workoutName: newType,
+              workoutName: _getWorkoutTypeName(newType, langCode),
               durationMinutes: duration,
               exercises: result.exercises,
             );
@@ -1290,7 +1298,7 @@ class PlannerAIService {
             // Fallback: mettre à jour seulement le nom si génération échoue
             await WeeklyPlannerService.updatePlannedWorkout(
               existingWorkout.id,
-              workoutName: newType,
+              workoutName: _getWorkoutTypeName(newType, langCode),
               durationMinutes: newDuration,
             );
           }
@@ -2143,6 +2151,40 @@ class PlannerAIService {
 
   /// Traduire le nom de l'activité cardio
   /// Les 4 seules activités supportées: running, bike, walking, hiit
+  /// Le groupe musculaire, écrit dans la langue du compte.
+  ///
+  /// Le modèle le donne en anglais et le générateur d'exercices en a besoin
+  /// ainsi ; ce qui s'affiche, lui, doit se lire. Un mot qu'on ne connaît
+  /// pas ressort tel quel : mieux vaut « Hyrox » que rien.
+  static String _getWorkoutTypeName(String type, String langCode) {
+    final key = type.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+    const names = {
+      'chest': {'fr': 'Pectoraux', 'en': 'Chest', 'de': 'Brust'},
+      'back': {'fr': 'Dos', 'en': 'Back', 'de': 'Rücken'},
+      'legs': {'fr': 'Jambes', 'en': 'Legs', 'de': 'Beine'},
+      'leg': {'fr': 'Jambes', 'en': 'Legs', 'de': 'Beine'},
+      'fullbody': {'fr': 'Corps entier', 'en': 'Full body', 'de': 'Ganzkörper'},
+      'arms': {'fr': 'Bras', 'en': 'Arms', 'de': 'Arme'},
+      'shoulders': {'fr': 'Épaules', 'en': 'Shoulders', 'de': 'Schultern'},
+      'biceps': {'fr': 'Biceps', 'en': 'Biceps', 'de': 'Bizeps'},
+      'triceps': {'fr': 'Triceps', 'en': 'Triceps', 'de': 'Trizeps'},
+      'push': {'fr': 'Poussée', 'en': 'Push', 'de': 'Drücken'},
+      'pull': {'fr': 'Tirage', 'en': 'Pull', 'de': 'Ziehen'},
+      'upperbody': {'fr': 'Haut du corps', 'en': 'Upper body', 'de': 'Oberkörper'},
+      'upper': {'fr': 'Haut du corps', 'en': 'Upper body', 'de': 'Oberkörper'},
+      'lowerbody': {'fr': 'Bas du corps', 'en': 'Lower body', 'de': 'Unterkörper'},
+      'lower': {'fr': 'Bas du corps', 'en': 'Lower body', 'de': 'Unterkörper'},
+      'core': {'fr': 'Gainage', 'en': 'Core', 'de': 'Rumpf'},
+      'abs': {'fr': 'Abdos', 'en': 'Abs', 'de': 'Bauch'},
+      'ab': {'fr': 'Abdos', 'en': 'Abs', 'de': 'Bauch'},
+      'glutes': {'fr': 'Fessiers', 'en': 'Glutes', 'de': 'Gesäß'},
+      'cardio': {'fr': 'Cardio', 'en': 'Cardio', 'de': 'Cardio'},
+    };
+    final found = names[key];
+    if (found == null) return type;
+    return found[langCode] ?? found['en']!;
+  }
+
   static String _getCardioActivityName(String activityKey, String langCode) {
     final names = {
       'running': {'fr': 'Course à pied', 'en': 'Running', 'de': 'Laufen'},

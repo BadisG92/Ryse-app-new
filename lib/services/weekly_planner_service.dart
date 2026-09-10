@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/weekly_planner_models.dart';
 import '../models/sport_models.dart';
 import 'global_state_manager.dart';
+import 'localization_service.dart';
+import 'translations.dart';
 import 'sport_dashboard_service.dart';
 import 'cardio_service.dart';
 
@@ -2031,7 +2033,9 @@ class WeeklyPlannerService {
           // Créer l'entrée planifiée avec les exercices
           await syncWorkoutSessionToPlanner(
             sessionId: sessionId,
-            workoutName: workout['session_name'] ?? 'Musculation',
+            // Une seance sans nom prenait « Musculation » en dur, lu par un
+            // compte anglais comme par un compte allemand.
+            workoutName: workout['session_name'] ?? 'musculation'.tr(LocalizationService.instance.currentLanguageCode),
             sessionDate: DateTime.parse(workout['session_date']),
             durationMinutes: workout['duration_minutes'],
             historySessionId: historySessionId,

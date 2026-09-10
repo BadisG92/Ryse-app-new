@@ -330,7 +330,10 @@ class PlanTools {
         'day': {'type': 'string', 'description': _dayHint('session'), 'enum': _days},
         'workout_type': {
           'type': 'string',
-          'description': 'Muscle group or split: Chest, Back, Legs, Full Body, Arms, Shoulders...',
+          'description':
+              'Muscle group or split, in English whatever the conversation language: '
+              'Chest, Back, Legs, Full Body, Arms, Shoulders, Push, Pull, Core... '
+              'The app translates it before showing it, the way it does for cardio.',
         },
         'duration_minutes': {
           'type': 'integer',
