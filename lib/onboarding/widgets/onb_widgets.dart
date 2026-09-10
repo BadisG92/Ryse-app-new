@@ -122,17 +122,27 @@ class OnbButton extends StatefulWidget {
 
 class _OnbButtonState extends State<OnbButton> with SingleTickerProviderStateMixin {
   bool _down = false;
-  late final AnimationController _sheen = AnimationController(vsync: this, duration: const Duration(milliseconds: 4500));
+  /// Le reflet qui traverse le bouton doré. Il n'existe que pour lui.
+  ///
+  /// Il était `late final` : construit à la première lecture. Un bouton non
+  /// doré ne le lisait jamais... jusqu'à `dispose`, qui le construisait donc
+  /// au moment de le détruire — et créer un Ticker demande le `TickerMode` de
+  /// l'arbre, qu'on n'a plus le droit de consulter à ce moment-là. Chaque
+  /// bouton ordinaire de l'application levait ainsi une assertion en fin de
+  /// vie.
+  AnimationController? _sheen;
 
   @override
   void initState() {
     super.initState();
-    if (widget.gold) _sheen.repeat();
+    if (widget.gold) {
+      _sheen = AnimationController(vsync: this, duration: const Duration(milliseconds: 4500))..repeat();
+    }
   }
 
   @override
   void dispose() {
-    _sheen.dispose();
+    _sheen?.dispose();
     super.dispose();
   }
 
@@ -146,7 +156,7 @@ class _OnbButtonState extends State<OnbButton> with SingleTickerProviderStateMix
     final pill = Container(
       width: double.infinity,
       constraints: BoxConstraints(minHeight: context.vw(14)),
-      padding: EdgeInsets.symmetric(horizontal: context.vw(6), vertical: context.vw(3.6)),
+      padding: EdgeInsets.symmetric(horizontal: context.vw(4), vertical: context.vw(3.6)),
       decoration: BoxDecoration(
         gradient: widget.gold
             ? LinearGradient(
@@ -156,12 +166,30 @@ class _OnbButtonState extends State<OnbButton> with SingleTickerProviderStateMix
         borderRadius: BorderRadius.circular(999),
         border: widget.ghost ? Border.all(color: OnbColors.line) : null,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (widget.icon != null) ...[Icon(widget.icon, size: context.vw(4.4), color: fg), SizedBox(width: context.vw(2))],
-          Flexible(child: Text(widget.label, style: OnbText.body(context, 4.3, weight: FontWeight.w600, color: fg, height: 1.2), textAlign: TextAlign.center)),
-        ],
+      // Le libellé tient sur une ligne, quitte à rétrécir.
+      //
+      // Il était simplement flexible : dans une rangée où « Démarrer » prend
+      // deux tiers de la largeur, « Delete » n'avait plus la place de s'écrire
+      // et se coupait au milieu — « Dele » sur une ligne, « te » sur la
+      // suivante. Un mot cassé en deux dans un bouton, c'est une application
+      // cassée. Il rétrécit maintenant plutôt que de se rompre, et l'icône
+      // rétrécit avec lui.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (widget.icon != null) ...[Icon(widget.icon, size: context.vw(4.4), color: fg), SizedBox(width: context.vw(2))],
+            Text(
+              widget.label,
+              maxLines: 1,
+              softWrap: false,
+              style: OnbText.body(context, 4.3, weight: FontWeight.w600, color: fg, height: 1.2),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
 
@@ -194,13 +222,13 @@ class _OnbButtonState extends State<OnbButton> with SingleTickerProviderStateMix
               child: Stack(
                 children: [
                   pill,
-                  if (widget.gold)
+                  if (widget.gold && _sheen != null)
                     Positioned.fill(
                       child: IgnorePointer(
                         child: AnimatedBuilder(
-                          animation: _sheen,
+                          animation: _sheen!,
                           builder: (context, _) {
-                            final p = (_sheen.value / 0.16).clamp(0.0, 1.0);
+                            final p = (_sheen!.value / 0.16).clamp(0.0, 1.0);
                             return FractionalTranslation(
                               translation: Offset(-1.2 + 2.4 * p, 0),
                               child: Transform(
