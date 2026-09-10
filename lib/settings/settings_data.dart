@@ -227,8 +227,15 @@ class SettingsData {
     }
 
     try {
+      // L'objectif d'hydratation part avec les autres.
+      //
+      // Il était écrit en base et nulle part ailleurs : l'accueil et Nutrition
+      // continuaient d'afficher deux litres et huit verres jusqu'au prochain
+      // lancement de l'application. Le nombre de verres se déduit déjà de
+      // l'objectif — il ne manquait que l'objectif.
       GlobalStateManager.instance.updateGoals(
         calorieGoal: p.calories.toDouble(),
+        waterGoalL: p.waterMl / 1000,
         proteinGoal: p.protein,
         carbsGoal: p.carbs,
         fatGoal: p.fat,
