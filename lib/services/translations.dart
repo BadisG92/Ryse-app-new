@@ -12005,6 +12005,23 @@ class AppTranslations {
       'en': 'Retry',
       'de': 'Erneut versuchen',
     },
+    // L'eau a sa file durable comme les séances : ses trois phrases, dans le
+    // même esprit que celles de la musculation.
+    'water_sync_offline': {
+      'fr': 'Hors ligne · tes verres sont gardés sur le téléphone',
+      'en': 'Offline · your glasses are kept on your phone',
+      'de': 'Offline · deine Gläser werden auf dem Handy gespeichert',
+    },
+    'water_sync_syncing': {
+      'fr': 'Synchronisation de tes verres…',
+      'en': 'Syncing your glasses…',
+      'de': 'Deine Gläser werden synchronisiert…',
+    },
+    'water_sync_pending': {
+      'fr': '{n} verre(s) à synchroniser',
+      'en': '{n} glass(es) to sync',
+      'de': '{n} Glas/Gläser zu synchronisieren',
+    },
     'session_sync_offline': {
       'fr': 'Hors ligne · les séances sont gardées sur le téléphone',
       'en': 'Offline · sessions are kept on your phone',

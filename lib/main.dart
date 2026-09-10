@@ -31,6 +31,7 @@ import 'design/feedback.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'services/ryze_connectivity.dart';
 import 'services/usage_stats.dart';
+import 'services/water_queue.dart';
 import 'services/workout_session_store.dart';
 
 void main() async {
@@ -170,6 +171,8 @@ void main() async {
   unawaited(RyzeConnectivity.instance.start().then((_) async {
     await OfflineWorkoutService().initialize();
     await WorkoutSessionStore.instance.initialize();
+    // L'eau a sa file elle aussi : un verre bu dans le métro ne se perd plus.
+    await WaterQueue.instance.initialize();
     debugPrint('✅ Offline workout services initialized');
   }).catchError((e) {
     debugPrint('⚠️ Offline workout service error: $e');

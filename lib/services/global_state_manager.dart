@@ -12,6 +12,7 @@ import 'header_cache_service.dart';
 import 'app_review_service.dart';
 import 'unified_subscription_service.dart';
 import 'meal_widget_data_provider.dart';
+import 'water_queue.dart';
 import 'weekly_planner_service.dart';
 
 /// Gestionnaire d'état global pour synchronisation instantanée entre pages
@@ -314,6 +315,9 @@ class GlobalStateManager {
         for (var entry in waterEntries) {
           totalWaterMl += (entry['amount'] as num?)?.toDouble() ?? 0;
         }
+        // Les verres gardés sur le téléphone comptent aussi : la base ne les
+        // connaît pas encore.
+        totalWaterMl += await WaterQueue.instance.pendingMlOn(today);
 
         // Traiter workout (musculation + cardio) - avec calories
         final workoutSessions = futures[2] as List;
@@ -855,6 +859,9 @@ class GlobalStateManager {
       for (final entry in futures[1] as List) {
         waterMl += (entry['amount'] as num?)?.toDouble() ?? 0;
       }
+      // Ce que la file n'a pas encore envoyé : sans ça, relire la base
+      // pendant qu'un verre attend ferait retomber le compteur.
+      waterMl += await WaterQueue.instance.pendingMlOn(now);
 
       _currentCalories = calories;
       _currentProteins = proteins;

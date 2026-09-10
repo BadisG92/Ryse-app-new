@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../config/supabase_config.dart';
 
 import 'optimistic_update_service.dart';
 import 'global_state_manager.dart';
 import 'streak_service.dart';
+import 'ryze_connectivity.dart';
 import 'supabase_error_handler.dart';
 import 'meal_widget_data_provider.dart';
 import 'notification_service.dart';
+import 'water_queue.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
@@ -40,23 +43,50 @@ class WaterService {
       // OPTIMISATION: Mise à jour optimiste immédiate de l'UI (garde pour compatibilité)
       await OptimisticUpdateService.updateWaterOptimistic(amount);
 
-      // L'insertion n'était pas attendue : la méthode rendait `true` avant de
-      // savoir, l'app annonçait « verre ajouté » même hors ligne, puis le
-      // verre disparaissait quand le rollback passait. Le message d'échec
-      // qui existe dans l'interface n'était donc jamais atteint.
+      // L'identifiant vient d'ici, pas de la base : si l'écriture échoue et
+      // que la file la rejoue, elle retombe sur la même clé primaire et ne
+      // peut donc pas ajouter le verre deux fois.
+      final at = consumedAt ?? DateTime.now();
+      final id = const Uuid().v4();
+
+      // Hors ligne, le verre était perdu : il s'affichait, l'écriture
+      // échouait, il disparaissait. Il part maintenant dans la même file
+      // durable que les séances de musculation, et le compteur le garde.
+      if (!RyzeConnectivity.instance.online.value) {
+        await WaterQueue.instance.keepAdd(
+          userId: user.id,
+          amount: amount,
+          sourceType: sourceType,
+          notes: notes,
+          consumedAt: at,
+          id: id,
+        );
+        return true;
+      }
+
       try {
         await _supabase.from('water_entries').insert({
+          'id': id,
           'user_id': user.id,
           'amount': amount,
           'source_type': sourceType,
           'notes': notes,
-          'consumed_at': (consumedAt ?? DateTime.now()).toIso8601String(),
+          'consumed_at': at.toIso8601String(),
         }).timeout(const Duration(seconds: 8));
       } catch (error) {
-        debugPrint('❌ Erreur ajout eau: $error');
-        GlobalStateManager.instance.updateWater(-amount / 1000.0); // Rollback GlobalState
-        OptimisticUpdateService.rollback();
-        return false;
+        // En ligne mais l'écriture n'est pas passée : même chemin que hors
+        // ligne. « Hors ligne » et « ça a échoué » ne se traitent plus
+        // différemment.
+        debugPrint('⚠️ Écriture eau différée: $error');
+        await WaterQueue.instance.keepAdd(
+          userId: user.id,
+          amount: amount,
+          sourceType: sourceType,
+          notes: notes,
+          consumedAt: at,
+          id: id,
+        );
+        return true;
       }
 
       // Ce qui suit ne conditionne pas la réussite : le verre est en base.
@@ -114,14 +144,32 @@ class WaterService {
     );
   }
 
-  /// Récupérer les entrées d'eau du jour
+  /// Récupérer les entrées d'eau du jour, celles de la base et celles qui
+  /// attendent encore sur le téléphone.
+  ///
+  /// Le journal lit cette liste pour savoir quel verre retirer. Hors ligne
+  /// elle était vide, donc retirer un verre qu'on venait d'ajouter ne faisait
+  /// rien : les verres gardés doivent s'y voir comme les autres.
   static Future<List<WaterEntry>> getTodayWaterEntries() async {
-    return await SupabaseErrorHandler.executeWithRetry(
+    final today = DateTime.now();
+    final pending = await WaterQueue.instance.pendingAddsOn(today);
+    final kept = [
+      for (final glass in pending)
+        WaterEntry(
+          id: glass.id,
+          userId: _supabase.auth.currentUser?.id ?? '',
+          amount: glass.amount,
+          consumedAt: glass.at,
+          sourceType: glass.amount == 250 ? 'glass' : 'manual',
+          createdAt: glass.at,
+        ),
+    ];
+
+    final stored = await SupabaseErrorHandler.executeWithRetry(
       operation: () async {
         final user = _supabase.auth.currentUser;
         if (user == null) throw Exception('Utilisateur non connecté');
 
-        final today = DateTime.now();
         final startOfDay = DateTime(today.year, today.month, today.day);
         final endOfDay = startOfDay.add(const Duration(days: 1));
 
@@ -136,8 +184,14 @@ class WaterService {
         return response.map((data) => WaterEntry.fromJson(data)).toList();
       },
       operationName: 'getTodayWaterEntries',
-      fallbackValue: [],
+      fallbackValue: <WaterEntry>[],
     );
+
+    // Une ligne déjà partie peut figurer des deux côtés le temps d'un envoi :
+    // l'identifiant vient de nous, donc le doublon se reconnaît.
+    final ids = stored.map((e) => e.id).toSet();
+    return [...stored, ...kept.where((e) => !ids.contains(e.id))]
+      ..sort((a, b) => b.consumedAt.compareTo(a.consumedAt));
   }
 
   /// Récupérer l'historique d'hydratation sur plusieurs jours
@@ -176,17 +230,29 @@ class WaterService {
         await OptimisticUpdateService.updateWaterOptimistic(-amountToRemove);
       }
 
-      // Attendue, comme l'ajout : c'est ce qui permet à l'appelant de dire la
-      // vérité plutôt que d'annoncer un retrait qui n'a pas eu lieu.
+      // Le retrait suit le même chemin que l'ajout : hors ligne il est gardé
+      // sur le téléphone. Et si la ligne visée attend elle-même d'être
+      // envoyée, la file la retire sans rien demander au serveur — elle n'y
+      // a jamais existé.
+      if (!RyzeConnectivity.instance.online.value) {
+        await WaterQueue.instance.keepDelete(
+          entryId: entryId,
+          amount: amountToRemove ?? 0,
+          at: DateTime.now(),
+        );
+        return true;
+      }
+
       try {
         await _supabase.from('water_entries').delete().eq('id', entryId).timeout(const Duration(seconds: 8));
       } catch (error) {
-        debugPrint('❌ Erreur suppression eau: $error');
-        if (amountToRemove != null) {
-          GlobalStateManager.instance.updateWater(amountToRemove / 1000.0); // Rollback
-        }
-        OptimisticUpdateService.rollback();
-        return false;
+        debugPrint('⚠️ Suppression eau différée: $error');
+        await WaterQueue.instance.keepDelete(
+          entryId: entryId,
+          amount: amountToRemove ?? 0,
+          at: DateTime.now(),
+        );
+        return true;
       }
 
       debugPrint('✅ Eau supprimée de la base');

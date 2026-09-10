@@ -13,6 +13,7 @@ import '../services/food_add_flow.dart';
 import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import 'day_analysis.dart';
+import 'water_pending_line.dart';
 import '../services/localization_service.dart';
 import '../services/portions.dart';
 import '../services/notification_service.dart';
@@ -427,6 +428,7 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
                   onSet: _setGlasses,
                   onOther: _otherAmount,
                 ),
+                WaterPendingLine(lang: lang),
               ],
             ),
           ),
