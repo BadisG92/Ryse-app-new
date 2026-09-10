@@ -14,6 +14,7 @@ import '../screens/auth/complete_profile_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../services/auth_service.dart';
+import '../services/global_state_manager.dart';
 import '../services/unified_subscription_service.dart';
 
 /// RyzeApp - routing at launch.
@@ -173,6 +174,18 @@ class _RyzeAppState extends State<RyzeApp> {
   }
 
   Future<void> _goToApp() async {
+    if (!mounted) return;
+    // Le profil vient d'être écrit par l'onboarding ; l'état global, lui, a
+    // été chargé à l'inscription, quand il n'y avait ni prénom ni objectif.
+    // Rien ne le relisait ensuite : l'accueil s'ouvrait sur « 2 000 kcal »
+    // et sur le début de l'adresse e-mail en guise de prénom, alors que la
+    // base avait les bonnes valeurs depuis la première question.
+    try {
+      await Provider.of<AuthService>(context, listen: false).initialize();
+      await GlobalStateManager.instance.initialize();
+    } catch (e) {
+      debugPrint('⚠️ Rechargement après onboarding: $e');
+    }
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const MainApp()),

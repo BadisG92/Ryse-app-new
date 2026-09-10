@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../config/supabase_config.dart';
 import 'global_state_manager.dart';
+import 'unified_subscription_service.dart';
 import 'localization_service.dart';
 import 'fast_cache_service.dart';
 import 'analytics_service.dart';
@@ -142,6 +143,7 @@ class AuthService extends ChangeNotifier {
         if (response.session != null) {
           await _loadUserProfile(response.user!.id);
           await _storeTokenSecurely(response.session?.accessToken);
+          await _identifyForSubscription(response.user!.id);
           if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après inscription...');
           await GlobalStateManager.instance.initialize();
           await MealWidgetDataProvider.forceWidgetUpdate();
@@ -197,6 +199,7 @@ class AuthService extends ChangeNotifier {
       if (response.user != null) {
         await _loadUserProfile(response.user!.id);
         await _storeTokenSecurely(response.session?.accessToken);
+        await _identifyForSubscription(response.user!.id);
 
         // 📊 Analytics: Login success
         await AnalyticsService.logLogin(method: 'email');
@@ -472,6 +475,14 @@ class AuthService extends ChangeNotifier {
   Future<void> signOut() async {
     _setLoading(true);
     try {
+      // Le compte s'en va, l'abonnement aussi : sans ça le SDK de la
+      // boutique reste identifié au compte précédent, et le suivant hérite
+      // de son abonnement.
+      try {
+        await UnifiedSubscriptionService().logout();
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Subscription logout: $e');
+      }
       await _supabase.auth.signOut();
       // V7 API: Sign out from Google if initialized
       if (_googleSignInInitialized) {
@@ -484,6 +495,25 @@ class AuthService extends ChangeNotifier {
       _setError('Sign out failed: $e');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Dire à la boutique qui vient d'entrer.
+  ///
+  /// `UnifiedSubscriptionService.login` et `logout` existaient sans qu'aucun
+  /// chemin ne les appelle : le SDK de RevenueCat gardait l'identifiant avec
+  /// lequel il avait été configuré au démarrage de l'application. Se
+  /// déconnecter puis créer un compte dans la même session laissait donc le
+  /// nouveau venu identifié comme l'ancien — et l'app lui ouvrait un
+  /// abonnement qu'il n'avait jamais payé.
+  ///
+  /// Ne lève jamais : une boutique injoignable ne doit pas empêcher
+  /// quelqu'un d'entrer dans son compte.
+  Future<void> _identifyForSubscription(String userId) async {
+    try {
+      await UnifiedSubscriptionService().login(userId).timeout(const Duration(seconds: 8));
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ Subscription login: $e');
     }
   }
 
