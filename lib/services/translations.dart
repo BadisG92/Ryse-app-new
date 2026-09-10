@@ -11308,6 +11308,19 @@ class AppTranslations {
       'en': "Adjust the split: the grams follow your calories.",
       'de': "Passe die Verteilung an: die Gramm folgen deinen Kalorien.",
     },
+    'settings_tone': {
+      'fr': 'Comment il te parle',
+      'en': 'How it talks to you',
+      'de': 'Wie er mit dir spricht',
+    },
+    // Montrer ce qu'on peut demander vaut mieux que l'expliquer, et un champ
+    // vide ne suggère rien. Aucun nom réel : ni personne, ni personnage —
+    // Ryze n'imite personne, il prend un ton.
+    'settings_custom_hint': {
+      'fr': 'Ex. : parle-moi comme un sergent instructeur qui veut mon bien, ou comme un vieux sage un peu moqueur.',
+      'en': 'E.g. talk to me like a drill sergeant who means well, or like an old sage with a sense of humour.',
+      'de': 'Z. B.: sprich mit mir wie ein Ausbilder, der es gut meint, oder wie ein alter Weiser mit Humor.',
+    },
     'settings_custom_personality': {
       'fr': "Ta consigne",
       'en': "Your instruction",

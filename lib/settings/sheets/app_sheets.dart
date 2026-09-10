@@ -107,7 +107,10 @@ class _CoachBodyState extends State<_CoachBody> {
             ),
           ],
         ),
-        SizedBox(height: context.vw(4.1)),
+        // Les six tons flottaient sans titre, entre deux sections qui en
+        // avaient un : on tombait sur six pastilles sans savoir de quoi
+        // elles parlaient.
+        SettingLabel('settings_tone'.tr(lang)),
         Wrap(
           spacing: context.vw(2.1),
           runSpacing: context.vw(2.1),
@@ -138,6 +141,11 @@ class _CoachBodyState extends State<_CoachBody> {
               decoration: InputDecoration(
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.all(context.vw(3.6)),
+                // Un champ vide ne suggère rien. L'exemple montre qu'on peut
+                // demander un personnage, sans jamais en nommer un vrai.
+                hintText: 'settings_custom_hint'.tr(lang),
+                hintStyle: RyzeText.body(context, 3.4, color: RyzeColors.mute2, height: 1.4),
+                hintMaxLines: 3,
               ),
             ),
           ),
