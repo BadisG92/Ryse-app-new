@@ -52,6 +52,10 @@ class SessionController extends ChangeNotifier {
   /// fantômes. Chargé en arrière-plan ; nul tant qu'on ne sait pas.
   final Map<String, List<LastSet>> ghosts = {};
 
+  /// Le plus lourd jamais soulevé, par exercice. C'est lui qu'une série doit
+  /// battre pour être un record — pas la dernière séance.
+  final Map<String, double> records = {};
+
   /// Le dernier exercice retiré, le temps d'une annulation.
   ({int index, LiveExercise exercise})? _removed;
 
@@ -112,7 +116,15 @@ class SessionController extends ChangeNotifier {
   Future<void> _loadGhosts(LiveExercise e) async {
     final key = _key(e.exercise);
     if (ghosts.containsKey(key)) return;
+    final pr = await LastSets.best(e.exercise);
+    if (pr > 0) records[key] = pr;
     final last = await LastSets.load(e.exercise);
+    if (pr > 0 && last == null) {
+      // Un record sans dernière fois : l'exercice a été fait, mais pas à la
+      // séance précédente. Il y a quand même quelque chose à battre.
+      _refreshRecords(e);
+      notifyListeners();
+    }
     if (last != null) {
       ghosts[key] = last;
       // La dernière fois arrive parfois après la première série validée : une
@@ -123,12 +135,20 @@ class SessionController extends ChangeNotifier {
     }
   }
 
-  /// Le plus lourd de la dernière fois sur cet exercice. Zéro quand il n'y a
-  /// pas de dernière fois : la première séance ne s'auto-félicite pas.
+  /// Ce qu'une série doit battre : le record personnel sur cet exercice.
+  ///
+  /// La dernière séance sert de repli quand le record n'est pas encore
+  /// arrivé — mieux vaut une pastille prudente qu'une pastille fausse. Zéro
+  /// quand on n'a rien : la première séance ne s'auto-félicite pas.
   double _historyBest(LiveExercise e) {
-    final previous = ghosts[_key(e.exercise)];
-    if (previous == null || previous.isEmpty) return 0;
-    return previous.map((p) => p.weightKg).reduce((a, b) => a > b ? a : b);
+    final key = _key(e.exercise);
+    var best = records[key] ?? 0;
+    final previous = ghosts[key];
+    if (previous != null && previous.isNotEmpty) {
+      final last = previous.map((p) => p.weightKg).reduce((a, b) => a > b ? a : b);
+      if (last > best) best = last;
+    }
+    return best;
   }
 
   /// Qui porte le record sur cet exercice.
