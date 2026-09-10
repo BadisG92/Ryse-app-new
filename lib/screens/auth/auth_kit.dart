@@ -7,6 +7,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../design/design.dart';
+import '../../services/ryze_links.dart';
 import '../../services/translations.dart';
 
 /// Shared pieces of the account screens, in the onboarding's design system.
@@ -28,13 +29,8 @@ final RegExp kEmailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$');
 
 bool isValidEmail(String value) => kEmailPattern.hasMatch(value.trim());
 
-String legalUrl({required String lang, required bool terms}) {
-  final fr = lang == 'fr';
-  if (terms) {
-    return fr ? 'https://coach-ryze.com/terms.html' : 'https://coach-ryze.com/terms_en.html';
-  }
-  return fr ? 'https://coach-ryze.com/privacy.html' : 'https://coach-ryze.com/privacy_en.html';
-}
+String legalUrl({required String lang, required bool terms}) =>
+    terms ? RyzeLinks.terms(lang) : RyzeLinks.privacy(lang);
 
 Future<void> openLegal(String url) async {
   try {

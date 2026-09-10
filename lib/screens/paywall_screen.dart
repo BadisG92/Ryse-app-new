@@ -12,6 +12,7 @@ import '../services/haptic_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/ryze_links.dart';
 import '../services/translations.dart';
 
 /// Paywall avec design V3 - Animations gaming + particles
@@ -282,13 +283,13 @@ class _PaywallScreenState extends State<PaywallScreen>
 
   /// Les deux liens qu'App Review attend sur un écran d'abonnement. Ils
   /// n'existaient pas ici : seul le paywall de l'onboarding les portait.
-  Future<void> _openLegal(String page) async {
+  Future<void> _openLegal(bool terms) async {
     final lang = LocalizationService.instance.currentLanguageCode;
-    final suffix = lang == 'fr' ? '' : '_en';
+    final url = terms ? RyzeLinks.terms(lang) : RyzeLinks.privacy(lang);
     try {
-      await launchUrl(Uri.parse('https://coach-ryze.com/$page$suffix.html'), mode: LaunchMode.externalApplication);
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
-      debugPrint('PaywallScreen: ouverture $page: $e');
+      debugPrint('PaywallScreen: ouverture $url: $e');
     }
   }
 
@@ -1288,12 +1289,12 @@ class _PaywallScreenState extends State<PaywallScreen>
               const _FootDot(),
               _footLink(
                 isFrench ? 'Conditions' : isGerman ? 'Nutzungsbedingungen' : 'Terms of Use',
-                () => _openLegal('terms'),
+                () => _openLegal(true),
               ),
               const _FootDot(),
               _footLink(
                 isFrench ? 'Confidentialité' : isGerman ? 'Datenschutz' : 'Privacy Policy',
-                () => _openLegal('privacy'),
+                () => _openLegal(false),
               ),
             ],
           ),

@@ -12,6 +12,7 @@ import '../../config/subscription_config.dart';
 import '../../services/analytics_service.dart';
 import '../../services/haptic_service.dart';
 import '../../services/revenuecat_service.dart';
+import '../../services/ryze_links.dart';
 import '../../services/unified_subscription_service.dart';
 import '../onboarding_state.dart';
 import '../onboarding_strings.dart';
@@ -391,9 +392,9 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
                     children: [
                       _link(context, s.t('restore'), _busy ? null : _restore),
                       _dot(context),
-                      _link(context, s.t('legal_terms'), () => _open(s.lang == 'fr' ? 'https://coach-ryze.com/terms.html' : 'https://coach-ryze.com/terms_en.html')),
+                      _link(context, s.t('legal_terms'), () => _open(RyzeLinks.terms(s.lang))),
                       _dot(context),
-                      _link(context, s.t('legal_privacy'), () => _open(s.lang == 'fr' ? 'https://coach-ryze.com/privacy.html' : 'https://coach-ryze.com/privacy_en.html')),
+                      _link(context, s.t('legal_privacy'), () => _open(RyzeLinks.privacy(s.lang))),
                     ],
                   ),
                 ],

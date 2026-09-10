@@ -7,10 +7,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../design/design.dart';
 import '../../services/localization_service.dart';
+import '../../services/ryze_links.dart';
 import '../../services/translations.dart';
 
-const _site = 'https://coach-ryze.com';
-const _support = 'support@coach-ryze.com';
+const _support = RyzeLinks.supportEmail;
 
 /// La coquille des pages d'information : un rond de retour, un titre, des
 /// groupes de lignes. Trois pages qui se ressemblaient au pixel près avaient
@@ -112,7 +112,6 @@ class PrivacyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LocalizationService>().currentLanguageCode;
-    final fr = lang == 'fr';
     return InfoScaffold(
       title: 'privacy'.tr(lang),
       subtitle: 'privacy_subtitle'.tr(lang),
@@ -124,13 +123,13 @@ class PrivacyScreen extends StatelessWidget {
               icon: LucideIcons.shield,
               label: 'privacy_policy'.tr(lang),
               hint: 'privacy_policy_desc'.tr(lang),
-              onTap: () => _open(context, fr ? '$_site/privacy.html' : '$_site/privacy_en.html'),
+              onTap: () => _open(context, RyzeLinks.privacy(lang)),
             ),
             RyzeSheetRow(
               icon: LucideIcons.fileText,
               label: 'terms_of_service'.tr(lang),
               hint: 'terms_of_service_desc'.tr(lang),
-              onTap: () => _open(context, fr ? '$_site/terms.html' : '$_site/terms_en.html'),
+              onTap: () => _open(context, RyzeLinks.terms(lang)),
             ),
           ],
         ),
@@ -158,19 +157,19 @@ class HelpSupportScreen extends StatelessWidget {
               icon: LucideIcons.camera,
               label: 'camera_issues'.tr(lang),
               hint: 'camera_issues_solution'.tr(lang),
-              onTap: () => _open(context, '$_site/support#faq'),
+              onTap: () => _open(context, '${RyzeLinks.support(lang)}#faq'),
             ),
             RyzeSheetRow(
               icon: LucideIcons.refreshCw,
               label: 'sync_issues'.tr(lang),
               hint: 'sync_issues_solution'.tr(lang),
-              onTap: () => _open(context, '$_site/support#faq'),
+              onTap: () => _open(context, '${RyzeLinks.support(lang)}#faq'),
             ),
             RyzeSheetRow(
               icon: LucideIcons.circleHelp,
               label: 'view_faq'.tr(lang),
               hint: 'view_faq_desc'.tr(lang),
-              onTap: () => _open(context, '$_site/support#faq'),
+              onTap: () => _open(context, '${RyzeLinks.support(lang)}#faq'),
             ),
           ],
         ),
@@ -195,7 +194,7 @@ class HelpSupportScreen extends StatelessWidget {
               icon: LucideIcons.globe,
               label: 'website'.tr(lang),
               hint: 'coach-ryze.com',
-              onTap: () => _open(context, _site),
+              onTap: () => _open(context, RyzeLinks.site(lang)),
             ),
           ],
         ),
@@ -299,7 +298,7 @@ class _AboutScreenState extends State<AboutScreen> {
         SizedBox(height: context.vw(5.1)),
         RyzeSheetGroup(
           children: [
-            RyzeSheetRow(first: true, icon: LucideIcons.globe, label: 'website'.tr(lang), hint: 'coach-ryze.com', onTap: () => _open(context, _site)),
+            RyzeSheetRow(first: true, icon: LucideIcons.globe, label: 'website'.tr(lang), hint: 'coach-ryze.com', onTap: () => _open(context, RyzeLinks.site(lang))),
             RyzeSheetRow(
               icon: LucideIcons.mail,
               label: 'contact_email'.tr(lang),
@@ -309,12 +308,12 @@ class _AboutScreenState extends State<AboutScreen> {
             RyzeSheetRow(
               icon: LucideIcons.fileText,
               label: 'terms_of_service'.tr(lang),
-              onTap: () => _open(context, lang == 'fr' ? '$_site/terms.html' : '$_site/terms_en.html'),
+              onTap: () => _open(context, RyzeLinks.terms(lang)),
             ),
             RyzeSheetRow(
               icon: LucideIcons.shield,
               label: 'privacy_policy'.tr(lang),
-              onTap: () => _open(context, lang == 'fr' ? '$_site/privacy.html' : '$_site/privacy_en.html'),
+              onTap: () => _open(context, RyzeLinks.privacy(lang)),
             ),
           ],
         ),
