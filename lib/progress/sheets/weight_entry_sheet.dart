@@ -48,6 +48,18 @@ class _Body extends StatefulWidget {
 class _BodyState extends State<_Body> {
   late double _kg = widget.currentKg > 0 ? widget.currentKg : 70;
 
+  /// Les quatre pas proposés, dans l'unité affichée : le demi-kilo et le
+  /// kilo, ou la livre et les deux livres.
+  List<double> get _steps =>
+      UnitService.instance.isMetric ? const [-1.0, -0.5, 0.5, 1.0] : const [-2.0, -1.0, 1.0, 2.0];
+
+  static String _stepLabel(double step, String lang) {
+    final decimal = lang == 'en' ? '.' : ',';
+    final value = step.abs();
+    final text = value % 1 == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1).replaceAll('.', decimal);
+    return (step > 0 ? '+' : '−') + text;
+  }
+
   void _bump(double deltaShown) {
     final units = UnitService.instance;
     // La règle bouge dans l'unité de l'utilisateur ; la base reste en kilos.
@@ -90,16 +102,16 @@ class _BodyState extends State<_Body> {
           ],
         ),
         SizedBox(height: context.vw(2.1)),
+        // Les pas portaient « −0,5 » et « +0,5 » écrits en dur, virgule
+        // française comprise, et valaient un demi-kilo comme une demi-livre.
+        // Ils suivent maintenant l'unité qu'on lit et la langue qu'on parle.
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _Pill(label: '−1', onTap: () => _bump(-1)),
-            SizedBox(width: context.vw(2.1)),
-            _Pill(label: '−0,5', onTap: () => _bump(-0.5)),
-            SizedBox(width: context.vw(2.1)),
-            _Pill(label: '+0,5', onTap: () => _bump(0.5)),
-            SizedBox(width: context.vw(2.1)),
-            _Pill(label: '+1', onTap: () => _bump(1)),
+            for (final (i, step) in _steps.indexed) ...[
+              if (i > 0) SizedBox(width: context.vw(2.1)),
+              _Pill(label: _stepLabel(step, lang), onTap: () => _bump(step)),
+            ],
           ],
         ),
         SizedBox(height: context.vw(5.1)),

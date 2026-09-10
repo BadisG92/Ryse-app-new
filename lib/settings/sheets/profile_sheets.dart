@@ -69,12 +69,16 @@ class _BodyState extends State<_Body> {
           onLess: _age > 13 ? () => setState(() => _age--) : null,
           onMore: _age < 100 ? () => setState(() => _age++) : null,
         ),
+        // Un pas de un centimètre en impérial ne bougeait le chiffre affiché
+        // qu'un tap sur trois : le pouce vaut deux virgule cinq quatre
+        // centimètres. Le pas est celui de l'unité qu'on lit — le poids le
+        // faisait déjà juste à côté.
         SettingStepper(
           label: 'height'.tr(lang),
           value: metric ? _height.round().toString() : (_height / 2.54).round().toString(),
           unit: metric ? 'cm' : 'in',
-          onLess: _height > 120 ? () => setState(() => _height -= 1) : null,
-          onMore: _height < 230 ? () => setState(() => _height += 1) : null,
+          onLess: _height > 120 ? () => setState(() => _height -= metric ? 1 : 2.54) : null,
+          onMore: _height < 230 ? () => setState(() => _height += metric ? 1 : 2.54) : null,
         ),
         SettingStepper(
           label: 'weight'.tr(lang),

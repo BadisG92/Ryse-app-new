@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../design/design.dart';
 import '../../../services/translations.dart';
+import '../../../services/unit_service.dart';
 import '../session_controller.dart';
 
 /// Le pavé de l'écran, à la place du clavier système.
@@ -22,6 +23,12 @@ class NumberPad extends StatelessWidget {
   Widget build(BuildContext context) {
     final weight = controller.editingField == EditField.weight;
     final decimal = lang == 'en' ? '.' : ',';
+    // Les pas de la barre, dans l'unité de celui qui la charge. Les disques
+    // ne font pas 2,5 livres, et « +5 » en impérial doit ajouter cinq
+    // livres, pas onze.
+    final steps = weight
+        ? (UnitService.instance.isMetric ? const [-2.5, 2.5, 5.0] : const [-5.0, 5.0, 10.0])
+        : const [-1.0, 1.0];
     final gutter = context.vw(4.1);
 
     return Container(
@@ -37,7 +44,7 @@ class NumberPad extends StatelessWidget {
           // au fantôme : on ne repart jamais de zéro.
           Row(
             children: [
-              for (final step in weight ? const [-2.5, 2.5, 5.0] : const [-1.0, 1.0])
+              for (final step in steps)
                 Padding(
                   padding: EdgeInsets.only(right: context.vw(2.1)),
                   child: _Pill(

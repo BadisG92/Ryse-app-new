@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../design/feedback.dart';
 import '../../models/sport_models.dart';
+import '../../services/unit_service.dart';
 import '../../services/workout_session_store.dart';
 import 'rest_timer.dart';
 import 'session_history.dart';
@@ -179,17 +180,32 @@ class SessionController extends ChangeNotifier {
     return ghostFor(_current, setIndex).reps;
   }
 
+  /// Le poids se saisit dans l'unité affichée et se range en kilos.
+  ///
+  /// Le pavé écrivait ce qui était tapé directement dans `weightKg` : en
+  /// impérial, taper 45 rangeait 45 kilos, et la rangée réaffichait « 99,2
+  /// lbs » juste au-dessus du pavé qui venait de recevoir 45. Les puces ±
+  /// avaient le même défaut : leur pas partait en kilos quelle que soit
+  /// l'unité, donc « +5 » ajoutait onze livres.
+  static double _toKg(double shown) => UnitService.instance.storageWeight(shown);
+  static double _shown(double kg) => UnitService.instance.displayWeight(kg);
+
+  /// Le pas de la barre, dans l'unité de celui qui la charge : le quart de
+  /// kilo en métrique, la demi-livre en impérial.
+  static double _roundShown(double v) =>
+      UnitService.instance.isMetric ? (v * 4).round() / 4 : (v * 2).round() / 2;
+
   /// Une puce ± du pavé : appliquée à la valeur courante ou au fantôme, puis
-  /// écrite tout de suite dans la série.
+  /// écrite tout de suite dans la série. Le pas est dans l'unité affichée.
   void bump(double delta) {
     final i = editingSet;
     final f = editingField;
     if (i == null || f == null) return;
     final s = currentExercise.sets[i];
     if (f == EditField.weight) {
-      final base = buffer.isNotEmpty ? double.tryParse(buffer) ?? 0 : (_committedWeight(i) ?? 0);
-      s.weightKg = (base + delta).clamp(0, 999).toDouble();
-      s.weightKg = (s.weightKg * 4).round() / 4;
+      final base = buffer.isNotEmpty ? double.tryParse(buffer) ?? 0 : _shown(_committedWeight(i) ?? 0);
+      final next = _roundShown((base + delta).clamp(0, 2200).toDouble());
+      s.weightKg = _toKg(next).clamp(0, 999).toDouble();
     } else {
       final base = buffer.isNotEmpty ? int.tryParse(buffer) ?? 0 : (_committedReps(i) ?? 0);
       s.reps = (base + delta.round()).clamp(0, 999);
@@ -214,7 +230,10 @@ class SessionController extends ChangeNotifier {
     if (buffer.isEmpty) return;
     final s = currentExercise.sets[i];
     if (editingField == EditField.weight) {
-      s.weightKg = (double.tryParse(buffer) ?? s.weightKg).clamp(0, 999).toDouble();
+      final typed = double.tryParse(buffer);
+      if (typed != null) {
+        s.weightKg = _toKg(typed.clamp(0, 2200).toDouble()).clamp(0, 999).toDouble();
+      }
     } else {
       s.reps = (int.tryParse(buffer) ?? s.reps).clamp(0, 999);
     }
