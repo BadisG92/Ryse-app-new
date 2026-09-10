@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -208,11 +209,21 @@ class MyApp extends StatelessWidget {
       // reconstruire depuis la racine pour que le choix d'une palette repeigne
       // l'application entiere, sans redemarrage et sans qu'aucun ecran ait a
       // savoir qu'un theme existe.
-      child: Consumer<ThemeService>(
-        builder: (context, theme, _) => MaterialApp(
+      child: Consumer2<ThemeService, LocalizationService>(
+        builder: (context, theme, loc, _) => MaterialApp(
         navigatorKey: navigatorKey, // NOUVEAU: Pour les deep links
         title: 'Ryze',
         debugShowCheckedModeBanner: false,
+        // Les widgets de Material parlaient anglais à tout le monde : rien ne
+        // leur avait dit quelle langue l'app parle. Le sélecteur d'heure des
+        // rappels était le dernier endroit où ça se voyait.
+        locale: loc.currentLocale,
+        supportedLocales: const [Locale('fr'), Locale('en'), Locale('de')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         builder: (context, child) {
           return GestureDetector(
             behavior: HitTestBehavior.translucent,

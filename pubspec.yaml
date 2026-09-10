@@ -30,6 +30,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Les mots des widgets Material — le sélecteur d'heure des rappels, les
+  # menus de sélection de texte — dans la langue du compte.
+  flutter_localizations:
+    sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -65,7 +69,7 @@ dependencies:
   geocoding: ^3.0.0
   
   # Internationalization
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # Markdown rendering
   flutter_markdown: ^0.7.3

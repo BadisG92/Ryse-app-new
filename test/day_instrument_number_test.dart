@@ -6,10 +6,13 @@ import 'package:ryze_app/design/day_instrument.dart';
 /// Le plus gros chiffre de l'écran et sa légende doivent parler la même langue.
 ///
 /// L'instrument mettait son chiffre en forme d'après `Localizations.localeOf`,
-/// c'est-à-dire d'après Flutter — et `MaterialApp` n'ayant ni `locale` ni
-/// `supportedLocales`, Flutter répondait `en_US` partout. En français on lisait
-/// donc « 1,334 kcal » — une virgule décimale, soit 1,334 kilocalorie — au-dessus
-/// d'« objectif 1 334 », mis en forme, lui, dans la bonne langue.
+/// c'est-à-dire d'après Flutter — et `MaterialApp` n'avait alors ni `locale` ni
+/// `supportedLocales`, donc Flutter répondait `en_US` partout. En français on
+/// lisait « 1,334 kcal » — une virgule décimale, soit 1,334 kilocalorie —
+/// au-dessus d'« objectif 1 334 », mis en forme, lui, dans la bonne langue.
+///
+/// L'app a maintenant une locale, mais le chiffre ne doit toujours pas en
+/// dépendre : c'est la langue du compte qui décide, pas celle du téléphone.
 ///
 /// L'odomètre découpe le nombre en séries de chiffres et pose les séparateurs
 /// entre elles, chacun dans son propre `Text` : c'est ce séparateur qu'on
@@ -23,8 +26,8 @@ void main() {
     final numbers = NumberFormat.decimalPattern(lang);
     await tester.pumpWidget(
       MaterialApp(
-        // Comme l'app : aucun délégué de localisation, aucune locale. Si
-        // quelqu'un revient à celle de Flutter, le test le dira.
+        // Sans délégué ni locale : si quelqu'un rebranche le chiffre sur la
+        // locale de Flutter, le test le dira.
         home: Scaffold(
           body: DayInstrument(
             lang: lang,
