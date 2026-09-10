@@ -381,7 +381,7 @@ class _IntroPainter extends CustomPainter {
     final ink = reduced ? 1.0 : _phase(ms, _RyzeIntroState._ink, curve: Curves.easeOut);
     if (ink > 0) {
       final soft = lock.wordBounds.width * 0.12;
-      final front = lock.wordBounds.left - soft + ink * (lock.wordBounds.width + soft);
+      final front = inkFront(ink, lock.wordBounds.left, lock.wordBounds.width, soft);
       final area = lock.wordBounds.inflate(soft);
       canvas.saveLayer(area, Paint());
       canvas.drawPath(lock.word, Paint()..color = Colors.white);
@@ -402,3 +402,17 @@ class _IntroPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _IntroPainter old) => old.ms != ms || old.reduced != reduced;
 }
+
+/// Où se trouve le front de l'encre, du bord gauche du mot vers la droite.
+///
+/// Le dégradé est opaque à gauche de `front - soft` et transparent à
+/// `front` : pour que le mot soit entièrement encré, il faut que ce soit
+/// `front - soft`, et non `front`, qui atteigne son bord droit.
+///
+/// Le front s'arrêtait au bord droit du mot. Les douze derniers pour cent —
+/// la moitié du « e » final — restaient donc sous la partie fondue du
+/// dégradé, et n'étaient jamais complètement écrits : pas seulement au
+/// moment de la pause, jamais. Le front va maintenant une largeur de fondu
+/// plus loin.
+@visibleForTesting
+double inkFront(double ink, double left, double width, double soft) => left - soft + ink * (width + 2 * soft);
