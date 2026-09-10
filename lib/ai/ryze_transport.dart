@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/gemini_config.dart';
 import '../config/supabase_config.dart';
 import '../core/config/feature_flags.dart';
+import '../services/unified_subscription_service.dart';
 
 /// Ce qu'un tour de génération a coûté.
 class RyzeUsage {
@@ -150,12 +151,27 @@ class RyzeTransport {
     String surface = RyzeUsageLabel.coach,
   }) async* {
     var attempt = 0;
+    var healed = false;
 
     while (true) {
       try {
         yield* _once(payload, model: model, surface: surface);
         return;
       } on RyzeTransportException catch (e) {
+        // « Abonnement requis », alors que l'application a laissé entrer :
+        // c'est notre ligne d'abonnement qui manque, pas l'utilisateur qui
+        // n'a pas payé. Le serveur lit notre base, l'application fait
+        // confiance à la boutique — quand les deux divergent, on réécrit la
+        // ligne et on redemande. Une seule fois : si la boutique dit non
+        // aussi, c'est un vrai refus.
+        if (e.statusCode == 402 && !healed) {
+          healed = true;
+          if (await _healEntitlement()) {
+            if (kDebugMode) debugPrint('🔑 RyzeTransport: droit rétabli, nouvel essai');
+            continue;
+          }
+          rethrow;
+        }
         attempt++;
         if (!e.isRetryable || attempt > maxRetries) rethrow;
         if (kDebugMode) {
@@ -163,6 +179,17 @@ class RyzeTransport {
         }
         await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
       }
+    }
+  }
+
+  /// Réécrit la ligne d'abonnement depuis la boutique. Vrai si l'utilisateur
+  /// y a bien droit, et que le serveur devrait donc l'accepter maintenant.
+  Future<bool> _healEntitlement() async {
+    try {
+      return await UnifiedSubscriptionService().forceResync();
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ RyzeTransport: rattrapage du droit: $e');
+      return false;
     }
   }
 
@@ -226,6 +253,10 @@ class RyzeTransport {
     String? model,
     required String surface,
     Duration timeout = const Duration(seconds: 45),
+
+    /// Vrai quand on rejoue apres avoir reecrit la ligne d'abonnement : on ne
+    /// rattrape qu'une fois, sinon un vrai refus tournerait en boucle.
+    bool healed = false,
   }) async {
     final name = model ?? GeminiConfig.modelName;
     final body = jsonEncode(bodyFor(mode, payload, model: name, surface: surface, stream: false));
@@ -242,6 +273,13 @@ class RyzeTransport {
     }
 
     if (response.statusCode != 200) {
+      // Le meme rattrapage que pour le flux : un « abonnement requis » sur un
+      // compte que l'application a laisse entrer veut dire que notre ligne
+      // manque, pas que l'utilisateur n'a pas paye.
+      if (response.statusCode == 402 && !healed && await _healEntitlement()) {
+        if (kDebugMode) debugPrint('🔑 RyzeTransport: droit retabli, nouvel essai');
+        return generate(payload, model: model, surface: surface, timeout: timeout, healed: true);
+      }
       final detail = response.body;
       throw RyzeTransportException(
         detail.length > 300 ? detail.substring(0, 300) : detail,

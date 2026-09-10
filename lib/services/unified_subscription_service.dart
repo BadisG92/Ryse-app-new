@@ -101,6 +101,32 @@ class UnifiedSubscriptionService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Vrai une fois que la boutique a répondu au moins une fois dans cette
+  /// session. Tant que c'est faux, un 402 du serveur peut vouloir dire « la
+  /// ligne n'a jamais été écrite », pas « cet utilisateur n'a pas payé ».
+  bool _syncedOnce = false;
+  bool get syncedOnce => _syncedOnce;
+
+  /// Réécrit la ligne d'abonnement à partir de la boutique, même si elle
+  /// paraît déjà à jour. Sert au rattrapage : un appel serveur refusé en 402
+  /// passe par ici avant de renoncer.
+  Future<bool> forceResync() async {
+    if (testMode) return false;
+    if (!_revenueCat.isInitialized) {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+      try {
+        await _revenueCat.initialize(userId: userId);
+      } catch (e) {
+        debugPrint('⚠️ forceResync: RevenueCat indisponible: $e');
+        return false;
+      }
+    }
+    await _syncRevenueCatStatus();
+    notifyListeners();
+    return isPremium;
+  }
+
   Future<void> _syncRevenueCatStatus() async {
     if (testMode || !_revenueCat.isInitialized) return;
 
@@ -108,8 +134,15 @@ class UnifiedSubscriptionService extends ChangeNotifier {
       final isPremium = _revenueCat.isPremium();
       final subscriptionInfo = _revenueCat.getSubscriptionInfo();
 
-      // Si RevenueCat dit premium mais notre DB dit gratuit, mettre à jour
-      if (isPremium && !_subscription.isPremium) {
+      // La boutique fait autorité : dès qu'elle dit premium, la ligne est
+      // écrite, sans regarder ce que le cache local croit savoir.
+      //
+      // La condition portait aussi sur `!_subscription.isPremium`, donc rien
+      // n'était écrit quand le cache se croyait déjà premium — y compris
+      // quand la ligne manquait vraiment en base, ou qu'elle y était expirée.
+      // C'est une insertion idempotente : l'écrire deux fois ne coûte rien,
+      // ne pas l'écrire coûte tout l'accès à l'IA côté serveur.
+      if (isPremium) {
         debugPrint('🔄 Synchronisation: RevenueCat Premium → DB');
 
         // Déterminer la période depuis le productId
@@ -137,6 +170,7 @@ class UnifiedSubscriptionService extends ChangeNotifier {
         debugPrint('🔄 Synchronisation: RevenueCat Free → DB');
         await _subscription.downgradeToFree();
       }
+      _syncedOnce = true;
     } catch (e) {
       debugPrint('❌ Erreur synchronisation RevenueCat: $e');
     }
