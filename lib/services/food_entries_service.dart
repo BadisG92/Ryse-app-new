@@ -13,6 +13,7 @@ import 'meal_widget_data_provider.dart';
 import 'notification_service.dart';
 import 'weekly_planner_service.dart';
 import 'meal_planner_sync_service.dart';
+import 'ryze_dates.dart';
 
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
@@ -214,7 +215,8 @@ class FoodEntriesService {
         // L'heure affichée est celle du premier aliment du bloc, pas une
         // constante par type de repas : c'est la seule que l'utilisateur
         // reconnaît quand il relit sa journée.
-        final at = DateTime.parse(block['min_consumed_at'] as String).toLocal();
+        // Telle qu'elle a ete notee : voir RyzeDates.wall.
+        final at = RyzeDates.wall(block['min_consumed_at'] as String?) ?? DateTime.now();
         meals.add(Meal(
           id: mealId,
           time: '${at.hour} h ${at.minute.toString().padLeft(2, '0')}',
@@ -261,7 +263,7 @@ class FoodEntriesService {
 
       final out = <String, int>{};
       for (final row in rows) {
-        final at = DateTime.tryParse(row['consumed_at'] as String? ?? '')?.toLocal();
+        final at = RyzeDates.wall(row['consumed_at'] as String?);
         if (at == null) continue;
         final key = '${at.year}-${at.month}-${at.day}';
         out[key] = (out[key] ?? 0) + ((row['calories'] as num?)?.round() ?? 0);

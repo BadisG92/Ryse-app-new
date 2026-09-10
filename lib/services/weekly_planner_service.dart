@@ -5,6 +5,7 @@ import '../models/sport_models.dart';
 import 'global_state_manager.dart';
 import 'localization_service.dart';
 import 'translations.dart';
+import 'ryze_dates.dart';
 import 'sport_dashboard_service.dart';
 import 'cardio_service.dart';
 
@@ -216,8 +217,9 @@ class WeeklyPlannerService {
     for (final entry in rawEntries) {
       final type = entry['meal_type'] as String?;
       if (type == null || type.isEmpty) continue;
-      final raw = entry['consumed_at'] as String?;
-      final at = raw == null ? null : DateTime.tryParse(raw)?.toLocal();
+      // Telle qu'elle a ete notee : voir RyzeDates.wall. En heure locale, un
+      // diner note a 22 h cochait le creneau du lendemain.
+      final at = RyzeDates.wall(entry['consumed_at'] as String?);
       if (at == null) continue;
       out.putIfAbsent(DateTime(at.year, at.month, at.day), () => <String>{}).add(type);
     }
