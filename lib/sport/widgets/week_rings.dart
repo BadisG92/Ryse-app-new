@@ -159,21 +159,45 @@ class WeekBlock extends StatelessWidget {
             ),
           ),
         ),
+        SizedBox(height: context.vw(2.6)),
+        // Confier sa semaine au coach est ce que cette page a de plus utile à
+        // proposer quand rien n'est prévu. C'était une ligne de la taille
+        // d'une légende, au bas d'un écran vide, sous une autre ligne de la
+        // même taille : deux liens qui se ressemblaient, aucun des deux ne
+        // ressemblant à un bouton.
+        //
+        // Il porte la marque de Ryze et non une icône : c'est lui qui plante
+        // la semaine, pas l'application.
         Pressable(
           onTap: () {
             RyzeFeedback.tap();
             onPlan();
           },
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: context.vw(1)),
-            child: Row(
-              children: [
-                RyzeMark(size: context.vw(3.9)),
-                SizedBox(width: context.vw(1.5)),
-                Text('sport_plan_week'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
-                SizedBox(width: context.vw(1)),
-                Icon(LucideIcons.chevronRight, size: context.vw(3.6), color: RyzeColors.mute2),
-              ],
+          child: Container(
+            width: double.infinity,
+            constraints: BoxConstraints(minHeight: context.vw(14)),
+            padding: EdgeInsets.symmetric(horizontal: context.vw(4), vertical: context.vw(3.6)),
+            decoration: BoxDecoration(
+              color: RyzeColors.surf,
+              borderRadius: BorderRadius.circular(RyzeRadius.pill),
+              border: Border.all(color: RyzeColors.line),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  RyzeMark(size: context.vw(4.4)),
+                  SizedBox(width: context.vw(2)),
+                  Text(
+                    'sport_plan_week'.tr(lang),
+                    maxLines: 1,
+                    softWrap: false,
+                    style: RyzeText.body(context, 4.3, weight: FontWeight.w600, height: 1.2),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

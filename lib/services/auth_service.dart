@@ -17,6 +17,9 @@ import 'fast_cache_service.dart';
 import 'analytics_service.dart';
 import 'offline_workout_service.dart';
 import 'meal_widget_data_provider.dart';
+import 'sport_dashboard_service.dart';
+import 'workout_cache_service.dart';
+import 'weekly_planner_service.dart';
 
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
@@ -141,6 +144,7 @@ class AuthService extends ChangeNotifier {
         await AnalyticsService.setUserId(response.user!.id);
 
         if (response.session != null) {
+          await _claimLocalData(response.user!.id);
           await _loadUserProfile(response.user!.id);
           await _storeTokenSecurely(response.session?.accessToken);
           await _identifyForSubscription(response.user!.id);
@@ -197,6 +201,7 @@ class AuthService extends ChangeNotifier {
       );
 
       if (response.user != null) {
+        await _claimLocalData(response.user!.id);
         await _loadUserProfile(response.user!.id);
         await _storeTokenSecurely(response.session?.accessToken);
         await _identifyForSubscription(response.user!.id);
@@ -304,6 +309,7 @@ class AuthService extends ChangeNotifier {
           if (kDebugMode) debugPrint('📝 Google name extracted: $firstName $lastName');
         }
 
+        await _claimLocalData(response.user!.id);
         await _loadUserProfile(response.user!.id);
 
         // 🌍 S'assurer que la langue est définie (pour nouveaux users Google)
@@ -421,6 +427,7 @@ class AuthService extends ChangeNotifier {
         }
 
         if (kDebugMode) debugPrint('👤 Loading user profile...');
+        await _claimLocalData(response.user!.id);
         await _loadUserProfileWithSocialData(
           response.user!.id,
           firstName: firstName,
@@ -517,6 +524,53 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Ce que le téléphone garde appartient à un compte.
+  ///
+  /// La déconnexion efface ce qui est propre au compte. Mais on n'en passe
+  /// pas toujours par là : créer un compte depuis l'écran d'accueil, revenir
+  /// sur un autre compte, une session expirée. Le suivant héritait alors de
+  /// ce que le précédent avait laissé — un nouveau compte affichait « 1
+  /// séance cette semaine, 30 min, 553 kcal », la course de quelqu'un
+  /// d'autre, jusqu'au prochain lancement de l'application.
+  ///
+  /// À chaque entrée dans un compte, on compare : si ce qui est sur le
+  /// téléphone appartient à un autre, il s'en va.
+  Future<void> _claimLocalData(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final avant = prefs.getString(_localOwnerKey);
+      if (avant == userId) return;
+      if (avant != null) {
+        if (kDebugMode) debugPrint('🧹 Données locales d\'un autre compte : on efface');
+        await _clearAccountScopedPreferences();
+        _clearMemoryCaches();
+      }
+      await prefs.setString(_localOwnerKey, userId);
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ _claimLocalData: $e');
+    }
+  }
+
+  /// À qui appartient ce qui est gardé sur le téléphone.
+  static const String _localOwnerKey = 'local_data_owner_v1';
+
+  /// Les caches qui ne vivent qu'en mémoire.
+  ///
+  /// Ils survivent à une déconnexion tant que l'application tourne : c'est
+  /// pour ça que fermer puis rouvrir l'application « corrigeait » les
+  /// chiffres du compte précédent.
+  void _clearMemoryCaches() {
+    try {
+      FastCacheService.invalidateDashboard();
+      SportDashboardService.invalidateCache();
+      WorkoutCacheService.clearCache();
+      WeeklyPlannerService.invalidateCache();
+      GlobalStateManager.instance.reset();
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ _clearMemoryCaches: $e');
+    }
+  }
+
   /// Clear all local data (cache, tokens, preferences)
   /// Private method used during sign out
   Future<void> _clearAllLocalData() async {
@@ -535,12 +589,15 @@ class AuthService extends ChangeNotifier {
       // attendaient le réseau. Se déconnecter les détruisait.
       await _clearAccountScopedPreferences();
 
-      // 3. Clear fast cache
-      FastCacheService.invalidateDashboard();
-
-      // 4. Clear global state manager
-      GlobalStateManager.instance.reset();
+      // 3. Les caches en mémoire, qui survivaient à la déconnexion : le
+      // tableau de bord sport, l'historique des séances, la semaine du
+      // planificateur.
+      _clearMemoryCaches();
       await MealWidgetDataProvider.clearWidgetData();
+
+      // 4. Le téléphone n'appartient plus à personne.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_localOwnerKey);
 
       if (kDebugMode) debugPrint('✅ All local data cleared');
     } catch (e) {
