@@ -82,7 +82,10 @@ class RyzeCameraShell extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (ready && controller != null)
-            _Focusable(controller: controller!, child: _Preview(controller: controller!))
+            _Zoomable(
+              controller: controller!,
+              child: _Focusable(controller: controller!, child: _Preview(controller: controller!)),
+            )
           else
             ColoredBox(color: RyzeColors.ink),
 
@@ -581,4 +584,98 @@ class _CornerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CornerPainter old) => old.color != color || old.corner != corner;
+}
+
+/// Le pincement pour zoomer, et le facteur affiché tant qu'il n'est pas à un.
+///
+/// Il vivait dans l'écran du scan de plats, posé par-dessus le viseur. Le
+/// code-barres, lui, n'en avait pas — alors que c'est là qu'il sert le plus :
+/// un code sur un paquet lointain fait quelques pixels par barre, et aucune
+/// résolution ne rattrape ça. Le zoom appartient au viseur, donc à toutes les
+/// caméras de l'app.
+///
+/// Il enveloppe la mise au point plutôt que de la recouvrir : le pincement et
+/// le tap ne se disputent pas, l'un est un geste à deux doigts, l'autre à un.
+class _Zoomable extends StatefulWidget {
+  const _Zoomable({required this.controller, required this.child});
+
+  final CameraController controller;
+  final Widget child;
+
+  @override
+  State<_Zoomable> createState() => _ZoomableState();
+}
+
+class _ZoomableState extends State<_Zoomable> {
+  double _min = 1;
+  double _max = 1;
+  double _base = 1;
+  double _level = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _read();
+  }
+
+  /// Ce que l'appareil accepte. Un objectif qui refuse de le dire ne zoome
+  /// simplement pas : `_min` et `_max` restent à un, le pincement ne fait
+  /// rien, et rien ne casse.
+  Future<void> _read() async {
+    try {
+      final min = await widget.controller.getMinZoomLevel();
+      final max = await widget.controller.getMaxZoomLevel();
+      if (!mounted) return;
+      setState(() {
+        _min = min;
+        _max = max;
+        _base = min;
+        _level = min;
+      });
+    } catch (_) {
+      // pas de zoom sur cet appareil
+    }
+  }
+
+  void _apply(double scale) {
+    if (_max <= _min) return;
+    final next = (_base * scale).clamp(_min, _max);
+    if ((next - _level).abs() < 0.01) return;
+    setState(() => _level = next);
+    // Le réglage part sans qu'on l'attende : une image de retard vaut mieux
+    // qu'un geste qui saccade.
+    widget.controller.setZoomLevel(next).catchError((_) {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onScaleStart: (_) => _base = _level,
+          onScaleUpdate: (d) => _apply(d.scale),
+          child: widget.child,
+        ),
+        if (_level > _min + 0.01)
+          IgnorePointer(
+            child: Align(
+              alignment: const Alignment(0, 0.42),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: context.vw(3.1), vertical: context.vw(1.5)),
+                decoration: BoxDecoration(
+                  color: RyzeColors.ink.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                ),
+                child: Text(
+                  '${_level.toStringAsFixed(1)}x',
+                  style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.surf),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }

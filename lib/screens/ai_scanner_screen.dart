@@ -40,11 +40,6 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   final TextEditingController _note = TextEditingController();
   static const int _maxNoteLength = 500;
 
-  // Variables pour le zoom
-  double _currentZoomLevel = 1.0;
-  double _minZoomLevel = 1.0;
-  double _maxZoomLevel = 1.0;
-  double _baseZoomLevel = 1.0;
 
   @override
   void initState() {
@@ -97,13 +92,6 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       );
 
       await _cameraController?.initialize();
-
-      // Récupérer les niveaux de zoom min/max
-      _minZoomLevel = await _cameraController?.getMinZoomLevel() ?? 1.0;
-      _maxZoomLevel = await _cameraController?.getMaxZoomLevel() ?? 1.0;
-      _currentZoomLevel = _minZoomLevel;
-      _baseZoomLevel = _minZoomLevel;
-      if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Caméra initialisée - Zoom: ${_minZoomLevel}x - ${_maxZoomLevel}x');
 
       if (mounted) {
         setState(() {
@@ -328,66 +316,10 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       leftIcon: shot == null ? LucideIcons.image : null,
       leftLabel: 'gallery'.tr(lang),
       leftAction: shot == null ? _pickFromGallery : null,
-      overlay: shot == null
-          ? _ZoomHandle(
-              controller: _cameraController,
-              level: _currentZoomLevel,
-              min: _minZoomLevel,
-              max: _maxZoomLevel,
-              onStart: () => _baseZoomLevel = _currentZoomLevel,
-              onChange: (scale) {
-                final zoom = (_baseZoomLevel * scale).clamp(_minZoomLevel, _maxZoomLevel);
-                _cameraController?.setZoomLevel(zoom);
-                setState(() => _currentZoomLevel = zoom);
-              },
-            )
-          : Positioned.fill(child: Image.file(File(shot.path), fit: BoxFit.cover)),
+      // Le pincement pour zoomer appartient au viseur : il le tient pour
+      // toutes les caméras, celle du code-barres comprise.
+      overlay: shot == null ? null : Positioned.fill(child: Image.file(File(shot.path), fit: BoxFit.cover)),
       footer: shot == null ? null : _NoteBar(controller: _note, maxLength: _maxNoteLength, lang: lang, onRetake: _retake, onSend: _analyse),
-    );
-  }
-}
-
-/// Le pincement pour zoomer, et le facteur affiché tant qu'il n'est pas à un.
-class _ZoomHandle extends StatelessWidget {
-  const _ZoomHandle({
-    required this.controller,
-    required this.level,
-    required this.min,
-    required this.max,
-    required this.onStart,
-    required this.onChange,
-  });
-
-  final CameraController? controller;
-  final double level;
-  final double min;
-  final double max;
-  final VoidCallback onStart;
-  final ValueChanged<double> onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: GestureDetector(
-        onScaleStart: (_) => onStart(),
-        onScaleUpdate: (details) => onChange(details.scale),
-        child: level > min
-            ? Align(
-                alignment: const Alignment(0, 0.42),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: context.vw(3.1), vertical: context.vw(1.5)),
-                  decoration: BoxDecoration(
-                    color: RyzeColors.ink.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(RyzeRadius.pill),
-                  ),
-                  child: Text(
-                    '${level.toStringAsFixed(1)}x',
-                    style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.surf),
-                  ),
-                ),
-              )
-            : const SizedBox.expand(),
-      ),
     );
   }
 }
