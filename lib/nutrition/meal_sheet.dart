@@ -49,13 +49,14 @@ class MealSheet {
 
   /// Les pages d'un créneau, dans l'ordre de la journée.
   ///
-  /// Le repas noté d'abord, le plat prévu ensuite, et seulement s'il dit
-  /// autre chose. Un créneau vide garde la page du journal : c'est elle qui
-  /// dit qu'il n'y a rien.
+  /// Le repas noté d'abord, puis un plat prévu par page. Un créneau peut en
+  /// prévoir plusieurs — deux collations, une entrée et un plat — et ils
+  /// étaient réduits au premier. Un créneau vide garde la page du journal :
+  /// c'est elle qui dit qu'il n'y a rien.
   @visibleForTesting
-  static List<MealPage> pagesFor({required bool eaten, required bool apart}) => [
-        if (eaten || !apart) MealPage.logged,
-        if (apart) MealPage.planned,
+  static List<MealPage> pagesFor({required bool eaten, required int planned}) => [
+        if (eaten || planned == 0) MealPage.logged,
+        for (var i = 0; i < planned; i++) MealPage.planned,
       ];
 
   /// Ouvre le repas [slot] du jour [day]. Rend vrai quand quelque chose a
@@ -74,25 +75,30 @@ class MealSheet {
     final meal = meals[slot];
     final label = 'slot_${slot.name}'.tr(lang);
 
-    // Le repas prévu, que l'appelant le connaisse ou non.
+    // Tous les plats prévus du créneau, que l'appelant les connaisse ou non.
     //
-    // Il fallait le lui passer : l'accueil le faisait, l'onglet Nutrition et
+    // Il fallait les lui passer : l'accueil le faisait, l'onglet Nutrition et
     // le calendrier du planificateur non. La même feuille proposait donc de
-    // valider et de retirer d'un côté, et seulement d'ajouter de l'autre.
-    // Elle le trouve maintenant dans la journée qu'elle vient de lire, sans
-    // requête de plus.
-    final prevu = planned ?? (meal.plannedActivities.isEmpty ? null : meal.plannedActivities.first);
-    final data = prevu?.mealData;
-    final dish = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : meal.plannedName;
+    // valider et de retirer d'un côté, et seulement d'ajouter de l'autre. Elle
+    // les trouve maintenant dans la journée qu'elle vient de lire, sans
+    // requête de plus — et tous, pas seulement le premier : un créneau peut en
+    // annoncer deux, et le second n'était visible nulle part.
+    final tous = meal.plannedActivities.isNotEmpty
+        ? meal.plannedActivities
+        : (planned == null ? const <PlannedActivity>[] : [planned]);
 
     final items = meal.logged?.items ?? const <nutrition.FoodItem>[];
     final eaten = items.isNotEmpty;
-    final aPart = plannedApart(dish, [for (final i in items) i.name]);
+    final noms = [for (final i in items) i.name];
 
-    // Les pages, dans l'ordre de la journée : ce qu'on a mangé, puis ce qui
-    // était prévu. Un créneau vide n'en a qu'une, celle du journal, qui dira
+    // Un plat prévu n'a sa page que s'il dit autre chose que ce qui a été
+    // noté : celui qu'on a vraiment mangé est déjà la page du journal.
+    final prevus = [for (final a in tous) if (plannedApart(_dishOf(a, meal), noms)) a];
+
+    // Les pages, dans l'ordre de la journée : ce qu'on a mangé, puis chaque
+    // plat prévu. Un créneau vide n'en a qu'une, celle du journal, qui dira
     // qu'il n'y a rien.
-    final pages = pagesFor(eaten: eaten, apart: aPart);
+    final pages = pagesFor(eaten: eaten, planned: prevus.length);
 
     // Un repas prevu qu'on n'a pas encore mange : le valider en un geste est
     // la facon la plus rapide de noter un repas, et elle n'existait nulle
@@ -103,13 +109,10 @@ class MealSheet {
     final aujourdhui = DateTime.now();
     final passe = !DateTime(day.year, day.month, day.day)
         .isAfter(DateTime(aujourdhui.year, aujourdhui.month, aujourdhui.day));
-    final canValidate = prevu != null && prevu.status != PlannedStatus.completed && !eaten && passe;
 
-    // Retirer, c'est autre chose que valider : un plat prévu qu'on n'a pas
-    // suivi reste affiché sous le repas noté, et rien ne permettait de s'en
-    // débarrasser. Partout où la feuille montre le plat prévu comme une chose
-    // à part, elle propose de l'enlever.
-    final canRemove = prevu != null && aPart;
+    // Le plat prévu sur lequel le bouton du bas vient d'agir : chaque page a
+    // le sien.
+    PlannedActivity? cible;
 
     // Ce que la feuille a changé pendant qu'elle était ouverte : une portion
     // refixée, un aliment retiré. L'appelant doit se recharger même si elle
@@ -129,8 +132,7 @@ class MealSheet {
         day: day,
         slot: slot,
         meal: meal,
-        dish: dish,
-        data: data,
+        plans: prevus,
         pages: pages,
         page: page,
         onChanged: () => touche = true,
@@ -140,10 +142,14 @@ class MealSheet {
           lang: lang,
           page: page,
           pages: pages,
+          plans: prevus,
           eaten: eaten,
-          canValidate: canValidate,
-          canRemove: canRemove,
+          canValidate: !eaten && passe,
           canAdd: onAdd != null,
+          onAct: (plan, act) {
+            cible = plan;
+            Navigator.pop(context, act);
+          },
         ),
       ],
     );
@@ -157,10 +163,11 @@ class MealSheet {
         onAdd?.call();
         return true;
       case _Action.validate:
-        // `prevu` et non `planned` : l'onglet Nutrition et le calendrier ne
-        // passent pas le repas prévu, la feuille le trouve elle-même. Valider
-        // depuis là tombait sur un null.
-        final id = await MealPlannerSyncService.validateMeal(prevu!);
+        // La cible et non « le premier plat prévu » : l'onglet Nutrition et
+        // le calendrier ne passent rien, la feuille les trouve elle-même, et
+        // un créneau peut en prévoir plusieurs.
+        if (cible == null) return touche;
+        final id = await MealPlannerSyncService.validateMeal(cible!);
         if (!context.mounted) return id != null;
         if (id == null) {
           RyzeUndo.failed(context, message: 'error_generic'.tr(lang));
@@ -169,11 +176,12 @@ class MealSheet {
         RyzeFeedback.success();
         RyzeUndo.note(
           context,
-          message: 'meal_logged_kcal'.tr(lang).replaceAll('{m}', label).replaceAll('{n}', '${data?.calories ?? 0}'),
+          message: 'meal_logged_kcal'.tr(lang).replaceAll('{m}', label).replaceAll('{n}', '${cible!.mealData?.calories ?? 0}'),
         );
         return true;
       case _Action.remove:
-        final ok = await WeeklyPlannerService.deletePlannedActivity(prevu!.id, evenIfCompleted: true);
+        if (cible == null) return touche;
+        final ok = await WeeklyPlannerService.deletePlannedActivity(cible!.id, evenIfCompleted: true);
         if (!context.mounted) return ok;
         if (ok) {
           RyzeFeedback.removed();
@@ -185,8 +193,15 @@ class MealSheet {
   }
 }
 
-/// Les deux faces d'un créneau : ce qu'on a mangé, ce qui était prévu.
+/// Les faces d'un créneau : ce qu'on a mangé, et chaque plat prévu.
 enum MealPage { logged, planned }
+
+/// Le nom d'un plat prévu. Le plan porte le sien ; à défaut, la journée sait
+/// ce que le créneau annonçait.
+String? _dishOf(PlannedActivity plan, DayMeal meal) {
+  final name = plan.mealData?.dishName?.trim() ?? '';
+  return name.isNotEmpty ? name : meal.plannedName;
+}
 
 class _Body extends StatefulWidget {
   const _Body({
@@ -194,8 +209,7 @@ class _Body extends StatefulWidget {
     required this.day,
     required this.slot,
     required this.meal,
-    required this.dish,
-    required this.data,
+    required this.plans,
     required this.pages,
     required this.page,
     required this.onChanged,
@@ -206,9 +220,9 @@ class _Body extends StatefulWidget {
   final WeekSlot slot;
   final DayMeal meal;
 
-  /// Le plat prévu, quel que soit l'endroit d'où il vient.
-  final String? dish;
-  final PlannedMealData? data;
+  /// Les plats prévus qui disent autre chose que ce qui a été noté, dans
+  /// l'ordre où ils ont été prévus. Un par page.
+  final List<PlannedActivity> plans;
 
   final List<MealPage> pages;
   final ValueNotifier<int> page;
@@ -226,8 +240,10 @@ class _BodyState extends State<_Body> {
 
   String get lang => widget.lang;
   DayMeal get meal => _meal;
-  String? get dish => widget.dish;
-  PlannedMealData? get data => widget.data;
+
+  /// De combien la première page décale les plats : elle est celle du journal,
+  /// sauf quand il n'y a rien de noté.
+  int get _offset => widget.pages.first == MealPage.logged ? 1 : 0;
 
   /// Relire la journée après une correction. Une requête, et la feuille
   /// redit tout juste : les aliments, mais aussi le compte au-dessus.
@@ -277,7 +293,8 @@ class _BodyState extends State<_Body> {
   @override
   Widget build(BuildContext context) {
     final several = widget.pages.length > 1;
-    final page = widget.pages[_index.clamp(0, widget.pages.length - 1)];
+    final index = _index.clamp(0, widget.pages.length - 1);
+    final page = widget.pages[index];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -293,8 +310,8 @@ class _BodyState extends State<_Body> {
             child: AnimatedSwitcher(
               duration: RyzeDurations.tap,
               switchInCurve: RyzeCurves.out,
-              // Les deux pages n'ont pas la même hauteur : elles se croisent
-              // par le haut, sinon la sortante tire la feuille vers le bas.
+              // Les pages n'ont pas la même hauteur : elles se croisent par le
+              // haut, sinon la sortante tire la feuille vers le bas.
               layoutBuilder: (current, previous) => Stack(
                 alignment: Alignment.topCenter,
                 children: [...previous, if (current != null) current],
@@ -307,8 +324,10 @@ class _BodyState extends State<_Body> {
                 ),
               ),
               child: KeyedSubtree(
-                key: ValueKey(page),
-                child: page == MealPage.logged ? _logged(context, several) : _planned(context, several),
+                key: ValueKey(index),
+                child: page == MealPage.logged
+                    ? _logged(context, several)
+                    : _planned(context, widget.plans[index - _offset], index - _offset),
               ),
             ),
           ),
@@ -327,10 +346,14 @@ class _BodyState extends State<_Body> {
                     child: AnimatedContainer(
                       duration: RyzeDurations.tap,
                       curve: RyzeCurves.out,
-                      width: i == _index ? context.vw(4.6) : context.vw(1.8),
+                      width: i == index ? context.vw(4.6) : context.vw(1.8),
                       height: context.vw(1.8),
                       decoration: BoxDecoration(
-                        color: i == _index ? RyzeColors.ink : RyzeColors.idle,
+                        // La page du journal est l'encre, celles du plan sont
+                        // l'ambre : la couleur dit déjà de quel côté on est.
+                        color: i == index
+                            ? (widget.pages[i] == MealPage.logged ? RyzeColors.ink : RyzeColors.acc)
+                            : RyzeColors.idle,
                         borderRadius: BorderRadius.circular(RyzeRadius.pill),
                       ),
                     ),
@@ -355,7 +378,7 @@ class _BodyState extends State<_Body> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (several) ...[
-          _Tag(label: 'meal_page_logged'.tr(lang)),
+          _Tag(label: 'meal_page_logged'.tr(lang), done: true),
           SizedBox(height: context.vw(3.1)),
         ],
         if (meal.calories > 0) ...[
@@ -388,18 +411,24 @@ class _BodyState extends State<_Body> {
 
   /// Ce que Ryze avait prévu : le plat, ce qu'il pèse, sa recette, et la
   /// raison qui l'a fait choisir.
-  Widget _planned(BuildContext context, bool several) {
+  ///
+  /// [rank] situe ce plat parmi les plats prévus du créneau, quand il y en a
+  /// plusieurs : une collation peut en annoncer deux.
+  Widget _planned(BuildContext context, PlannedActivity plan, int rank) {
+    final data = plan.mealData;
     final description = data?.dishDescription?.trim() ?? '';
     final reasoning = data?.aiReasoning?.trim() ?? '';
     final kcal = data?.calories ?? 0;
+    final total = widget.plans.length;
+    final label = 'meal_page_planned'.tr(lang);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _Tag(label: (several ? 'meal_page_planned' : 'planner_planned').tr(lang)),
+        _Tag(label: total > 1 ? '$label · ${rank + 1}/$total' : label, done: false),
         SizedBox(height: context.vw(2.6)),
-        Text(dish ?? '', style: RyzeText.body(context, 4.6, weight: FontWeight.w600)),
+        Text(_dishOf(plan, meal) ?? '', style: RyzeText.body(context, 4.6, weight: FontWeight.w600)),
         if (kcal > 0) ...[
           SizedBox(height: context.vw(3.6)),
           _Stats(
@@ -438,56 +467,66 @@ class _BodyState extends State<_Body> {
 
 /// Les boutons du bas suivent la page regardée : on ne valide pas un plat
 /// prévu depuis la page du repas noté, et on n'ajoute pas un aliment depuis
-/// la recette.
+/// une recette.
 class _Actions extends StatelessWidget {
   const _Actions({
     required this.lang,
     required this.page,
     required this.pages,
+    required this.plans,
     required this.eaten,
     required this.canValidate,
-    required this.canRemove,
     required this.canAdd,
+    required this.onAct,
   });
 
   final String lang;
   final ValueNotifier<int> page;
   final List<MealPage> pages;
+  final List<PlannedActivity> plans;
   final bool eaten;
+
+  /// Rien n'est noté sur le créneau et le jour n'est pas à venir : valider un
+  /// plat prévu a un sens.
   final bool canValidate;
-  final bool canRemove;
+
   final bool canAdd;
+
+  /// Le plat prévu concerné, et ce qu'on en fait. Nul pour la page du journal.
+  final void Function(PlannedActivity? plan, _Action action) onAct;
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: page,
-      builder: (context, index, _) {
-        final current = pages[index.clamp(0, pages.length - 1)];
-        final planned = current == MealPage.planned;
+      builder: (context, value, _) {
+        final index = value.clamp(0, pages.length - 1);
+        final planned = pages[index] == MealPage.planned;
+        final offset = pages.first == MealPage.logged ? 1 : 0;
+        final plan = planned ? plans[index - offset] : null;
 
         final boutons = <Widget>[
-          if (planned && canValidate)
+          if (plan != null && canValidate && plan.status != PlannedStatus.completed)
             OnbButton(
               label: 'planner_validate_meal'.tr(lang),
               icon: LucideIcons.check,
-              onPressed: () => Navigator.pop(context, _Action.validate),
+              onPressed: () => onAct(plan, _Action.validate),
             ),
           if (canAdd && (!planned || !eaten))
             OnbButton(
               label: 'add_food'.tr(lang),
               ghost: true,
               icon: LucideIcons.plus,
-              onPressed: () => Navigator.pop(context, _Action.add),
+              onPressed: () => onAct(null, _Action.add),
             ),
-          if (planned && canRemove)
+          if (plan != null)
             OnbButton(
               // « Supprimer ce repas » à côté d'un repas noté se lirait comme
               // « supprime ce que j'ai mangé ». C'est le plan qu'on retire.
               label: (eaten ? 'planner_remove_planned' : 'planner_delete_meal').tr(lang),
               ghost: true,
               icon: LucideIcons.trash2,
-              onPressed: () => Navigator.pop(context, _Action.remove),
+              onPressed: () => onAct(plan, _Action.remove),
             ),
         ];
 
@@ -511,22 +550,39 @@ class _Actions extends StatelessWidget {
   }
 }
 
-/// L'étiquette d'une page : ce qu'on regarde, en un mot.
+/// L'étiquette d'une page : ce qu'on regarde, et de quel côté c'est.
+///
+/// Le journal et le plan se ressemblaient trop : même gris, même place, on ne
+/// savait pas lequel des deux on lisait. Ce que l'utilisateur a noté porte
+/// l'encre, ce que Ryze a prévu porte l'ambre — la règle de couleur du reste
+/// de l'application, mise ici au service de la seule question de la feuille.
 class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
+  const _Tag({required this.label, required this.done});
 
   final String label;
+  final bool done;
 
   @override
   Widget build(BuildContext context) {
+    final teinte = done ? RyzeColors.ink : RyzeColors.accInk;
     return Row(
       children: [
         Container(
-          padding: EdgeInsets.symmetric(horizontal: context.vw(2.6), vertical: context.vw(1.2)),
-          decoration: BoxDecoration(color: RyzeColors.paper2, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
-          child: Text(
-            label,
-            style: RyzeText.body(context, 2.9, weight: FontWeight.w600, color: RyzeColors.mute),
+          padding: EdgeInsets.symmetric(horizontal: context.vw(2.9), vertical: context.vw(1.4)),
+          decoration: BoxDecoration(
+            color: teinte.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(RyzeRadius.pill),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(done ? LucideIcons.check : LucideIcons.calendar, size: context.vw(3.1), color: teinte),
+              SizedBox(width: context.vw(1.5)),
+              Text(
+                label,
+                style: RyzeText.body(context, 2.9, weight: FontWeight.w700, color: teinte),
+              ),
+            ],
           ),
         ),
       ],

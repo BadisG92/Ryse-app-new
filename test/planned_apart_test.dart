@@ -50,19 +50,29 @@ void main() {
 void _pages() {
   group('Les pages d’un creneau', () {
     test('mange autre chose que ce qui etait prevu : deux pages', () {
-      expect(MealSheet.pagesFor(eaten: true, apart: true), [MealPage.logged, MealPage.planned]);
+      expect(MealSheet.pagesFor(eaten: true, planned: 1), [MealPage.logged, MealPage.planned]);
     });
 
     test('mange ce qui etait prevu : une seule', () {
-      expect(MealSheet.pagesFor(eaten: true, apart: false), [MealPage.logged]);
+      expect(MealSheet.pagesFor(eaten: true, planned: 0), [MealPage.logged]);
     });
 
     test('rien de note, un plat prevu : la page du plan', () {
-      expect(MealSheet.pagesFor(eaten: false, apart: true), [MealPage.planned]);
+      expect(MealSheet.pagesFor(eaten: false, planned: 1), [MealPage.planned]);
+    });
+
+    test('deux plats prevus sur le meme creneau : une page chacun', () {
+      // Deux collations prevues le meme jour : la seconde n'etait visible
+      // nulle part, la feuille ne lisait que la premiere.
+      expect(
+        MealSheet.pagesFor(eaten: true, planned: 2),
+        [MealPage.logged, MealPage.planned, MealPage.planned],
+      );
+      expect(MealSheet.pagesFor(eaten: false, planned: 2), [MealPage.planned, MealPage.planned]);
     });
 
     test('creneau vide : la page du journal, qui dira qu’il n’y a rien', () {
-      expect(MealSheet.pagesFor(eaten: false, apart: false), [MealPage.logged]);
+      expect(MealSheet.pagesFor(eaten: false, planned: 0), [MealPage.logged]);
     });
   });
 }
