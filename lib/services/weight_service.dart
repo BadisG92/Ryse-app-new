@@ -107,6 +107,12 @@ class WeightService {
         );
       }
 
+      // Toutes les pesées, dans l'ordre : c'est le journal.
+      final log = [
+        for (final item in data)
+          WeightEntry(date: DateTime.parse(item['valid_from']), weight: (item['weight'] as num).toDouble()),
+      ]..sort((a, b) => a.date.compareTo(b.date));
+
       // Convertir les données en entrées de poids et grouper par jour (prendre la plus récente par jour)
       final Map<String, WeightEntry> entriesByDay = {};
       
@@ -142,6 +148,7 @@ class WeightService {
           initialWeight: initialWeight,
           targetWeight: currentTargetWeight ?? currentWeight,
           entries: entries,
+          log: log,
         );
       },
       operationName: 'getWeightProgress',

@@ -241,6 +241,19 @@ class _ProgressPageState extends State<ProgressPage> with GlobalStateListener {
         else
           WeightChart(progress: _windowed(w), animate: animate),
         SizedBox(height: context.vw(3.6)),
+        // Le journal des pesées.
+        //
+        // La courbe garde un point par jour — deux pesées le même matin ne
+        // font pas une tendance — mais le premier jour, tout se regroupait en
+        // un seul point : on pouvait se peser trois fois sans jamais rien voir
+        // apparaître, et croire que rien n'était enregistré. La liste montre
+        // chaque pesée telle qu'elle a été notée.
+        if (w.log.length > 1) ...[
+          Text('progress_weight_log'.tr(lang), style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
+          SizedBox(height: context.vw(2.1)),
+          _WeightLog(lang: lang, entries: w.log),
+          SizedBox(height: context.vw(3.6)),
+        ],
         // La projection n'apparaît que si les pesées la permettent : quatre
         // points sur deux semaines au moins, et une tendance qui va vers la
         // cible. Sinon rien — une date sortie de trois pesées serait un
@@ -565,5 +578,67 @@ class _Empty extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Chaque pesée, la plus récente en tête, avec ce qu'elle a changé.
+class _WeightLog extends StatelessWidget {
+  const _WeightLog({required this.lang, required this.entries});
+
+  final String lang;
+  final List<WeightEntry> entries;
+
+  /// Dix suffisent : au-delà, c'est la courbe qui raconte.
+  static const int _max = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final units = UnitService.instance;
+    final numbers = NumberFormat('0.#', lang);
+    final shown = entries.reversed.take(_max).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (i, e) in shown.indexed) ...[
+          if (i > 0) Divider(height: 1, color: RyzeColors.line),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: context.vw(2.6)),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${RyzeDates.full(e.date, lang)} · ${e.date.hour} h ${e.date.minute.toString().padLeft(2, '0')}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: RyzeText.body(context, 3.3, color: RyzeColors.mute),
+                  ),
+                ),
+                // Ce que la pesée a changé depuis la précédente. Rien sur la
+                // première : il n'y a pas d'avant.
+                if (i + 1 < shown.length) ...[
+                  Text(
+                    _delta(units.displayWeight(e.weight) - units.displayWeight(shown[i + 1].weight), numbers),
+                    style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute2),
+                  ),
+                  SizedBox(width: context.vw(2.6)),
+                ],
+                Text(
+                  '${units.weightText(e.weight, lang)} ${units.weightUnit}',
+                  style: RyzeText.body(context, 3.6, weight: FontWeight.w600).copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static String _delta(double d, NumberFormat numbers) {
+    if (d.abs() < 0.05) return '=';
+    return '${d > 0 ? '+' : '−'}${numbers.format(d.abs())}';
   }
 }

@@ -12,7 +12,17 @@ class WeightProgress {
   final double previousWeight;
   final double initialWeight;
   final double targetWeight;
+  /// Une pesée par jour, la dernière : c'est ce que la courbe dessine.
   final List<WeightEntry> entries;
+
+  /// Toutes les pesées, sans regroupement.
+  ///
+  /// La courbe garde un point par jour — deux pesées le même matin ne font
+  /// pas une tendance. Mais du coup, le premier jour, tout se regroupait en
+  /// un seul point : on pouvait se peser trois fois sans jamais rien voir
+  /// apparaître. La liste, elle, montre chaque pesée telle qu'elle a été
+  /// notée.
+  final List<WeightEntry> log;
 
   const WeightProgress({
     required this.currentWeight,
@@ -20,6 +30,7 @@ class WeightProgress {
     required this.initialWeight,
     required this.targetWeight,
     required this.entries,
+    this.log = const [],
   });
 
   // Changement de poids

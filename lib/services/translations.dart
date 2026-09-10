@@ -11318,6 +11318,11 @@ class AppTranslations {
       'en': 'L',
       'de': 'L',
     },
+    'progress_weight_log': {
+      'fr': 'Tes pesées',
+      'en': 'Your weigh-ins',
+      'de': 'Deine Wiegungen',
+    },
     'progress_weight_first': {
       'fr': 'Première pesée notée. Note-toi une deuxième fois et la courbe commence.',
       'en': 'First weigh-in saved. Log a second one and the curve begins.',
