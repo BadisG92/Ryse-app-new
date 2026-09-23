@@ -233,12 +233,13 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
 
   // ---------------------------------------------------------------- the week
 
-  /// Monday to Sunday of this week, from the device's clock. The plan's own
-  /// week is fetched for these dates; a day it does not hold is simply empty.
+  /// Monday of this week to Sunday of the next, from the device's clock: the
+  /// strip opens on this week and swipes to the next. The plan is fetched for
+  /// these dates; a day it does not hold is simply empty.
   List<DateTime> get _days {
     final now = DateTime.now();
     final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
-    return [for (var i = 0; i < 7; i++) DateTime(monday.year, monday.month, monday.day + i)];
+    return [for (var i = 0; i < planningWindowDays; i++) DateTime(monday.year, monday.month, monday.day + i)];
   }
 
   DayPlanData? get _todayPlan => _week?.getDayPlan(DateTime.now());

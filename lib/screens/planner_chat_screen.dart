@@ -93,6 +93,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
 
   // The week above the chat: folded by default, opened while items land on it.
   bool _weekExpanded = false;
+
+  /// La semaine montrée dans la bande : 0 celle-ci, 1 la suivante. L'écran
+  /// s'ouvre toujours sur celle-ci.
+  int _weekPage = 0;
   bool _weekAutoOpened = false;
   Timer? _weekFoldTimer;
   final Map<String, GlobalKey> _slotKeys = {};
@@ -162,7 +166,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     }
 
     // Le moteur pose lui-même la fenêtre de planification sur cette semaine.
-    _session = RyzePlannerSession(mode: widget.initialMode, weekStart: _weekData.weekStart);
+    _session = RyzePlannerSession(mode: widget.initialMode, weekStart: _weekData.weekStart, days: _weekData.dayCount);
     _addBotMessage(_getWelcomeMessage());
 
     // Scroll vers aujourd'hui après le build
@@ -245,6 +249,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     setState(() {
       _weekData = WeeklyPlannerData.fromLists(
         weekStart: _weekData.weekStart,
+        days: _weekData.dayCount,
         activities: newActivities,
         workouts: _weekData.workouts.toList(),
         journalEntriesByDate: _journalByDate,
@@ -264,7 +269,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
 
   Future<void> _loadSportDone() async {
     try {
-      final days = List<DateTime>.generate(7, (i) => _weekData.weekStart.add(Duration(days: i)));
+      final days = _weekData.weekDays;
       final done = await SportData.kinds(from: days.first, to: days.last);
       if (mounted) setState(() => _sportDone = done);
     } catch (_) {
@@ -296,6 +301,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     setState(() {
       _weekData = WeeklyPlannerData.fromLists(
         weekStart: _weekData.weekStart,
+        days: _weekData.dayCount,
         activities: _weekData.activities.toList(),
         workouts: newWorkouts,
         journalEntriesByDate: _journalByDate,
@@ -313,6 +319,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
       setState(() {
         _weekData = WeeklyPlannerData.fromLists(
           weekStart: _weekData.weekStart,
+        days: _weekData.dayCount,
           activities: newActivities,
           workouts: _weekData.workouts.toList(),
           journalEntriesByDate: _journalByDate,
@@ -1038,8 +1045,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
   /// [HomeSlots.ofDay], qui sait déjà écarter un repas du journal déjà
   /// rattaché à un repas prévu.
   List<DaySlots> _weekSlots() {
-    return List<DaySlots>.generate(7, (i) {
-      final date = _weekData.weekStart.add(Duration(days: i));
+    return List<DaySlots>.generate(_weekData.dayCount, (i) {
+      final date = calendarDay(_weekData.weekStart, i);
       final day = HomeSlots.ofDay(_weekData.getDayPlan(date), done: _sportDone[SportData.dayKey(date)]);
       final states = Map<WeekSlot, SlotState>.from(day.states);
       // Les tuiles de la bande sont étroites : le libellé y tient en un mot.
@@ -1066,7 +1073,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     // the window does not always start on a Monday, so each letter comes from
     // the weekday its own date falls on
     final letters = _getDayNames(langCode);
-    final days = List<DateTime>.generate(7, (i) => _weekData.weekStart.add(Duration(days: i)));
+    final days = _weekData.weekDays;
     return WeekStrip(
       days: days,
       dayLetters: [for (final d in days) letters[d.weekday - 1]],
@@ -1076,6 +1083,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
       slotKey: _slotKey,
       popped: _poppedSlots,
       onSlotTap: _openSlot,
+      page: _weekPage,
+      onPageChanged: days.length > 7
+          ? (p) {
+              HapticFeedback.selectionClick();
+              setState(() => _weekPage = p);
+            }
+          : null,
     );
   }
 
@@ -1089,7 +1103,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
   /// le calendrier. Elles défilent maintenant, chacune disant si elle est
   /// faite ou prévue ; une seule entrée va toujours droit au détail.
   Future<void> _openSlot(int day, WeekSlot slot) async {
-    final date = _weekData.weekStart.add(Duration(days: day));
+    final date = calendarDay(_weekData.weekStart, day);
     final plan = _weekData.getDayPlan(date);
     if (plan == null) return;
     final lang = LocalizationService.instance.currentLanguageCode;
@@ -1192,9 +1206,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
 
   // ---------------------------------------------------------------- landing
 
+  /// En UTC : entre deux minuits locaux, un changement d'heure fait un jour
+  /// de 23 heures, que `inDays` arrondit au jour d'avant.
   int _dayIndexOf(DateTime date) {
-    final start = DateTime(_weekData.weekStart.year, _weekData.weekStart.month, _weekData.weekStart.day);
-    return DateTime(date.year, date.month, date.day).difference(start).inDays;
+    final start = DateTime.utc(_weekData.weekStart.year, _weekData.weekStart.month, _weekData.weekStart.day);
+    return DateTime.utc(date.year, date.month, date.day).difference(start).inDays;
   }
 
   /// Opens the week, flies one mark per validated item to its day, then folds
@@ -1205,14 +1221,22 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     final targets = <({int day, WeekSlot slot, Rect? from})>[];
     for (final item in items) {
       final day = _dayIndexOf(item.date);
-      if (day < 0 || day > 6) continue;
+      if (day < 0 || day >= _weekData.dayCount) continue;
       if (targets.any((t) => t.day == day && t.slot == item.slot)) continue;
       targets.add((day: day, slot: item.slot, from: (item.row == null ? null : _rectOf(_rowKeys[item.row!])) ?? fallback));
     }
     if (targets.isEmpty) return;
 
+    // Les marques volent vers la semaine où elles atterrissent : la bande y
+    // passe d'abord. Quand la demande tient sur les deux semaines, seules
+    // celles de la première visée volent ; les autres sont déjà en place.
+    final page = targets.first.day ~/ 7;
+    targets.removeWhere((t) => t.day ~/ 7 != page);
+    final turned = page != _weekPage;
+
     _weekFoldTimer?.cancel();
     setState(() {
+      _weekPage = page;
       for (final t in targets) {
         _incomingSlots.add('${t.day}-${t.slot.name}');
       }
@@ -1221,7 +1245,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
         _weekExpanded = true;
       }
     });
-    if (_weekAutoOpened) {
+    if (_weekAutoOpened || turned) {
       await Future<void>.delayed(const Duration(milliseconds: 440));
       if (!mounted) return;
     }

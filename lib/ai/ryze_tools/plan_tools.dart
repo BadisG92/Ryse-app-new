@@ -26,9 +26,15 @@ class PlanTools {
 
   static String get _lang => LocalizationService.instance.currentLanguageCode;
 
-  static const _days = [
-    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-  ];
+  /// Cette semaine sous son nom, la suivante sous `next_`.
+  static const _days = PlannerAIService.dayKeys;
+
+  /// Le choix de la semaine, pour ce qui vide une semaine entière.
+  static const Map<String, dynamic> _week = {
+    'type': 'string',
+    'description': 'Which week to clear when no day is named: "this" (default) or "next".',
+    'enum': ['this', 'next'],
+  };
 
   /// Ce que le modèle doit comprendre quand aucun jour n'est nommé.
   ///
@@ -36,16 +42,21 @@ class PlanTools {
   /// « Planifie mon petit-déjeuner », à quatre heures du matin, atterrissait
   /// jeudi. Sans indication, c'est aujourd'hui.
   static String _dayHint(String what) =>
-      'Day of the $what. When the user names no day, it is today. Never a day '
-      'already behind us: the date block says which day it is, so this one is '
-      'today or later. Asked for several days in this week, take them among '
-      'those that remain.';
+      'Day of the $what. A bare name ("thursday") is the next thursday to come, '
+      'today included: on a Tuesday, "wednesday" is tomorrow and "monday" the '
+      'coming Monday. Use "next_thursday" only when the user says next week. '
+      'When the user names no day, it is today. Nothing after next week\'s '
+      'Sunday. Asked for several days in this week, take them among those that '
+      'remain; "next week" means the next_ days.';
 
   /// Le jour, dit dans la langue de l'utilisateur.
   ///
   /// Les cartes reprenaient l'argument tel que le modèle l'avait écrit :
   /// « Retirer ce repas de thursday ? » sur un compte français. Et quand la
   /// date tombe aujourd'hui ou demain, c'est ce mot-là qui parle le mieux.
+  ///
+  /// La semaine prochaine porte sa date, « lundi 28 », pour ne pas se
+  /// confondre avec le lundi de cette semaine.
   static String dayLabel(Object? day) {
     final nom = '$day'.trim().toLowerCase();
     final index = _days.indexOf(nom);
@@ -56,10 +67,11 @@ class PlanTools {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       if (date == today) return 'today'.tr(_lang).toLowerCase();
-      if (date == today.add(const Duration(days: 1))) return 'tomorrow'.tr(_lang).toLowerCase();
+      if (date == calendarDay(today, 1)) return 'tomorrow'.tr(_lang).toLowerCase();
     }
 
-    return 'day_${index + 1}'.tr(_lang).toLowerCase();
+    final name = 'day_${index % 7 + 1}'.tr(_lang).toLowerCase();
+    return date != null && PlannerAIService.isNextWeek(date) ? '$name ${date.day}' : name;
   }
 
   /// Appelle un outil du planificateur et traduit sa réponse.
@@ -434,7 +446,7 @@ class PlanTools {
     preview: (args) => _confirm(
       'move_workout',
       args,
-      'ryze_confirm_move'.tr(_lang).replaceAll('{from}', '${args['current_day']}').replaceAll('{to}', '${args['new_day']}'),
+      'ryze_confirm_move'.tr(_lang).replaceAll('{from}', dayLabel(args['current_day'])).replaceAll('{to}', dayLabel(args['new_day'])),
     ),
     execute: (args) => _run('move_workout', args),
   );
@@ -513,7 +525,7 @@ class PlanTools {
     preview: (args) => _confirm(
       'move_cardio',
       args,
-      'ryze_confirm_move'.tr(_lang).replaceAll('{from}', '${args['from_day']}').replaceAll('{to}', '${args['to_day']}'),
+      'ryze_confirm_move'.tr(_lang).replaceAll('{from}', dayLabel(args['from_day'])).replaceAll('{to}', dayLabel(args['to_day'])),
     ),
     execute: (args) => _run('move_cardio', args),
   );
@@ -686,14 +698,16 @@ class PlanTools {
       description:
           'Remove several planned training sessions at once. Use it when the request is '
           'broader than a single session: a whole day, every workout, all cardio, '
-          'everything except one day. With no argument it clears the whole week. Only '
-          'for training — for meals use plan.delete_all_meals.',
+          'everything except one day. With no day named it clears this whole week, '
+          'or next week with week "next". Only for training; for meals use '
+          'plan.delete_all_meals.',
       properties: {
         'days': {
           'type': 'array',
           'items': {'type': 'string', 'enum': _days},
-          'description': 'Days to clear. Empty means every day of the week.',
+          'description': 'Days to clear. Empty means every day of the week chosen by "week".',
         },
+        'week': _week,
         'exclude_days': {
           'type': 'array',
           'items': {'type': 'string', 'enum': _days},
@@ -721,8 +735,10 @@ class PlanTools {
     declaration: toolSchema(
       name: 'plan.delete_all_meals',
       description:
-          'Remove every planned meal of the week. Use it only when the user clearly '
-          'wants the whole meal plan cleared; for one meal use plan.delete_meal.',
+          'Remove every planned meal of one week, this one unless "week" says next. '
+          'Use it only when the user clearly wants that meal plan cleared; for one '
+          'meal use plan.delete_meal.',
+      properties: {'week': _week},
     ),
     needsConfirmation: (_) => true,
     preview: (args) => _confirm(

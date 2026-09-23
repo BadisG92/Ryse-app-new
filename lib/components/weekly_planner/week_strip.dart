@@ -61,6 +61,8 @@ class WeekStrip extends StatelessWidget {
     this.onEmptyTap,
     this.onDayTap,
     this.openDay,
+    this.page = 0,
+    this.onPageChanged,
   });
 
   final List<DateTime> days;
@@ -88,6 +90,23 @@ class WeekStrip extends StatelessWidget {
   /// Le jour ouvert, s'il y en a un.
   final int? openDay;
 
+  /// The week shown, when [days] holds more than seven: 0 is this week, 1 the
+  /// next. Every index handed back (slots, taps, anchors) stays an index into
+  /// [days], whatever the page.
+  final int page;
+
+  /// Given, the strip follows a horizontal swipe from one week to the other.
+  final ValueChanged<int>? onPageChanged;
+
+  int get _pages => (days.length + 6) ~/ 7;
+
+  void _swipe(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    if (onPageChanged == null || v.abs() < 200) return;
+    final next = (page + (v < 0 ? 1 : -1)).clamp(0, _pages - 1);
+    if (next != page) onPageChanged!(next);
+  }
+
   bool _isToday(DateTime d) {
     final now = DateTime.now();
     return d.year == now.year && d.month == now.month && d.day == now.day;
@@ -100,11 +119,15 @@ class WeekStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: RyzeColors.surf,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    final current = page.clamp(0, _pages - 1);
+    final first = current * 7;
+    final shown = [for (var i = first; i < first + 7 && i < days.length; i++) i];
+
+    // Une semaine à la fois. La suivante arrive par la droite, la courante
+    // revient par la gauche.
+    final week = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onDayTap == null ? onToggle : null,
@@ -112,13 +135,13 @@ class WeekStrip extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
               child: Row(
                 children: [
-                  for (var i = 0; i < days.length; i++)
+                  for (final i in shown)
                     Expanded(
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: onDayTap == null ? null : () => onDayTap!(i),
                         child: _DayChip(
-                          letter: dayLetters[i],
+                          letter: dayLetters.isEmpty ? '' : dayLetters[i % dayLetters.length],
                           number: days[i].day,
                           slots: slots[i],
                           today: _isToday(days[i]),
@@ -144,7 +167,7 @@ class WeekStrip extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (var i = 0; i < days.length; i++)
+                        for (final i in shown)
                           Expanded(
                             child: _DayTiles(
                               index: i,
@@ -161,23 +184,118 @@ class WeekStrip extends StatelessWidget {
                   )
                 : const SizedBox(width: double.infinity),
           ),
+      ],
+    );
+
+    return Container(
+      color: RyzeColors.surf,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onHorizontalDragEnd: onPageChanged == null ? null : _swipe,
+            child: ClipRect(child: _PageSlide(page: current, child: week)),
+          ),
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onToggle,
             child: SizedBox(
               height: 16,
-              child: Center(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: expanded ? 22 : 32,
-                  height: 4,
-                  decoration: BoxDecoration(color: RyzeColors.idle, borderRadius: BorderRadius.circular(2)),
-                ),
+              child: Stack(
+                children: [
+                  Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      width: expanded ? 22 : 32,
+                      height: 4,
+                      decoration: BoxDecoration(color: RyzeColors.idle, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  // Deux points à droite : il y a une autre semaine à côté.
+                  if (onPageChanged != null && _pages > 1)
+                    Positioned(
+                      right: 12,
+                      top: 0,
+                      bottom: 0,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var p = 0; p < _pages; p++)
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => onPageChanged!(p),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 5,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: p == current ? RyzeColors.ink : RyzeColors.idle,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Slides the week in from the side it comes from, only when the page
+/// changes.
+///
+/// One child at a time, never two: the strip's anchors are GlobalKeys, and a
+/// switcher keeping the old week on screen while the new one arrives would
+/// mount the same key twice on a quick back-and-forth swipe.
+class _PageSlide extends StatefulWidget {
+  const _PageSlide({required this.page, required this.child});
+  final int page;
+  final Widget child;
+
+  @override
+  State<_PageSlide> createState() => _PageSlideState();
+}
+
+class _PageSlideState extends State<_PageSlide> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 300), value: 1);
+  double _side = 1;
+
+  @override
+  void didUpdateWidget(covariant _PageSlide old) {
+    super.didUpdateWidget(old);
+    if (old.page != widget.page) {
+      _side = widget.page > old.page ? 1 : -1;
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        final t = 1 - Curves.easeOutCubic.transform(_c.value);
+        return FractionalTranslation(
+          translation: Offset(_side * t * 0.4, 0),
+          child: Opacity(opacity: 1 - t, child: child),
+        );
+      },
     );
   }
 }

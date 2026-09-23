@@ -10150,6 +10150,11 @@ class AppTranslations {
       'en': 'This week',
       'de': 'Diese Woche',
     },
+    'home_next_week': {
+      'fr': 'Semaine prochaine',
+      'en': 'Next week',
+      'de': 'Nächste Woche',
+    },
     'home_plan': {
       'fr': 'Planifier',
       'en': 'Plan',

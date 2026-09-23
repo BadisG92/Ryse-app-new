@@ -58,6 +58,18 @@ class _HomeWeekState extends State<HomeWeek> {
 
   int? _open;
 
+  /// La semaine montrée : 0 celle-ci, 1 la suivante. On arrive toujours sur
+  /// celle-ci ; la suivante est à un glissement vers la droite.
+  int _page = 0;
+
+  void _turn(int page) {
+    RyzeFeedback.select();
+    setState(() {
+      _page = page;
+      _open = null;
+    });
+  }
+
   /// L'index d'aujourd'hui dans la semaine affichée, ou null s'il n'y est pas.
   int? get _todayIndex {
     final now = DateTime.now();
@@ -76,7 +88,7 @@ class _HomeWeekState extends State<HomeWeek> {
   /// La poignée sous la bande : elle referme, ou ouvre aujourd'hui.
   void _toggle() {
     RyzeFeedback.tap();
-    setState(() => _open = _open == null ? _todayIndex : null);
+    setState(() => _open = _open == null ? (_page == 0 ? _todayIndex : _page * 7) : null);
   }
 
   @override
@@ -84,6 +96,9 @@ class _HomeWeekState extends State<HomeWeek> {
     final lang = widget.lang;
     final letters = 'day_letters'.tr(lang).split(',');
     final open = _open;
+    final dayLetters = letters.length == 7
+        ? [for (final d in widget.days) letters[d.weekday - 1]]
+        : List.filled(widget.days.length, '');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -92,7 +107,7 @@ class _HomeWeekState extends State<HomeWeek> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text('home_this_week'.tr(lang), style: RyzeText.body(context, 3.4, color: RyzeColors.mute)),
+            Text((_page == 0 ? 'home_this_week' : 'home_next_week').tr(lang), style: RyzeText.body(context, 3.4, color: RyzeColors.mute)),
             Semantics(
               button: true,
               child: GestureDetector(
@@ -125,13 +140,15 @@ class _HomeWeekState extends State<HomeWeek> {
             children: [
               WeekStrip(
                 days: widget.days,
-                dayLetters: letters.length == widget.days.length ? letters : List.filled(widget.days.length, ''),
+                dayLetters: dayLetters,
                 slots: widget.slots,
                 expanded: false,
                 onToggle: _toggle,
                 slotKey: _key,
                 onDayTap: _tapDay,
                 openDay: open,
+                page: _page,
+                onPageChanged: widget.days.length > 7 ? _turn : null,
               ),
               AnimatedSize(
                 duration: RyzeDurations.enter,

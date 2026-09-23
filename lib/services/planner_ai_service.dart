@@ -288,17 +288,64 @@ class PlannerAIService {
   /// existants et ne fait plus que déléguer.
   static void setDemoMode(bool value) => RyzeAccess.setDemoMode(value);
 
-  /// First of the seven days the screen is showing. The app passes the Monday
-  /// of the week; the onboarding demo passes today, so its seven days roll.
+  /// First day of the window the screen is showing. The app passes the Monday
+  /// of this week and covers fourteen days, this week and the next; the
+  /// onboarding demo passes today and covers seven, so its days roll.
   /// Everything the planner creates lands inside this window.
   static DateTime? _windowStart;
-  static void setPlanningWindow(DateTime? start) => _windowStart = start == null ? null : DateTime(start.year, start.month, start.day);
+  static int _windowDays = planningWindowDays;
+  static void setPlanningWindow(DateTime? start, {int days = planningWindowDays}) {
+    _windowStart = start == null ? null : DateTime(start.year, start.month, start.day);
+    _windowDays = start == null ? planningWindowDays : days;
+  }
+
   static DateTime get planningWindowStart => _windowStart ?? getCurrentWeekStart();
 
-  /// The date the model meant when it said "saturday": the one day of the
-  /// window that falls on that weekday. Adding an index to a Monday only works
-  /// while the window starts on a Monday.
-  static DateTime? dateForDayName(String day) {
+  /// Last day that can be planned: the Sunday of next week in the app.
+  static DateTime get planningWindowEnd => calendarDay(planningWindowStart, _windowDays - 1);
+
+  /// The day keys the tools speak: the bare name is this week, `next_` the
+  /// week after.
+  static const List<String> dayKeys = [
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+    'next_monday', 'next_tuesday', 'next_wednesday', 'next_thursday', 'next_friday',
+    'next_saturday', 'next_sunday',
+  ];
+
+  /// The key of a date, the inverse of [dateForDayName]: the first seven days
+  /// of the window answer to the bare name, the seven after to `next_`.
+  static String dayKeyFor(DateTime date) {
+    final d = DateTime.utc(date.year, date.month, date.day);
+    final s = planningWindowStart;
+    final offset = d.difference(DateTime.utc(s.year, s.month, s.day)).inDays;
+    final name = dayKeys[date.weekday - 1];
+    return offset >= 7 ? 'next_$name' : name;
+  }
+
+  /// True when the date falls in the second week of the window.
+  static bool isNextWeek(DateTime date) => dayKeyFor(date).startsWith('next_');
+
+  /// The date the model meant when it said "saturday".
+  ///
+  /// A bare name is the next time that day comes round, today included: on a
+  /// Tuesday, "wednesday" is tomorrow and "monday" the coming Monday, not the
+  /// one already gone. That is how people say it; the calendar week only
+  /// matters when they name it, and then the model writes "next_saturday",
+  /// the Saturday of next week.
+  ///
+  /// [upcoming] false keeps the plain reading, the day of this week even when
+  /// it is behind us: marking a planned meal as eaten looks back, not ahead.
+  /// A window that does not hold today (a test, a replay) reads plainly too.
+  static DateTime? dateForDayName(String day, {bool upcoming = true}) {
+    var key = day.toLowerCase().trim();
+    var shift = 0;
+    for (final prefix in const ['next_', 'next ']) {
+      if (key.startsWith(prefix)) {
+        key = key.substring(prefix.length).trim();
+        shift = 7;
+        break;
+      }
+    }
     const names = {
       'monday': 1, 'lundi': 1, 'montag': 1,
       'tuesday': 2, 'mardi': 2, 'dienstag': 2,
@@ -308,12 +355,19 @@ class PlannerAIService {
       'saturday': 6, 'samedi': 6, 'samstag': 6,
       'sunday': 7, 'dimanche': 7, 'sonntag': 7,
     };
-    final weekday = names[day.toLowerCase().trim()];
+    final weekday = names[key];
     if (weekday == null) return null;
     final start = planningWindowStart;
     for (var i = 0; i < 7; i++) {
-      final date = start.add(Duration(days: i));
-      if (date.weekday == weekday) return date;
+      final date = calendarDay(start, i);
+      if (date.weekday != weekday) continue;
+      if (shift == 0 && upcoming) {
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final holdsToday = !today.isBefore(start) && today.isBefore(calendarDay(start, 7));
+        if (holdsToday && date.isBefore(today)) return calendarDay(date, 7);
+      }
+      return calendarDay(date, shift);
     }
     return null;
   }
@@ -403,8 +457,6 @@ class PlannerAIService {
   static DateTime? parseDay(String dayStr) => _parseSingleDay(dayStr);
 
   static DateTime? _parseSingleDay(String dayStr) {
-    final weekStart = planningWindowStart;
-
     // « aujourd'hui » et « demain » d'abord.
     //
     // Le schéma n'accepte que les sept jours, mais quand l'utilisateur dit
@@ -419,22 +471,10 @@ class PlannerAIService {
     final decalage = relatifs[dayStr.toLowerCase().trim()];
     if (decalage != null) {
       final now = DateTime.now();
-      return DateTime(now.year, now.month, now.day).add(Duration(days: decalage));
+      return DateTime(now.year, now.month, now.day + decalage);
     }
 
-    final dayMap = {
-      'monday': 0, 'lundi': 0, 'montag': 0,
-      'tuesday': 1, 'mardi': 1, 'dienstag': 1,
-      'wednesday': 2, 'mercredi': 2, 'mittwoch': 2,
-      'thursday': 3, 'jeudi': 3, 'donnerstag': 3,
-      'friday': 4, 'vendredi': 4, 'freitag': 4,
-      'saturday': 5, 'samedi': 5, 'samstag': 5,
-      'sunday': 6, 'dimanche': 6, 'sonntag': 6,
-    };
-
-    final offset = dayMap[dayStr.toLowerCase()];
-    if (offset == null) return null;
-    return dateForDayName(dayStr) ?? weekStart.add(Duration(days: offset));
+    return dateForDayName(dayStr);
   }
 
   /// Parser un type de repas
@@ -565,6 +605,18 @@ class PlannerAIService {
       };
     }
 
+    // Ni au-delà du dimanche de la semaine prochaine : le calendrier ne va
+    // pas plus loin, une séance posée là n'apparaîtrait nulle part.
+    final tropLoin = _beyondWindowIn(args);
+    if (tropLoin != null) {
+      return {
+        'success': false,
+        'message': _getMessage(langCode, 'day_beyond_window')
+            .replaceAll('{day}', _formatDayName(tropLoin, langCode)),
+        'is_beyond_window': true,
+      };
+    }
+
     final out = await _execute(functionName, args, langCode);
 
     // Tout ce qui a changé le plan le fait savoir.
@@ -603,6 +655,36 @@ class PlannerAIService {
       if (DateTime(jour.year, jour.month, jour.day).isBefore(today)) return jour;
     }
     return null;
+  }
+
+  /// Le jour visé, s'il tombe après la fin de la fenêtre.
+  ///
+  /// Toutes les clés de jour comptent ici, listes comprises : une séance
+  /// déplacée ou effacée au-delà du dernier dimanche ne se verrait pas.
+  static DateTime? _beyondWindowIn(Map<String, dynamic> args) {
+    final fin = planningWindowEnd;
+    final brutes = <String>[
+      for (final cle in const ['day', 'to_day', 'new_day', 'current_day', 'from_day'])
+        if (args[cle] is String) args[cle] as String,
+      for (final cle in const ['days', 'exclude_days'])
+        if (args[cle] is List) ...(args[cle] as List).map((d) => '$d'),
+    ];
+    for (final brut in brutes) {
+      if (brut.trim().isEmpty) continue;
+      final jour = _parseSingleDay(brut);
+      if (jour != null && jour.isAfter(fin)) return jour;
+    }
+    return null;
+  }
+
+  /// Les dates d'une semaine de la fenêtre : `this` ou `next`.
+  ///
+  /// Des dates et non des noms : un nom seul désigne le prochain jour de ce
+  /// nom, et « vider cette semaine » un mercredi aurait emporté le lundi et le
+  /// mardi de la semaine suivante.
+  static List<DateTime> weekDates(String? week) {
+    final first = week == 'next' ? 7 : 0;
+    return [for (var i = first; i < first + 7; i++) calendarDay(planningWindowStart, i)];
   }
 
   static Future<Map<String, dynamic>> _execute(
@@ -750,8 +832,8 @@ class PlannerAIService {
         if (day == null) return {'success': false, 'message': _getMessage(langCode, 'day_not_understood')};
 
         // Trouver tous les workouts et cardios de ce jour
-        final allWorkoutsWeek = await WeeklyPlannerService.getAllWorkoutsThisWeek();
-        final allCardiosWeek = await WeeklyPlannerService.getAllCardioThisWeek();
+        final allWorkoutsWeek = await WeeklyPlannerService.getAllWorkoutsThisWeek(days: planningWindowDays);
+        final allCardiosWeek = await WeeklyPlannerService.getAllCardioThisWeek(days: planningWindowDays);
 
         // Filtrer par jour et statut "planned"
         final plannedWorkouts = allWorkoutsWeek.where((w) =>
@@ -810,31 +892,30 @@ class PlannerAIService {
         final activityNames = activityNamesArg?.map((n) => n.toString().toLowerCase()).toList() ?? [];
 
         // Déterminer les jours cibles
-        final allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        List<String> targetDays;
-        if (days.isEmpty) {
-          // Tous les jours sauf les exclus
-          targetDays = allDays.where((d) => !excludeDays.contains(d)).toList();
-        } else {
-          // Jours spécifiés sauf les exclus
-          targetDays = days.where((d) => !excludeDays.contains(d)).toList();
-        }
+        // Sans jour nommé, c'est une semaine entière : celle-ci, ou la
+        // suivante quand le modèle le dit. Tout se compare en dates.
+        final excludedDates = excludeDays.map(_parseSingleDay).whereType<DateTime>().toList();
+        final baseDates = days.isEmpty
+            ? weekDates(args['week'] as String?)
+            : days.map(_parseSingleDay).whereType<DateTime>().toList();
+        final targetDates = [
+          for (final d in baseDates)
+            if (!excludedDates.any((e) => _isSameDay(e, d))) d,
+        ];
 
         // Déterminer les types à supprimer
         final deleteWorkouts = sessionTypes.isEmpty || sessionTypes.contains('workout');
         final deleteCardios = sessionTypes.isEmpty || sessionTypes.contains('cardio');
 
         // Récupérer toutes les séances de la semaine
-        final allWeekWorkouts = await WeeklyPlannerService.getAllWorkoutsThisWeek();
-        final allWeekCardios = await WeeklyPlannerService.getAllCardioThisWeek();
+        final allWeekWorkouts = await WeeklyPlannerService.getAllWorkoutsThisWeek(days: planningWindowDays);
+        final allWeekCardios = await WeeklyPlannerService.getAllCardioThisWeek(days: planningWindowDays);
 
         // Collecter toutes les séances à supprimer
         List<PlannedWorkout> workoutsToDelete = [];
         List<PlannedActivity> cardiosToDelete = [];
 
-        for (final dayStr in targetDays) {
-          final dayDate = _parseSingleDay(dayStr);
-          if (dayDate == null) continue;
+        for (final dayDate in targetDates) {
 
           if (deleteWorkouts) {
             for (final w in allWeekWorkouts) {
@@ -1102,8 +1183,8 @@ class PlannerAIService {
           debugPrint('🔍 modify_workout: Searching by name "$currentWorkoutName"');
           // Chercher dans toute la semaine
           final weekStart = planningWindowStart;
-          for (int i = 0; i < 7; i++) {
-            final day = weekStart.add(Duration(days: i));
+          for (int i = 0; i < _windowDays; i++) {
+            final day = calendarDay(weekStart, i);
             final workout = await WeeklyPlannerService.findPlannedWorkoutByNameForDate(
               day,
               workoutName: currentWorkoutName,
@@ -1144,8 +1225,8 @@ class PlannerAIService {
           // Chercher séance passée par nom si spécifié
           if (currentWorkoutName != null && currentWorkoutName.isNotEmpty) {
             final weekStart = planningWindowStart;
-            for (int i = 0; i < 7; i++) {
-              final day = weekStart.add(Duration(days: i));
+            for (int i = 0; i < _windowDays; i++) {
+              final day = calendarDay(weekStart, i);
               final pastWorkout = await WeeklyPlannerService.findPlannedWorkoutByNameForDate(
                 day,
                 workoutName: currentWorkoutName,
@@ -1651,7 +1732,7 @@ class PlannerAIService {
               final mealType = _parseMealType(mealTypeStr);
               if (date != null) {
                 final startOfDay = DateTime(date.year, date.month, date.day);
-                final endOfDay = startOfDay.add(const Duration(days: 1));
+                final endOfDay = calendarDay(startOfDay, 1);
                 await Supabase.instance.client
                     .from('planned_activities')
                     .delete()
@@ -1699,7 +1780,7 @@ class PlannerAIService {
         return await _executeModifyMeal(args, langCode);
 
       case 'delete_all_meals':
-        return await _executeDeleteAllMeals(langCode);
+        return await _executeDeleteAllMeals(langCode, nextWeek: args['week'] == 'next');
 
       default:
         return {'success': false, 'message': _getErrorMessage(langCode, 'unknown_intent')};
@@ -1801,7 +1882,7 @@ class PlannerAIService {
 
       // Trouver et supprimer le repas
       final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = startOfDay.add(const Duration(days: 1));
+      final endOfDay = calendarDay(startOfDay, 1);
 
       // On relit avant d'effacer, pour choisir quoi effacer.
       //
@@ -1907,7 +1988,7 @@ class PlannerAIService {
 
       // D'abord, trouver et supprimer l'ancien repas
       final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = startOfDay.add(const Duration(days: 1));
+      final endOfDay = calendarDay(startOfDay, 1);
 
       // Récupérer l'ancien repas pour le stocker dans _lastAction (pour undo)
       //
@@ -1989,7 +2070,7 @@ class PlannerAIService {
   }
 
   /// Supprimer tous les repas planifiés de la semaine
-  static Future<Map<String, dynamic>> _executeDeleteAllMeals(String langCode) async {
+  static Future<Map<String, dynamic>> _executeDeleteAllMeals(String langCode, {bool nextWeek = false}) async {
     try {
       final user = AuthService().currentUser;
       if (user == null) {
@@ -2000,8 +2081,10 @@ class PlannerAIService {
       // Ce calcul repartait de la date du jour : pendant la démo de
       // l'onboarding, qui plante sa fenêtre ailleurs, « supprime tous mes
       // repas » visait une autre semaine que celle sous les yeux.
-      final normalizedStart = planningWindowStart;
-      final weekEnd = normalizedStart.add(const Duration(days: 7));
+      //
+      // Une semaine à la fois : celle-ci, ou la suivante quand c'est dit.
+      final normalizedStart = calendarDay(planningWindowStart, nextWeek ? 7 : 0);
+      final weekEnd = calendarDay(normalizedStart, 7);
 
       // Supprimer tous les repas de la semaine (breakfast, lunch, dinner, snack)
       final mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -2016,11 +2099,17 @@ class PlannerAIService {
             .lt('planned_date', weekEnd.toIso8601String().split('T')[0]);
       }
 
-      final msg = langCode == 'fr'
-          ? '✅ Tous les repas de la semaine ont été supprimés'
-          : langCode == 'de'
-              ? '✅ Alle Mahlzeiten dieser Woche wurden gelöscht'
-              : '✅ All meals for this week have been deleted';
+      final msg = nextWeek
+          ? (langCode == 'fr'
+              ? '✅ Tous les repas de la semaine prochaine ont été supprimés'
+              : langCode == 'de'
+                  ? '✅ Alle Mahlzeiten der nächsten Woche wurden gelöscht'
+                  : '✅ All meals for next week have been deleted')
+          : (langCode == 'fr'
+              ? '✅ Tous les repas de la semaine ont été supprimés'
+              : langCode == 'de'
+                  ? '✅ Alle Mahlzeiten dieser Woche wurden gelöscht'
+                  : '✅ All meals for this week have been deleted');
 
       return {'success': true, 'message': msg};
     } catch (e) {
@@ -2052,6 +2141,13 @@ class PlannerAIService {
 
   /// Traduit le nom du jour en fonction de la langue
   static String _translateDayName(String dayKey, String langCode) {
+    // Par la date : un nom seul peut viser la semaine prochaine, et le
+    // message doit alors le dire.
+    final date = dateForDayName(dayKey);
+    if (date != null) {
+      final name = _formatDayName(date, langCode);
+      return langCode == 'fr' ? name.toLowerCase() : name;
+    }
     final dayNames = {
       'monday': {'fr': 'lundi', 'en': 'Monday', 'de': 'Montag'},
       'tuesday': {'fr': 'mardi', 'en': 'Tuesday', 'de': 'Dienstag'},
@@ -2205,13 +2301,15 @@ class PlannerAIService {
       'de': ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],
     };
     final days = dayNames[langCode] ?? dayNames['en']!;
-    return days[date.weekday - 1];
+    return isNextWeek(date) ? '${days[date.weekday - 1]} ${date.day}' : days[date.weekday - 1];
   }
 
   /// Convertir une date en string de jour pour les tools (monday, tuesday, etc.)
+  ///
+  /// La semaine prochaine garde son `next_` : sans lui, une séance convertie
+  /// reculait de sept jours.
   static String _getDayString(DateTime date) {
-    const dayStrings = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    return dayStrings[date.weekday - 1];
+    return dayKeyFor(date);
   }
 
   /// Les seules contraintes physiques, pour le générateur de séance.
@@ -2250,7 +2348,9 @@ class PlannerAIService {
     };
 
     final days = dayNames[langCode] ?? dayNames['en']!;
-    return days[date.weekday - 1];
+    // La semaine prochaine porte sa date : « Lundi 28 », pour ne pas la
+    // confondre avec le lundi de cette semaine.
+    return isNextWeek(date) ? '${days[date.weekday - 1]} ${date.day}' : days[date.weekday - 1];
   }
 
   /// « Jeudi - Déjeuner », dans la langue du compte.
@@ -2261,7 +2361,7 @@ class PlannerAIService {
   /// Petit-déjeuner added to the plan ».
   static String _placeLabel(String langCode, DateTime date, PlannedActivityType type) {
     final locale = switch (langCode) { 'fr' => 'fr_FR', 'de' => 'de_DE', _ => 'en_US' };
-    final jour = DateFormat('EEEE', locale).format(date);
+    final jour = DateFormat(isNextWeek(date) ? 'EEEE d' : 'EEEE', locale).format(date);
     final moment = 'meal_name_${type.value}'.tr(langCode);
     return '${jour[0].toUpperCase()}${jour.substring(1)} - $moment';
   }
@@ -2272,6 +2372,11 @@ class PlannerAIService {
         'fr': "{day} est déjà passé. Je peux planifier à partir d'aujourd'hui.",
         'en': '{day} is already behind us. I can plan from today onwards.',
         'de': '{day} ist schon vorbei. Ich kann ab heute planen.',
+      },
+      'day_beyond_window': {
+        'fr': "{day}, c'est trop loin. Je planifie jusqu'au dimanche de la semaine prochaine.",
+        'en': "{day} is too far ahead. I plan up to next week's Sunday.",
+        'de': '{day} ist zu weit weg. Ich plane bis zum Sonntag nächster Woche.',
       },
       'day_not_understood': {
         'fr': "Je n'ai pas compris de quel jour tu parles. Dis-le-moi autrement ?",

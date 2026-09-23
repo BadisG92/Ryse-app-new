@@ -25,7 +25,9 @@ class SportTools {
       final now = DateTime.now();
       return DateTime(now.year, now.month, now.day);
     }
-    return PlannerAIService.dateForDayName(day.trim().toLowerCase());
+    // La semaine en cours telle quelle : cocher le déjeuner prévu lundi, un
+    // mercredi, regarde en arrière.
+    return PlannerAIService.dateForDayName(day.trim().toLowerCase(), upcoming: false);
   }
 
   /// Lancer la séance prévue.

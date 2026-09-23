@@ -25,11 +25,24 @@ void main() {
     test('un mercredi, il reste de mercredi à dimanche', () {
       // Le 9 septembre 2026 est un mercredi : celui de la capture.
       final out = RyzeContext.renderNow(const PersonaFr(), at: DateTime(2026, 9, 9, 23, 2));
+      // Ce qui reste de cette semaine-ci : la phrase sur la suivante nomme
+      // son lundi, et elle vient après.
+      final cetteSemaine = out.split('La semaine prochaine').first;
 
-      expect(out, contains('mercredi'));
-      expect(out, contains('dimanche'));
-      expect(out, isNot(contains('lundi')));
-      expect(out, isNot(contains('mardi')));
+      expect(cetteSemaine, contains('mercredi'));
+      expect(cetteSemaine, contains('dimanche'));
+      expect(cetteSemaine, isNot(contains('lundi')));
+      expect(cetteSemaine, isNot(contains('mardi')));
+    });
+
+    test('la semaine suivante est ouverte, jusqu\'à son dimanche', () {
+      final out = RyzeContext.renderNow(const PersonaFr(), at: DateTime(2026, 9, 9));
+      expect(out, contains('du lundi 14 septembre au dimanche 20 septembre'));
+      expect(out, contains('next_monday'));
+      expect(out, contains('Rien au-delà'));
+
+      final en = RyzeContext.renderNow(const PersonaEn(), at: DateTime(2026, 9, 13));
+      expect(en, contains('Monday 14 September to Sunday 20 September'));
     });
 
     test('et il est dit que les autres sont passés', () {

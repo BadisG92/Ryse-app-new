@@ -25,8 +25,8 @@ import 'ryze_tools/ryze_tools.dart';
 /// c'est tout le reste. Les deux surfaces ne se distinguent plus par ce
 /// qu'elles savent faire, mais par ce qu'elles montrent.
 class RyzePlannerSession {
-  RyzePlannerSession({required this.mode, required this.weekStart}) {
-    PlannerAIService.setPlanningWindow(weekStart);
+  RyzePlannerSession({required this.mode, required this.weekStart, this.days = planningWindowDays}) {
+    PlannerAIService.setPlanningWindow(weekStart, days: days);
     _agent = RyzeAgent(config: RyzeGenerationConfig.planner, surface: RyzeSurface.planner)
       ..systemInstructionBuilder = _buildSystemInstruction
       ..tools = ryzeTools.declarationsFor(RyzeSurface.planner);
@@ -37,6 +37,9 @@ class RyzePlannerSession {
 
   /// Le premier des sept jours affichés.
   final DateTime weekStart;
+
+  /// Jours couverts depuis [weekStart] : 14 dans l'app, 7 dans la démo.
+  final int days;
 
   late final RyzeAgent _agent;
 
@@ -213,7 +216,7 @@ ${planningMeals ? '''
 - Ask for the muscle group and the length when they are missing; choose the days yourself when the user does not care.
 - Space the same muscle group by at least one day.
 - Only running, cycling, walking and HIIT exist as cardio. Anything else, say so and offer the closest.'''}
-- Only the available days below. The past cannot be planned.''';
+- Only the available days below, with the key written before each date. The past cannot be planned, nor anything after the last day listed.''';
   }
 
   /// Ce qu'il reste à remplir, et les cibles par repas.
@@ -221,22 +224,26 @@ ${planningMeals ? '''
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    const names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    final tomorrow = today.add(const Duration(days: 1));
+    final tomorrow = calendarDay(today, 1);
 
-    // Chaque jour porte sa date et dit s'il est aujourd'hui ou demain : sans
-    // ça, « une séance demain » se devine, et se devine mal.
-    final available = <String>[];
-    for (var i = 0; i < 7; i++) {
-      final day = weekStart.add(Duration(days: i));
-      final d = DateTime(day.year, day.month, day.day);
+    // Chaque jour porte sa clé, sa date, et dit s'il est aujourd'hui ou
+    // demain : sans ça, « une séance demain » se devine, et se devine mal.
+    // La semaine prochaine a sa propre ligne, sous ses clés `next_`.
+    final thisWeek = <String>[];
+    final nextWeek = <String>[];
+    for (var i = 0; i < days; i++) {
+      final d = calendarDay(weekStart, i);
       if (d.isBefore(today)) continue;
 
       final marque = d == today ? ' (today)' : d == tomorrow ? ' (tomorrow)' : '';
-      available.add('${names[day.weekday - 1]} ${d.day}/${d.month}$marque');
+      final key = PlannerAIService.dayKeyFor(d);
+      (key.startsWith('next_') ? nextWeek : thisWeek).add('$key ${d.day}/${d.month}$marque');
     }
 
-    final lines = <String>['AVAILABLE DAYS: ${available.join(', ')}'];
+    final lines = <String>[
+      'AVAILABLE DAYS THIS WEEK: ${thisWeek.join(', ')}',
+      if (nextWeek.isNotEmpty) 'AVAILABLE DAYS NEXT WEEK: ${nextWeek.join(', ')}',
+    ];
 
     if (mode == 'meals') {
       final targets = GlobalStateManager.instance;

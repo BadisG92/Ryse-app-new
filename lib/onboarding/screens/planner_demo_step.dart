@@ -26,7 +26,7 @@ class _PlannerDemoStepState extends State<PlannerDemoStep> {
   /// and the disagreement cost more than the empty days it saved.
   DateTime get _monday {
     final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    return DateTime(now.year, now.month, now.day - (now.weekday - 1));
   }
 
   WeeklyPlannerData _week() => WeeklyPlannerData.fromLists(

@@ -13,6 +13,12 @@ void main() {
   // Une semaine du lundi 7 au dimanche 13 septembre 2026.
   final semaine = [for (var i = 0; i < 7; i++) DateTime(2026, 9, 7 + i)];
 
+  // La fenêtre posée sur cette semaine-là : sans elle, les noms de jours se
+  // résolvaient dans la semaine du jour où le test tourne, et « tout sauf
+  // mercredi » n'épargnait rien dès qu'on changeait de semaine.
+  setUp(() => PlannerAIService.setPlanningWindow(DateTime(2026, 9, 7)));
+  tearDown(() => PlannerAIService.setPlanningWindow(null));
+
   List<int> joursDe(Map<String, dynamic> args) =>
       DeletePreview.daysOf(args, semaine).map((d) => d.day).toList();
 

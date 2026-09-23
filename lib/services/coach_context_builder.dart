@@ -624,9 +624,10 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       // Use weekStart from weekData
       final weekStart = weekData.weekStart;
 
-      for (int i = 0; i < 7; i++) {
-        final day = weekStart.add(Duration(days: i));
-        final dayDate = DateTime(day.year, day.month, day.day);
+      // Cette semaine et la suivante : le coach planifie sur les deux.
+      for (int i = 0; i < weekData.dayCount; i++) {
+        final day = calendarDay(weekStart, i);
+        final dayDate = day;
         final isToday = dayDate.isAtSameMomentAs(today);
         final isPast = dayDate.isBefore(today);
 
@@ -650,7 +651,9 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
             ? '📍 ${_plannerWord('today', lang).toUpperCase()} ($dayName)'
             : isPast
                 ? '$dayName ${day.day}/${day.month} (${_plannerWord('past', lang)})'
-                : '$dayName ${day.day}/${day.month}';
+                : i >= 7
+                    ? '$dayName ${day.day}/${day.month} [next_${const ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][day.weekday - 1]}]'
+                    : '$dayName ${day.day}/${day.month}';
 
         buffer.writeln(dayLabel);
 

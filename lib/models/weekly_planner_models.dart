@@ -723,17 +723,20 @@ class WeeklyPlannerData {
     required List<PlannedWorkout> workouts,
     Map<DateTime, List<JournalFoodEntry>>? journalEntriesByDate,
     Map<DateTime, Set<String>>? eatenMealTypesByDate,
+
+    /// Nombre de jours couverts depuis [weekStart] : 14 pour la fenêtre du
+    /// planner (cette semaine et la suivante), 7 pour une semaine seule.
+    int days = planningWindowDays,
   }) {
-    final weekEnd = weekStart.add(const Duration(days: 6));
+    final weekEnd = calendarDay(weekStart, days - 1);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     // Créer les plans par jour
     final Map<DateTime, DayPlanData> dayPlans = {};
 
-    for (int i = 0; i < 7; i++) {
-      final date = weekStart.add(Duration(days: i));
-      final normalizedDate = DateTime(date.year, date.month, date.day);
+    for (int i = 0; i < days; i++) {
+      final normalizedDate = calendarDay(weekStart, i);
 
       final dayActivities = activities.where((a) {
         final actDate = DateTime(a.plannedDate.year, a.plannedDate.month, a.plannedDate.day);
@@ -804,23 +807,55 @@ class WeeklyPlannerData {
     return totalCompleted / totalItems;
   }
 
-  /// Liste des jours de la semaine
+  /// Nombre de jours couverts (7 ou 14)
+  int get dayCount =>
+      DateTime.utc(weekEnd.year, weekEnd.month, weekEnd.day)
+          .difference(DateTime.utc(weekStart.year, weekStart.month, weekStart.day))
+          .inDays +
+      1;
+
+  /// Liste des jours couverts, du lundi au dernier dimanche
   List<DateTime> get weekDays {
-    return List.generate(7, (i) => weekStart.add(Duration(days: i)));
+    return List.generate(dayCount, (i) => calendarDay(weekStart, i));
   }
 }
 
+/// Jours que le planner couvre : le reste de cette semaine et toute la
+/// suivante, jusqu'au dimanche.
+const int planningWindowDays = 14;
+
+/// Le jour [offset] jours après [start], à minuit.
+///
+/// Par le calendrier et pas par durée : le passage à l'heure d'hiver fait un
+/// jour de 25 heures, et `add(Duration(days: 7))` depuis un lundi à minuit
+/// tomberait sur le dimanche à 23 h.
+DateTime calendarDay(DateTime start, int offset) =>
+    DateTime(start.year, start.month, start.day + offset);
+
+/// Le dimanche de la semaine prochaine : au-delà, rien ne se planifie.
+DateTime planningWindowEnd() => calendarDay(getCurrentWeekStart(), planningWindowDays - 1);
+
+/// Vrai si la date tombe entre le lundi de cette semaine et le dimanche de
+/// la suivante. Les jours passés sont dedans : c'est [isDateEditable] qui
+/// les ferme.
+bool isInPlanningWindow(DateTime date) {
+  final normalizedDate = DateTime(date.year, date.month, date.day);
+  return !normalizedDate.isBefore(getCurrentWeekStart()) && !normalizedDate.isAfter(planningWindowEnd());
+}
+
 /// Utilitaire pour obtenir le début de la semaine courante (lundi)
+///
+/// Par le calendrier : soustraire six fois vingt-quatre heures un dimanche
+/// soir de changement d'heure retombait sur le mardi.
 DateTime getCurrentWeekStart() {
   final now = DateTime.now();
-  final weekStart = now.subtract(Duration(days: now.weekday - 1));
-  return DateTime(weekStart.year, weekStart.month, weekStart.day);
+  return DateTime(now.year, now.month, now.day - (now.weekday - 1));
 }
 
 /// Utilitaire pour vérifier si une date est dans la semaine courante
 bool isInCurrentWeek(DateTime date) {
   final weekStart = getCurrentWeekStart();
-  final weekEnd = weekStart.add(const Duration(days: 6));
+  final weekEnd = calendarDay(weekStart, 6);
   final normalizedDate = DateTime(date.year, date.month, date.day);
   final result = !normalizedDate.isBefore(weekStart) && !normalizedDate.isAfter(weekEnd);
   // Debug: uncomment to trace

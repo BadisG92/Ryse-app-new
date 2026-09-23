@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ryze_app/ai/ryze_persona.dart';
 import 'package:ryze_app/ai/ryze_tools/ryze_tools.dart';
+import 'package:ryze_app/ai/ryze_tools/plan_tools.dart';
+import 'package:ryze_app/services/planner_ai_service.dart';
 
 /// Ce que Ryze peut faire, et ce qu'il doit demander avant de le faire.
 ///
@@ -266,13 +268,20 @@ void main() {
       expect(requis('plan.mark_meal_eaten'), contains('meal_type'));
     });
 
-    test('un jour est toujours l\'un des sept', () {
+    // Ce qui écrit dans le plan voit deux semaines, cette semaine et la
+    // suivante sous `next_` ; le reste ne parle que de celle-ci.
+    test('un jour est l\'un des sept, ou des quatorze pour écrire le plan', () {
+      final ecrit = PlanTools.all.map((t) => t.name).toSet();
       for (final t in registry.all) {
         final p = (t.declaration['parameters'] as Map)['properties'] as Map;
         for (final entry in p.entries) {
           if (entry.key == 'day') {
             final jours = List<String>.from((entry.value as Map)['enum'] as List);
-            expect(jours, hasLength(7), reason: '${t.name}.day');
+            if (ecrit.contains(t.name)) {
+              expect(jours, PlannerAIService.dayKeys, reason: '${t.name}.day');
+            } else {
+              expect(jours, hasLength(7), reason: '${t.name}.day');
+            }
           }
         }
       }

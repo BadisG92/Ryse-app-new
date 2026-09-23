@@ -224,25 +224,42 @@ class RyzeContext {
     // La semaine se termine dimanche : ce qui reste va d'aujourd'hui à là.
     final restants = <String>[
       for (var i = 0; i <= DateTime.sunday - now.weekday; i++)
-        fmt.format(now.add(Duration(days: i))),
+        fmt.format(DateTime(now.year, now.month, now.day + i)),
     ];
+
+    // La semaine prochaine est ouverte aussi, jusqu'à son dimanche, et pas
+    // plus loin : c'est ce que le calendrier montre.
+    final dateFmt = DateFormat('d MMMM', locale);
+    final lundi = DateTime(now.year, now.month, now.day + DateTime.sunday - now.weekday + 1);
+    final dimanche = DateTime(lundi.year, lundi.month, lundi.day + 6);
+    final suivante = switch (s.lang) {
+      'fr' => ' La semaine prochaine, du lundi ${dateFmt.format(lundi)} au dimanche '
+          '${dateFmt.format(dimanche)}, se planifie aussi (jours next_monday à '
+          'next_sunday). Rien au-delà.',
+      'de' => ' Die nächste Woche, von Montag ${dateFmt.format(lundi)} bis Sonntag '
+          '${dateFmt.format(dimanche)}, lässt sich auch planen (Tage next_monday bis '
+          'next_sunday). Nichts darüber hinaus.',
+      _ => ' Next week, Monday ${dateFmt.format(lundi)} to Sunday '
+          '${dateFmt.format(dimanche)}, can be planned too (days next_monday to '
+          'next_sunday). Nothing beyond it.',
+    };
 
     if (restants.length <= 1) {
       return switch (s.lang) {
-        'fr' => 'Cette semaine, il ne reste qu\'aujourd\'hui.',
-        'de' => 'Diese Woche bleibt nur noch heute.',
-        _ => 'Only today is left this week.',
+        'fr' => 'Cette semaine, il ne reste qu\'aujourd\'hui.$suivante',
+        'de' => 'Diese Woche bleibt nur noch heute.$suivante',
+        _ => 'Only today is left this week.$suivante',
       };
     }
 
     final liste = restants.join(', ');
     return switch (s.lang) {
       'fr' => 'Il reste $liste. Les autres jours de la semaine sont passés : '
-          'n\'y place rien.',
+          'n\'y place rien.$suivante',
       'de' => 'Es bleiben $liste. Die anderen Tage der Woche sind vorbei: '
-          'plane nichts darauf.',
+          'plane nichts darauf.$suivante',
       _ => '$liste are left. The other days of this week are behind us: '
-          'do not plan anything on them.',
+          'do not plan anything on them.$suivante',
     };
   }
 

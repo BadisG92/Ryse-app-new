@@ -22,7 +22,8 @@ class WeeklyPlannerService {
   // FETCH DATA
   // =====================================================
 
-  /// Récupérer les données du planner pour la semaine courante
+  /// Récupérer les données du planner : cette semaine et la suivante,
+  /// du lundi au dimanche d'après.
   static Future<WeeklyPlannerData> getWeekData({bool forceRefresh = false}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
@@ -47,9 +48,9 @@ class WeeklyPlannerService {
 
     try {
       final weekStart = getCurrentWeekStart();
-      final weekEnd = weekStart.add(const Duration(days: 6));
+      final weekEnd = planningWindowEnd();
 
-      debugPrint('📅 WeeklyPlannerService: Fetching week ${weekStart.toIso8601String()} to ${weekEnd.toIso8601String()}');
+      debugPrint('📅 WeeklyPlannerService: Fetching window ${weekStart.toIso8601String()} to ${weekEnd.toIso8601String()}');
 
       // Fetch activities, workouts et food_entries en parallèle
       final results = await Future.wait([
@@ -243,9 +244,9 @@ class WeeklyPlannerService {
       return null;
     }
 
-    // Vérifier que la date est dans la semaine courante
-    if (!isInCurrentWeek(plannedDate)) {
-      debugPrint('❌ addPlannedActivity: Date not in current week');
+    // Vérifier que la date est dans la fenêtre : cette semaine ou la suivante
+    if (!isInPlanningWindow(plannedDate)) {
+      debugPrint('❌ addPlannedActivity: Date outside the planning window');
       return null;
     }
 
@@ -295,9 +296,9 @@ class WeeklyPlannerService {
       return null;
     }
 
-    // Vérifier que la date est dans la semaine courante et pas dans le passé
-    if (!isInCurrentWeek(plannedDate)) {
-      debugPrint('❌ addPlannedWorkout: Date not in current week');
+    // Vérifier que la date est dans la fenêtre et pas dans le passé
+    if (!isInPlanningWindow(plannedDate)) {
+      debugPrint('❌ addPlannedWorkout: Date outside the planning window');
       return null;
     }
 
@@ -543,8 +544,8 @@ class WeeklyPlannerService {
   /// Déplacer un workout vers un autre jour (uniquement vers un jour futur)
   static Future<bool> movePlannedWorkout(String workoutId, DateTime newDate) async {
     // Vérifier que la nouvelle date est dans la semaine courante et pas dans le passé
-    if (!isInCurrentWeek(newDate)) {
-      debugPrint('❌ movePlannedWorkout: New date not in current week');
+    if (!isInPlanningWindow(newDate)) {
+      debugPrint('❌ movePlannedWorkout: New date outside the planning window');
       return false;
     }
 
@@ -590,8 +591,8 @@ class WeeklyPlannerService {
 
   /// Déplacer une activité cardio vers un autre jour
   static Future<bool> movePlannedCardio(String activityId, DateTime newDate) async {
-    if (!isInCurrentWeek(newDate)) {
-      debugPrint('❌ movePlannedCardio: New date not in current week');
+    if (!isInPlanningWindow(newDate)) {
+      debugPrint('❌ movePlannedCardio: New date outside the planning window');
       return false;
     }
 
@@ -766,13 +767,13 @@ class WeeklyPlannerService {
   }
 
   /// Supprimer TOUS les workouts planifiés de la semaine en cours
-  static Future<bool> deleteAllWorkoutsThisWeek() async {
+  static Future<bool> deleteAllWorkoutsThisWeek({int days = 7}) async {
     try {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) return false;
 
       final weekStart = getCurrentWeekStart();
-      final weekEnd = weekStart.add(const Duration(days: 7));
+      final weekEnd = calendarDay(weekStart, days);
 
       final weekStartStr = weekStart.toIso8601String().split('T')[0];
       final weekEndStr = weekEnd.toIso8601String().split('T')[0];
@@ -799,13 +800,13 @@ class WeeklyPlannerService {
   }
 
   /// Supprimer toutes les séances CARDIO de la semaine courante
-  static Future<bool> deleteAllCardioThisWeek() async {
+  static Future<bool> deleteAllCardioThisWeek({int days = 7}) async {
     try {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) return false;
 
       final weekStart = getCurrentWeekStart();
-      final weekEnd = weekStart.add(const Duration(days: 7));
+      final weekEnd = calendarDay(weekStart, days);
 
       final weekStartStr = weekStart.toIso8601String().split('T')[0];
       final weekEndStr = weekEnd.toIso8601String().split('T')[0];
@@ -836,14 +837,15 @@ class WeeklyPlannerService {
   // GET ALL (pour undo)
   // =====================================================
 
-  /// Récupérer tous les workouts de la semaine courante
-  static Future<List<PlannedWorkout>> getAllWorkoutsThisWeek() async {
+  /// Récupérer tous les workouts de la semaine courante, ou des [days]
+  /// jours depuis son lundi (14 : la fenêtre entière).
+  static Future<List<PlannedWorkout>> getAllWorkoutsThisWeek({int days = 7}) async {
     try {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) return [];
 
       final weekStart = getCurrentWeekStart();
-      final weekEnd = weekStart.add(const Duration(days: 7));
+      final weekEnd = calendarDay(weekStart, days);
 
       final weekStartStr = weekStart.toIso8601String().split('T')[0];
       final weekEndStr = weekEnd.toIso8601String().split('T')[0];
@@ -864,14 +866,15 @@ class WeeklyPlannerService {
     }
   }
 
-  /// Récupérer tous les cardios de la semaine courante
-  static Future<List<PlannedActivity>> getAllCardioThisWeek() async {
+  /// Récupérer tous les cardios de la semaine courante, ou des [days] jours
+  /// depuis son lundi (14 : la fenêtre entière).
+  static Future<List<PlannedActivity>> getAllCardioThisWeek({int days = 7}) async {
     try {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) return [];
 
       final weekStart = getCurrentWeekStart();
-      final weekEnd = weekStart.add(const Duration(days: 7));
+      final weekEnd = calendarDay(weekStart, days);
 
       final weekStartStr = weekStart.toIso8601String().split('T')[0];
       final weekEndStr = weekEnd.toIso8601String().split('T')[0];

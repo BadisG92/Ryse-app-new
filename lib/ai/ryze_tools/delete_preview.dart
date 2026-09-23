@@ -107,7 +107,10 @@ class DeletePreview {
       final plans = semaine.dayPlans;
 
       DayPlanData? planDe(DateTime d) => plans[DateTime(d.year, d.month, d.day)];
-      final tousLesJours = plans.keys.toList()..sort();
+
+      // Une suppression sans jour vise une semaine, pas les deux : celle-ci,
+      // ou la suivante quand le modèle le dit.
+      final tousLesJours = PlannerAIService.weekDates(args['week'] as String?);
 
       final lignes = <String>[];
 
@@ -167,8 +170,7 @@ class DeletePreview {
     }
   }
 
-  /// Le nom anglais du jour, celui que `dayLabel` sait traduire.
-  static String _dayKey(DateTime d) => const [
-        'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-      ][d.weekday - 1];
+  /// La clé du jour, celle que `dayLabel` sait traduire : `next_` pour la
+  /// semaine prochaine.
+  static String _dayKey(DateTime d) => PlannerAIService.dayKeyFor(d);
 }
