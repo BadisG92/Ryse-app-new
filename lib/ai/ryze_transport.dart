@@ -153,12 +153,26 @@ class RyzeTransport {
   }) async* {
     var attempt = 0;
     var healed = false;
+    var current = model ?? GeminiConfig.modelName;
+    var fellBack = false;
 
     while (true) {
+      // Vrai dès qu'un morceau est parti chez l'appelant : à partir de là, on
+      // ne reprend plus rien, sinon le texte déjà affiché serait redit.
+      var started = false;
       try {
-        yield* _once(payload, model: model, surface: surface);
+        // `await for` et non `yield*` : une erreur qui sort d'un `yield*` est
+        // transmise telle quelle à l'appelant sans jamais atteindre ce
+        // `try`. Les reprises et le rattrapage du 402 écrits plus bas n'ont
+        // donc jamais servi dans le flux — le premier 503 finissait en
+        // « Something went wrong ».
+        await for (final chunk in _once(forModel(payload, current), model: current, surface: surface)) {
+          started = true;
+          yield chunk;
+        }
         return;
       } on RyzeTransportException catch (e) {
+        if (started) rethrow;
         // « Abonnement requis », alors que l'application a laissé entrer :
         // c'est notre ligne d'abonnement qui manque, pas l'utilisateur qui
         // n'a pas payé. Le serveur lit notre base, l'application fait
@@ -173,6 +187,19 @@ class RyzeTransport {
           }
           rethrow;
         }
+        // Le modèle est saturé chez Google : on passe au secours tout de
+        // suite, sans brûler les reprises sur un modèle qui refuse. Ces
+        // erreurs arrivent avec le code HTTP, avant le moindre octet de
+        // texte : rien n'a été montré, rien ne sera dit deux fois.
+        if (!fellBack && isOverloaded(e.statusCode) && current != GeminiConfig.fallbackModelName) {
+          fellBack = true;
+          if (kDebugMode) {
+            debugPrint('🔀 RyzeTransport: $current indisponible (${e.statusCode}), bascule sur ${GeminiConfig.fallbackModelName}');
+          }
+          current = GeminiConfig.fallbackModelName;
+          attempt = 0;
+          continue;
+        }
         attempt++;
         if (!e.isRetryable || attempt > maxRetries) rethrow;
         if (kDebugMode) {
@@ -181,6 +208,27 @@ class RyzeTransport {
         await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
       }
     }
+  }
+
+  /// Google refuse faute de capacité, pas à cause de la requête : un autre
+  /// modèle a toutes les chances de répondre.
+  @visibleForTesting
+  static bool isOverloaded(int? statusCode) =>
+      statusCode == 429 || statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504;
+
+  /// Le corps de requête ajusté au modèle qui le reçoit.
+  ///
+  /// Le secours, gemini-2.5-flash, réfléchit par défaut : mesuré le 23
+  /// septembre, 1 381 jetons de réflexion — facturés comme de la sortie —
+  /// pour une réponse de 119, à deux doigts de la limite de 2 000. Le modèle
+  /// principal ne réfléchit pas ; le secours doit se comporter pareil, sinon
+  /// il coûte douze fois plus et coupe ses réponses.
+  @visibleForTesting
+  static Map<String, dynamic> forModel(Map<String, dynamic> payload, String model) {
+    if (!model.startsWith('gemini-2.5')) return payload;
+    final config = Map<String, dynamic>.from(payload['generationConfig'] as Map? ?? const {});
+    config['thinkingConfig'] = {'thinkingBudget': 0};
+    return {...payload, 'generationConfig': config};
   }
 
   /// Réécrit la ligne d'abonnement depuis la boutique. Vrai si l'utilisateur
@@ -276,9 +324,12 @@ class RyzeTransport {
     /// Vrai quand on rejoue apres avoir reecrit la ligne d'abonnement : on ne
     /// rattrape qu'une fois, sinon un vrai refus tournerait en boucle.
     bool healed = false,
+
+    /// Vrai quand on rejoue sur le modèle de secours : une seule bascule.
+    bool fellBack = false,
   }) async {
     final name = model ?? GeminiConfig.modelName;
-    final body = jsonEncode(bodyFor(mode, payload, model: name, surface: surface, stream: false));
+    final body = jsonEncode(bodyFor(mode, forModel(payload, name), model: name, surface: surface, stream: false));
 
     final http.Response response;
     try {
@@ -297,7 +348,22 @@ class RyzeTransport {
       // manque, pas que l'utilisateur n'a pas paye.
       if (response.statusCode == 402 && !healed && await _healEntitlement()) {
         if (kDebugMode) debugPrint('🔑 RyzeTransport: droit retabli, nouvel essai');
-        return generate(payload, model: model, surface: surface, timeout: timeout, healed: true);
+        return generate(payload, model: model, surface: surface, timeout: timeout, healed: true, fellBack: fellBack);
+      }
+      // Même bascule que pour le flux. L'aller-retour n'avait aucune reprise :
+      // un seul 503 et le scan photo échouait.
+      if (!fellBack && isOverloaded(response.statusCode) && name != GeminiConfig.fallbackModelName) {
+        if (kDebugMode) {
+          debugPrint('🔀 RyzeTransport: $name indisponible (${response.statusCode}), bascule sur ${GeminiConfig.fallbackModelName}');
+        }
+        return generate(
+          payload,
+          model: GeminiConfig.fallbackModelName,
+          surface: surface,
+          timeout: timeout,
+          healed: healed,
+          fellBack: true,
+        );
       }
       final detail = response.body;
       throw RyzeTransportException(

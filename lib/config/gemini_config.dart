@@ -11,6 +11,19 @@ class GeminiConfig {
   // Le modèle : rapide, non-thinking, pour tous les usages.
   static const String modelName = 'gemini-3.1-flash-lite';
 
+  // Le modèle de secours, quand le premier est saturé chez Google.
+  //
+  // Les modèles 3.x répondent régulièrement 503 « high demand » : relevé le
+  // 23 septembre 2026, gemini-3.1-flash-lite, 3.5-flash-lite et 3.8-flash
+  // étaient à 0 réussite sur 5, pendant que la génération 2.5 répondait
+  // 5 sur 5. L'application n'avait aucun plan B : deux reprises en une
+  // seconde, puis « Something went wrong ».
+  //
+  // 2.5-flash plutôt que 2.5-flash-lite : il tient mieux l'appel d'outils et
+  // la vision, qui sont le cœur du coach et du scan. Il n'est utilisé que
+  // quand le premier refuse, donc son prix ne pèse que sur ces tours-là.
+  static const String fallbackModelName = 'gemini-2.5-flash';
+
   // Generation parameters
   static const double temperature = 0.3; // Lower for more consistent results
   static const int maxOutputTokens = 2000;
