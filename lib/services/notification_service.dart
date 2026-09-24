@@ -50,10 +50,14 @@ class NotificationService {
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
 
       // Configuration iOS
+      // Rien n'est demandé ici : initialize() tourne au lancement, et avec ces
+      // drapeaux à true le plugin posait la question système par-dessus
+      // l'animation de première ouverture. La demande passe par
+      // requestPermissions(), après le premier repas noté.
       const iosSettings = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
       );
 
       const initSettings = InitializationSettings(
