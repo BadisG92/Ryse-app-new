@@ -153,10 +153,11 @@ class RyzeTransport {
   }) async* {
     var attempt = 0;
     var healed = false;
-    var current = model ?? GeminiConfig.modelName;
-    var fellBack = false;
+    final models = chainFor(model);
+    var index = startIndex(models);
 
     while (true) {
+      final current = models[index];
       // Vrai dès qu'un morceau est parti chez l'appelant : à partir de là, on
       // ne reprend plus rien, sinon le texte déjà affiché serait redit.
       var started = false;
@@ -187,21 +188,20 @@ class RyzeTransport {
           }
           rethrow;
         }
-        // Le modèle est saturé chez Google : on passe au secours tout de
-        // suite, sans brûler les reprises sur un modèle qui refuse. Ces
-        // erreurs arrivent avec le code HTTP, avant le moindre octet de
-        // texte : rien n'a été montré, rien ne sera dit deux fois.
-        if (!fellBack && isOverloaded(e.statusCode) && current != GeminiConfig.fallbackModelName) {
-          fellBack = true;
+        // Le modèle est saturé chez Google. Ces erreurs arrivent avec le code
+        // HTTP, avant le moindre octet de texte : rien n'a été montré, rien
+        // ne sera dit deux fois.
+        final next = nextAfterOverload(models, index, attempt, e.statusCode);
+        if (next != null) {
           if (kDebugMode) {
-            debugPrint('🔀 RyzeTransport: $current indisponible (${e.statusCode}), bascule sur ${GeminiConfig.fallbackModelName}');
+            debugPrint('🔀 RyzeTransport: $current indisponible (${e.statusCode}), bascule sur ${models[next]}');
           }
-          current = GeminiConfig.fallbackModelName;
+          index = next;
           attempt = 0;
           continue;
         }
         attempt++;
-        if (!e.isRetryable || attempt > maxRetries) rethrow;
+        if (!e.isRetryable || attempt > retriesFor(models, index)) rethrow;
         if (kDebugMode) {
           debugPrint('🔄 RyzeTransport: reprise $attempt après ${e.statusCode ?? 'timeout'}');
         }
@@ -216,6 +216,61 @@ class RyzeTransport {
   static bool isOverloaded(int? statusCode) =>
       statusCode == 429 || statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504;
 
+  /// Le modèle principal est au repos jusqu'à cette heure.
+  ///
+  /// Quand 3.1 est saturé, il l'est pour des heures : relevé les 23 et 24
+  /// septembre, zéro réussite sur cinq, deux jours de suite. Le redemander à
+  /// chaque requête coûtait un aller-retour pour rien, et surtout mélangeait
+  /// les modèles dans un même tour : le premier appel d'outil venait du
+  /// secours, le suivant repartait sur 3.1. Pendant ce délai, on part
+  /// directement du secours, puis on retente le principal.
+  static DateTime? _primaryRestingUntil;
+  static const Duration primaryRest = Duration(minutes: 5);
+
+  @visibleForTesting
+  static void resetHealth() => _primaryRestingUntil = null;
+
+  static bool get primaryResting {
+    final until = _primaryRestingUntil;
+    return until != null && DateTime.now().isBefore(until);
+  }
+
+  /// Les modèles à essayer, dans l'ordre. Un modèle demandé nommément passe
+  /// d'abord, puis la chaîne.
+  @visibleForTesting
+  static List<String> chainFor(String? requested) {
+    if (requested == null || requested == GeminiConfig.modelName) return GeminiConfig.modelChain;
+    return [requested, ...GeminiConfig.modelChain.where((m) => m != requested)];
+  }
+
+  /// Où commencer : le principal, sauf s'il se repose.
+  @visibleForTesting
+  static int startIndex(List<String> models) =>
+      primaryResting && models.first == GeminiConfig.modelName && models.length > 1 ? 1 : 0;
+
+  /// Le modèle suivant après un refus de capacité, ou null pour réessayer le
+  /// même (ou abandonner s'il n'y a plus rien).
+  ///
+  /// Le principal passe la main au premier refus et se met au repos. Un
+  /// secours a droit à une reprise avant de passer la main : 2.5-flash
+  /// refusait une requête sur cinq, la suivante passait.
+  @visibleForTesting
+  static int? nextAfterOverload(List<String> models, int index, int attempt, int? statusCode) {
+    if (!isOverloaded(statusCode)) return null;
+    final current = models[index];
+    if (current == GeminiConfig.modelName) {
+      _primaryRestingUntil = DateTime.now().add(primaryRest);
+    }
+    if (index >= models.length - 1) return null;
+    if (current == GeminiConfig.modelName || attempt >= 1) return index + 1;
+    return null;
+  }
+
+  /// Les reprises permises sur un modèle : le dernier de la chaîne a toutes
+  /// les siennes, les autres une seule avant de passer la main.
+  @visibleForTesting
+  static int retriesFor(List<String> models, int index) => index >= models.length - 1 ? maxRetries : 1;
+
   /// Le corps de requête ajusté au modèle qui le reçoit.
   ///
   /// Le secours, gemini-2.5-flash, réfléchit par défaut : mesuré le 23
@@ -223,12 +278,56 @@ class RyzeTransport {
   /// pour une réponse de 119, à deux doigts de la limite de 2 000. Le modèle
   /// principal ne réfléchit pas ; le secours doit se comporter pareil, sinon
   /// il coûte douze fois plus et coupe ses réponses.
+  ///
+  /// Gemini 3, lui, exige une signature sur chaque appel d'outil qu'on lui
+  /// renvoie, et refuse la requête sans (400 « Function call is missing a
+  /// thought_signature »), avant même de regarder sa capacité. Un appel posé
+  /// par le secours n'en a pas : un tour commencé sur 2.5 et poursuivi sur 3.1
+  /// finissait en erreur, à chaque outil. Google documente une signature de
+  /// remplacement pour ces appels venus d'ailleurs ; vérifié le 24 septembre,
+  /// le 400 disparaît.
   @visibleForTesting
   static Map<String, dynamic> forModel(Map<String, dynamic> payload, String model) {
-    if (!model.startsWith('gemini-2.5')) return payload;
-    final config = Map<String, dynamic>.from(payload['generationConfig'] as Map? ?? const {});
-    config['thinkingConfig'] = {'thinkingBudget': 0};
-    return {...payload, 'generationConfig': config};
+    if (model.startsWith('gemini-2.5')) {
+      final config = Map<String, dynamic>.from(payload['generationConfig'] as Map? ?? const {});
+      config['thinkingConfig'] = {'thinkingBudget': 0};
+      return {...payload, 'generationConfig': config};
+    }
+    return signed(payload);
+  }
+
+  /// La signature que Google accepte à la place de celle qu'un autre modèle
+  /// n'a pas donnée.
+  static const String foreignSignature = 'skip_thought_signature_validator';
+
+  /// Le corps avec une signature sur chaque appel d'outil qui n'en a pas. Rend
+  /// le même objet quand il n'y a rien à ajouter.
+  @visibleForTesting
+  static Map<String, dynamic> signed(Map<String, dynamic> payload) {
+    final contents = payload['contents'];
+    if (contents is! List) return payload;
+
+    bool unsigned(Object? part) =>
+        part is Map && part.containsKey('functionCall') && part['thoughtSignature'] == null;
+    final needs = contents.any((c) => c is Map && c['parts'] is List && (c['parts'] as List).any(unsigned));
+    if (!needs) return payload;
+
+    return {
+      ...payload,
+      'contents': [
+        for (final c in contents)
+          if (c is Map && c['parts'] is List && (c['parts'] as List).any(unsigned))
+            {
+              ...c,
+              'parts': [
+                for (final p in c['parts'] as List)
+                  if (unsigned(p)) {...(p as Map), 'thoughtSignature': foreignSignature} else p,
+              ],
+            }
+          else
+            c,
+      ],
+    };
   }
 
   /// Réécrit la ligne d'abonnement depuis la boutique. Vrai si l'utilisateur
@@ -321,55 +420,64 @@ class RyzeTransport {
     required String surface,
     Duration timeout = const Duration(seconds: 45),
 
-    /// Vrai quand on rejoue apres avoir reecrit la ligne d'abonnement : on ne
-    /// rattrape qu'une fois, sinon un vrai refus tournerait en boucle.
-    bool healed = false,
-
-    /// Vrai quand on rejoue sur le modèle de secours : une seule bascule.
-    bool fellBack = false,
   }) async {
-    final name = model ?? GeminiConfig.modelName;
-    final body = jsonEncode(bodyFor(mode, forModel(payload, name), model: name, surface: surface, stream: false));
+    final models = chainFor(model);
+    var index = startIndex(models);
+    var attempt = 0;
+    var healed = false;
 
-    final http.Response response;
-    try {
-      response = await _client
-          .post(_uri(name, stream: false), headers: _headers(), body: body)
-          .timeout(timeout);
-    } on TimeoutException {
-      throw const RyzeTransportException('pas de réponse dans le délai');
-    } catch (e) {
-      throw RyzeTransportException('$e');
-    }
+    // La même chaîne que le flux, avec les mêmes reprises. L'aller-retour
+    // n'avait qu'une bascule et aucune reprise : un refus du secours, et le
+    // scan photo échouait.
+    late http.Response response;
+    late String name;
+    while (true) {
+      name = models[index];
+      final body = jsonEncode(bodyFor(mode, forModel(payload, name), model: name, surface: surface, stream: false));
 
-    if (response.statusCode != 200) {
-      // Le meme rattrapage que pour le flux : un « abonnement requis » sur un
-      // compte que l'application a laisse entrer veut dire que notre ligne
-      // manque, pas que l'utilisateur n'a pas paye.
-      if (response.statusCode == 402 && !healed && await _healEntitlement()) {
-        if (kDebugMode) debugPrint('🔑 RyzeTransport: droit retabli, nouvel essai');
-        return generate(payload, model: model, surface: surface, timeout: timeout, healed: true, fellBack: fellBack);
+      RyzeTransportException? failure;
+      try {
+        response = await _client
+            .post(_uri(name, stream: false), headers: _headers(), body: body)
+            .timeout(timeout);
+      } on TimeoutException {
+        failure = const RyzeTransportException('pas de réponse dans le délai');
+      } catch (e) {
+        failure = RyzeTransportException('$e');
       }
-      // Même bascule que pour le flux. L'aller-retour n'avait aucune reprise :
-      // un seul 503 et le scan photo échouait.
-      if (!fellBack && isOverloaded(response.statusCode) && name != GeminiConfig.fallbackModelName) {
-        if (kDebugMode) {
-          debugPrint('🔀 RyzeTransport: $name indisponible (${response.statusCode}), bascule sur ${GeminiConfig.fallbackModelName}');
+
+      if (failure == null && response.statusCode == 200) break;
+
+      if (failure == null) {
+        // Le meme rattrapage que pour le flux : un « abonnement requis » sur
+        // un compte que l'application a laisse entrer veut dire que notre
+        // ligne manque, pas que l'utilisateur n'a pas paye.
+        if (response.statusCode == 402 && !healed) {
+          healed = true;
+          if (await _healEntitlement()) {
+            if (kDebugMode) debugPrint('🔑 RyzeTransport: droit retabli, nouvel essai');
+            continue;
+          }
         }
-        return generate(
-          payload,
-          model: GeminiConfig.fallbackModelName,
-          surface: surface,
-          timeout: timeout,
-          healed: healed,
-          fellBack: true,
+        final detail = response.body;
+        failure = RyzeTransportException(
+          detail.length > 300 ? detail.substring(0, 300) : detail,
+          statusCode: response.statusCode,
         );
       }
-      final detail = response.body;
-      throw RyzeTransportException(
-        detail.length > 300 ? detail.substring(0, 300) : detail,
-        statusCode: response.statusCode,
-      );
+
+      final next = nextAfterOverload(models, index, attempt, failure.statusCode);
+      if (next != null) {
+        if (kDebugMode) {
+          debugPrint('🔀 RyzeTransport: $name indisponible (${failure.statusCode}), bascule sur ${models[next]}');
+        }
+        index = next;
+        attempt = 0;
+        continue;
+      }
+      attempt++;
+      if (!failure.isRetryable || attempt > retriesFor(models, index)) throw failure;
+      await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
     }
 
     final decoded = jsonDecode(utf8.decode(response.bodyBytes));

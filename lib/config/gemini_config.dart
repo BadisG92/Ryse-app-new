@@ -24,6 +24,14 @@ class GeminiConfig {
   // quand le premier refuse, donc son prix ne pèse que sur ces tours-là.
   static const String fallbackModelName = 'gemini-2.5-flash';
 
+  // Le dernier recours, quand le secours refuse aussi. Le 24 septembre, 3.1
+  // refusait tout et 2.5-flash une requête sur cinq : un seul secours ne
+  // suffisait pas à éviter le message d'erreur.
+  static const String lastResortModelName = 'gemini-2.5-flash-lite';
+
+  // L'ordre dans lequel on les essaie.
+  static const List<String> modelChain = [modelName, fallbackModelName, lastResortModelName];
+
   // Generation parameters
   static const double temperature = 0.3; // Lower for more consistent results
   static const int maxOutputTokens = 2000;

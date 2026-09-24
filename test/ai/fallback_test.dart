@@ -45,6 +45,10 @@ void main() {
   /// Le modèle visé par une requête, lu dans son adresse.
   String modelOf(http.Request r) => r.url.pathSegments.last.split(':').first;
 
+  // Le repos du principal est partagé : chaque test repart d'un principal
+  // disponible.
+  setUp(RyzeTransport.resetHealth);
+
   group('L\'aller-retour', () {
     test('un 503 sur le modèle principal bascule sur le secours et réussit', () async {
       final asked = <String>[];
@@ -79,10 +83,10 @@ void main() {
       expect(fallback['maxOutputTokens'], 2000);
     });
 
-    test('une seule bascule : si le secours refuse aussi, l\'erreur remonte', () async {
-      var calls = 0;
+    test('les trois modèles refusent : l\'erreur ne remonte qu\'après toute la chaîne', () async {
+      final asked = <String>[];
       final client = MockClient((request) async {
-        calls++;
+        asked.add(modelOf(request));
         return http.Response(overloaded, 503);
       });
 
@@ -90,7 +94,45 @@ void main() {
         RyzeTransport(client: client, mode: RyzeTransportMode.direct).generate(payload, surface: RyzeUsageLabel.scan),
         throwsA(isA<RyzeTransportException>().having((e) => e.statusCode, 'statusCode', 503)),
       );
-      expect(calls, 2);
+      // Le principal une fois, le secours deux fois, le dernier recours trois.
+      expect(asked, [
+        GeminiConfig.modelName,
+        GeminiConfig.fallbackModelName,
+        GeminiConfig.fallbackModelName,
+        GeminiConfig.lastResortModelName,
+        GeminiConfig.lastResortModelName,
+        GeminiConfig.lastResortModelName,
+      ]);
+    });
+
+    test('un refus isolé du secours est repris, pas affiché', () async {
+      final asked = <String>[];
+      final client = MockClient((request) async {
+        asked.add(modelOf(request));
+        final nth = asked.where((m) => m == GeminiConfig.fallbackModelName).length;
+        if (modelOf(request) == GeminiConfig.modelName || nth == 1) return http.Response(overloaded, 503);
+        return http.Response(jsonEncode(answer('ok')), 200);
+      });
+
+      final out = await RyzeTransport(client: client, mode: RyzeTransportMode.direct).generate(payload, surface: RyzeUsageLabel.scan);
+      expect(RyzeTransport.textOf(out), 'ok');
+      expect(asked, [GeminiConfig.modelName, GeminiConfig.fallbackModelName, GeminiConfig.fallbackModelName]);
+    });
+
+    test('un principal saturé se repose : la requête suivante part du secours', () async {
+      final asked = <String>[];
+      final client = MockClient((request) async {
+        asked.add(modelOf(request));
+        if (modelOf(request) == GeminiConfig.modelName) return http.Response(overloaded, 503);
+        return http.Response(jsonEncode(answer('ok')), 200);
+      });
+      final transport = RyzeTransport(client: client, mode: RyzeTransportMode.direct);
+
+      await transport.generate(payload, surface: RyzeUsageLabel.scan);
+      asked.clear();
+      await transport.generate(payload, surface: RyzeUsageLabel.scan);
+
+      expect(asked, [GeminiConfig.fallbackModelName]);
     });
 
     test('une vraie erreur de requête ne bascule pas', () async {
@@ -145,6 +187,60 @@ void main() {
 
     test('le modèle principal garde son corps de requête intact', () {
       expect(identical(RyzeTransport.forModel(payload, GeminiConfig.modelName), payload), isTrue);
+    });
+  });
+
+  group('Les appels d\'outils venus du secours', () {
+    // Relevé le 24 septembre : 3.1 refuse en 400 un appel d'outil sans
+    // signature, avant même de regarder sa capacité. Un tour commencé sur le
+    // secours et repris sur 3.1 finissait en erreur.
+    final history = <String, dynamic>{
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [
+            {'text': 'Ajoute un verre'}
+          ],
+        },
+        {
+          'role': 'model',
+          'parts': [
+            {
+              'functionCall': {'name': 'add_water', 'args': {'ml': 250}}
+            },
+          ],
+        },
+        {
+          'role': 'model',
+          'parts': [
+            {
+              'functionCall': {'name': 'log_weight', 'args': {'kg': 70}},
+              'thoughtSignature': 'vraie'
+            },
+          ],
+        },
+      ],
+    };
+
+    List<Map> calls(Map<String, dynamic> p) => [
+          for (final c in p['contents'] as List)
+            for (final part in (c as Map)['parts'] as List)
+              if ((part as Map).containsKey('functionCall')) part,
+        ];
+
+    test('Gemini 3 reçoit une signature de remplacement sur l\'appel qui n\'en a pas', () {
+      final out = RyzeTransport.forModel(history, GeminiConfig.modelName);
+      expect(calls(out)[0]['thoughtSignature'], RyzeTransport.foreignSignature);
+    });
+
+    test('une vraie signature n\'est jamais remplacée', () {
+      final out = RyzeTransport.forModel(history, GeminiConfig.modelName);
+      expect(calls(out)[1]['thoughtSignature'], 'vraie');
+    });
+
+    test('l\'historique d\'origine n\'est pas touché', () {
+      RyzeTransport.forModel(history, GeminiConfig.modelName);
+      expect(calls(history)[0].containsKey('thoughtSignature'), isFalse);
     });
   });
 }
