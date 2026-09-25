@@ -60,9 +60,14 @@ class RyzeGenerationConfig {
   final double topP;
   final int maxOutputTokens;
 
-  /// La conversation : chaleureuse, et assez large pour une recette entière.
-  /// Elle était plafonnée à 400 tokens, ce qui coupait les recettes au milieu.
-  static const coach = RyzeGenerationConfig();
+  /// La conversation : chaleureuse, et assez large pour une semaine de repas.
+  ///
+  /// Elle était plafonnée à 400 tokens, ce qui coupait les recettes au milieu,
+  /// puis à 1 024 : trois repas complets, et le quatrième appel d'outil
+  /// s'arrêtait au milieu de ses arguments. Le plafond ne coûte rien tant
+  /// qu'il n'est pas atteint ; ce sont les règles de longueur de la persona
+  /// qui gardent les réponses écrites courtes.
+  static const coach = RyzeGenerationConfig(maxOutputTokens: 8192);
 
   /// Le planificateur : plus sobre, et large parce qu'une semaine de repas
   /// avec recettes tient difficilement en moins.

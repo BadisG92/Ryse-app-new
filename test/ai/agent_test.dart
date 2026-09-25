@@ -253,7 +253,10 @@ void main() {
     test('la conversation a de quoi écrire une recette entière', () {
       // 400 tokens coupaient les recettes au milieu.
       expect(RyzeGenerationConfig.coach.maxOutputTokens, greaterThanOrEqualTo(1024));
-      expect(RyzeGenerationConfig.planner.maxOutputTokens, greaterThan(RyzeGenerationConfig.coach.maxOutputTokens));
+      // La conversation planifie aussi plusieurs repas d'un coup : un
+      // quatrième appel d'outil s'arrêtait au milieu de ses arguments à 1 024.
+      expect(RyzeGenerationConfig.coach.maxOutputTokens, greaterThanOrEqualTo(8192));
+      expect(RyzeGenerationConfig.planner.maxOutputTokens, greaterThanOrEqualTo(RyzeGenerationConfig.coach.maxOutputTokens));
     });
   });
 

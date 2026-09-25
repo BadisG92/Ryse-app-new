@@ -60,7 +60,14 @@ Eau : 0.0/2.5 L
 Rien de prévu.''';
   }
 
-  Future<_Tour> demande(String phrase, {DateTime? now, String extra = '', String? tone}) async {
+  Future<_Tour> demande(
+    String phrase, {
+    DateTime? now,
+    String extra = '',
+    String? tone,
+    // Les échanges qui précèdent, en paires (utilisateur, Ryze).
+    List<(String, String)> avant = const [],
+  }) async {
     final instruction = await RyzePersona.build(
       lang: 'fr',
       surface: RyzeSurface.coach,
@@ -73,6 +80,20 @@ Rien de prévu.''';
 
     final body = {
       'contents': [
+        for (final (lui, ryze) in avant) ...[
+          {
+            'role': 'user',
+            'parts': [
+              {'text': lui}
+            ]
+          },
+          {
+            'role': 'model',
+            'parts': [
+              {'text': ryze}
+            ]
+          },
+        ],
         {
           'role': 'user',
           'parts': [
@@ -91,7 +112,8 @@ Rien de prévu.''';
       'tool_config': {
         'function_calling_config': {'mode': 'AUTO'}
       },
-      'generationConfig': {'temperature': 0.8, 'maxOutputTokens': 1024},
+      // Les réglages de la conversation, tels que l'application les envoie.
+      'generationConfig': {'temperature': 0.8, 'maxOutputTokens': 8192},
     };
 
     // Le modèle rend parfois 503 « high demand ». Ce n'est pas un défaut de
@@ -531,11 +553,25 @@ Tu es TAQUIN et sarcastique (gentiment). Tu fais des petites piques amicales. Tu
 Tu es un COACH STRICT et exigeant. Tu ne tolères PAS les excuses. Tu pousses à se dépasser. Tu es direct et ferme, jamais méchant mais sans complaisance. Tu attends des résultats. Tu challenges constamment. Exemples de phrases typiques: "Pas d'excuses.", "Tu peux faire mieux.", "C'est tout?", "Allez, on se bouge."''';
 
     for (final (nom, ton) in [('taquin', taquin), ('strict', strict)]) {
-      test('ton $nom : toute la semaine de repas ouvre le planificateur', () async {
-        final tour = await demande('Tu peux planifier tous les repas de la semaine ?', tone: ton);
+      test('ton $nom : « je sais pas » fait proposer, sans nouvelle question', () async {
+        // Demander ses envies est permis ; ne rien proposer quand il n'en a
+        // pas ne l'est plus. Ce banc ne voit que le premier tour ; dans
+        // l'application, la boucle d'outils continue ensuite.
+        final mercrediSoir = DateTime(2026, 9, 16, 20, 0);
+        final tour = await demande(
+          'Je sais pas, choisis pour moi.',
+          tone: ton,
+          now: mercrediSoir,
+          avant: const [
+            (
+              'Tu peux planifier tous les repas de la semaine ?',
+              'Avec plaisir. Tu as des envies ou des aliments à éviter pour ces repas ?',
+            ),
+          ],
+        );
 
-        final planifie = tour.noms.contains('nav.open_planner') || tour.noms.contains('plan.create_meal');
-        expect(planifie, isTrue, reason: 'aucun outil appelé : « ${tour.texte} »');
+        final repas = tour.appels.where((a) => a.nom == 'plan.create_meal').toList();
+        expect(repas, isNotEmpty, reason: 'aucun repas proposé, texte : « ${tour.texte} »');
       });
     }
   });
