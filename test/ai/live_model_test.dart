@@ -570,8 +570,10 @@ Tu es un COACH STRICT et exigeant. Tu ne tolères PAS les excuses. Tu pousses à
           ],
         );
 
-        final repas = tour.appels.where((a) => a.nom == 'plan.create_meal').toList();
-        expect(repas, isNotEmpty, reason: 'aucun repas proposé, texte : « ${tour.texte} »');
+        // Planifier ici ou ouvrir le planificateur avec la demande : les deux
+        // conviennent. Annoncer un menu sans rien lancer, non.
+        final planifie = tour.noms.contains('plan.create_meal') || tour.noms.contains('nav.open_planner');
+        expect(planifie, isTrue, reason: 'rien de planifié, texte : « ${tour.texte} »');
       });
     }
   });
