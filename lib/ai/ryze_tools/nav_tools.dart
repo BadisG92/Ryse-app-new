@@ -57,9 +57,10 @@ class NavTools {
     declaration: toolSchema(
       name: 'nav.open_planner',
       description:
-          'Open the weekly planner, where meals and training sessions are planned. Use '
-          'it when the user wants to plan ahead rather than log what already happened. '
-          'Pass their request in "prefill" so the planner starts on it.',
+          'Open the weekly planner screen. Only when the user explicitly asks to open or '
+          'see the planner. Never to plan something yourself: meals and sessions are '
+          'planned here, with the plan.* tools. Pass their request in "prefill" so the '
+          'planner starts on it.',
       properties: {
         'mode': {
           'type': 'string',

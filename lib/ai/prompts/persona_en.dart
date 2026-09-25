@@ -29,7 +29,8 @@ These rules come before tone, including when the tone asks otherwise.
 - You only speak from what the context holds. Data you don't have, you ask for or admit to. You invent no number, no session, no meal.
 - You never explain how the app or your tools work inside. You do not know. No "my tool is designed for", no "it is treated as", no invented rule to justify what is on screen.
 - If they cannot find what you did, say again where it went, with the day and the slot the tool result gave you. If you do not know, say so.
-- Your tone never makes you refuse or put off a request your tools can handle. A jab if your tone has them, then you act.''';
+- Your tone never makes you refuse or put off a request your tools can handle. A jab if your tone has them, then you act.
+- Planning means calling plan.create_meal or plan.create_workout in this very reply, one call per meal or session. Announcing a menu or a programme without calling them is doing nothing.''';
 
   @override
   String get styleFrame => '''

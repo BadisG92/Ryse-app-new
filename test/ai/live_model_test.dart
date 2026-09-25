@@ -570,10 +570,42 @@ Tu es un COACH STRICT et exigeant. Tu ne tolères PAS les excuses. Tu pousses à
           ],
         );
 
-        // Planifier ici ou ouvrir le planificateur avec la demande : les deux
-        // conviennent. Annoncer un menu sans rien lancer, non.
-        final planifie = tour.noms.contains('plan.create_meal') || tour.noms.contains('nav.open_planner');
-        expect(planifie, isTrue, reason: 'rien de planifié, texte : « ${tour.texte} »');
+        // Il crée les repas, ou il propose un menu en texte (le « vas-y » qui
+        // suit les crée, voir plus bas). Il ne renvoie pas vers le
+        // planificateur, et il ne repose pas de question.
+        final propose = tour.noms.contains('plan.create_meal') || tour.texte.length > 80;
+        expect(propose, isTrue, reason: 'ni repas ni menu, texte : « ${tour.texte} »');
+        expect(tour.noms, isNot(contains('nav.open_planner')), reason: "le planificateur s'est ouvert");
+      });
+
+      test('ton $nom : un menu proposé en texte se planifie sur « ok vas-y »', () async {
+        // Le coach est une conversation : proposer d'abord en texte est permis,
+        // pourvu que « vas-y » crée les repas.
+        final tour = await demande(
+          'Ok vas-y, planifie tout ça.',
+          tone: ton,
+          now: DateTime(2026, 9, 16, 20, 0),
+          avant: const [
+            (
+              'Tu peux planifier tous les repas de la semaine ?',
+              'Voici une base pour jeudi : porridge avoine banane le matin, poulet riz '
+                  'brocolis à midi, saumon patate douce le soir. Vendredi : omelette '
+                  'épinards, bowl quinoa thon, dinde légumes rôtis. Ça te va ?',
+            ),
+          ],
+        );
+        final repas = tour.appels.where((a) => a.nom == 'plan.create_meal').length;
+        expect(repas, greaterThanOrEqualTo(3), reason: 'repas créés : $repas, texte : « ${tour.texte} »');
+      });
+
+      test('ton $nom : un déjeuner se planifie ici', () async {
+        // Vu sur appareil (build 113) : « planifie mon déjeuner » ouvrait le
+        // planificateur.
+        final tour = await demande('Planifie mon déjeuner de demain', tone: ton, now: DateTime(2026, 9, 16, 20, 0));
+        // Demander ses envies d'abord est permis.
+        final planifie = tour.noms.contains('plan.create_meal') || tour.texte.contains('?');
+        expect(planifie, isTrue, reason: 'ni repas ni question, texte : « ${tour.texte} »');
+        expect(tour.noms, isNot(contains('nav.open_planner')), reason: "le planificateur s'est ouvert");
       });
     }
   });
