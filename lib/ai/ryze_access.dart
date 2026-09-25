@@ -17,13 +17,30 @@ class RyzeAccess {
 
   /// La démo de l'onboarding : pas de compte, pas d'abonnement, et pourtant il
   /// faut que Ryze réponde.
-  static bool _demoMode = false;
-  static bool get demoMode => _demoMode;
-  static void setDemoMode(bool value) => _demoMode = value;
+  ///
+  /// Un compte de prises, pas un interrupteur. La démo passe des repas au
+  /// sport en fondant un écran dans l'autre : l'écran du sport s'ouvrait et
+  /// allumait la démo, puis celui des repas se fermait une demi-seconde plus
+  /// tard et l'éteignait pour tout le monde. La première demande de sport
+  /// répondait « fait partie de Premium », à chaque onboarding. Chaque `true`
+  /// prend une place, chaque `false` en rend une ; la démo tient tant qu'il
+  /// en reste une.
+  static int _demoHolds = 0;
+  static bool get demoMode => _demoHolds > 0;
+  static void setDemoMode(bool value) {
+    if (value) {
+      _demoHolds++;
+    } else if (_demoHolds > 0) {
+      _demoHolds--;
+    }
+  }
+
+  @visibleForTesting
+  static void resetDemo() => _demoHolds = 0;
 
   /// Sans interface : le service peut-il appeler le modèle ?
   static bool get canUse {
-    if (_demoMode) return true;
+    if (demoMode) return true;
     final subscription = UnifiedSubscriptionService();
     return subscription.isPremium || subscription.testMode;
   }
@@ -35,7 +52,7 @@ class RyzeAccess {
     BuildContext context, {
     PaywallContext paywallContext = PaywallContext.coachChat,
   }) async {
-    if (_demoMode) return true;
+    if (demoMode) return true;
     return PaywallService.instance.canUseFeature(
       context: context,
       paywallContext: paywallContext,

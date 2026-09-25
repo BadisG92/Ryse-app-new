@@ -159,7 +159,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     if (widget.demoMode) {
       // In demo mode, bypass premium checks
       _isPremium = true;
-      PlannerAIService.setDemoMode(true);
+      // Une prise sur la démo, rendue à la fermeture de cet écran.
       RyzeAccess.setDemoMode(true);
     } else {
       _refreshAccess();
@@ -353,7 +353,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     _weekFoldTimer?.cancel();
     _proposalVersion.dispose();
     if (widget.demoMode) {
-      PlannerAIService.setDemoMode(false);
       RyzeAccess.setDemoMode(false);
     }
     _textController.dispose();
