@@ -28,7 +28,9 @@ import 'package:ryze_app/ai/ryze_tools/ryze_tools.dart';
 /// échoue faute de secret ne dit rien de l'application.
 void main() {
   final key = _apiKey();
-  const model = 'gemini-3.1-flash-lite';
+  // Le modèle interrogé ; RYZE_LIVE_MODEL le change quand le principal est
+  // saturé chez Google.
+  const model = String.fromEnvironment('RYZE_LIVE_MODEL', defaultValue: 'gemini-3.1-flash-lite');
 
   /// Le contexte que l'application colle sous la persona, réduit à ce dont le
   /// choix d'outil dépend : la date, et l'état du jour.
@@ -58,7 +60,7 @@ Eau : 0.0/2.5 L
 Rien de prévu.''';
   }
 
-  Future<_Tour> demande(String phrase, {DateTime? now, String extra = ''}) async {
+  Future<_Tour> demande(String phrase, {DateTime? now, String extra = '', String? tone}) async {
     final instruction = await RyzePersona.build(
       lang: 'fr',
       surface: RyzeSurface.coach,
@@ -66,7 +68,7 @@ Rien de prévu.''';
       gender: 'male',
       age: 30,
       context: contexteDu(now ?? DateTime.now()) + extra,
-      tone: 'Tu es un coach chaleureux. Tu tutoies.',
+      tone: tone ?? 'Tu es un coach chaleureux. Tu tutoies.',
     );
 
     final body = {
@@ -516,6 +518,26 @@ Jambes : Squat, Fentes, Presse à cuisses''';
       }).toList();
       expect(fautifs, isEmpty, reason: 'hors sujet : $fautifs\ndans : $noms');
     });
+  });
+
+  group('Le ton ne refuse rien', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
+    // Vu sur appareil le 25 septembre : « tu peux planifier tous les repas de
+    // la semaine ? » répondait « je suis pas ton chef cuisinier personnel »,
+    // une question, et aucun outil. Les tons taquin et strict sont écrits
+    // « obligatoirement dans chaque message ».
+    const taquin = '''ADOPTE CE TON OBLIGATOIREMENT DANS CHAQUE MESSAGE:
+Tu es TAQUIN et sarcastique (gentiment). Tu fais des petites piques amicales. Tu te moques un peu mais avec affection. Tu utilises l'ironie. Tu restes motivant mais avec de l'humour piquant. Exemples de phrases typiques: "Ah bah bravo champion 😏", "T'as mangé quoi, un camion?", "Bon, on va dire que c'est un début...", "Je dis ça, je dis rien mais..."''';
+    const strict = '''ADOPTE CE TON OBLIGATOIREMENT DANS CHAQUE MESSAGE:
+Tu es un COACH STRICT et exigeant. Tu ne tolères PAS les excuses. Tu pousses à se dépasser. Tu es direct et ferme, jamais méchant mais sans complaisance. Tu attends des résultats. Tu challenges constamment. Exemples de phrases typiques: "Pas d'excuses.", "Tu peux faire mieux.", "C'est tout?", "Allez, on se bouge."''';
+
+    for (final (nom, ton) in [('taquin', taquin), ('strict', strict)]) {
+      test('ton $nom : toute la semaine de repas ouvre le planificateur', () async {
+        final tour = await demande('Tu peux planifier tous les repas de la semaine ?', tone: ton);
+
+        final planifie = tour.noms.contains('nav.open_planner') || tour.noms.contains('plan.create_meal');
+        expect(planifie, isTrue, reason: 'aucun outil appelé : « ${tour.texte} »');
+      });
+    }
   });
 
   group('Le temps de réponse', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
