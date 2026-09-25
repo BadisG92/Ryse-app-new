@@ -19,15 +19,19 @@ class GeminiConfig {
   // 5 sur 5. L'application n'avait aucun plan B : deux reprises en une
   // seconde, puis « Something went wrong ».
   //
-  // 2.5-flash plutôt que 2.5-flash-lite : il tient mieux l'appel d'outils et
-  // la vision, qui sont le cœur du coach et du scan. Il n'est utilisé que
-  // quand le premier refuse, donc son prix ne pèse que sur ces tours-là.
-  static const String fallbackModelName = 'gemini-2.5-flash';
+  // 3.5-flash-lite, et plus 2.5-flash : Google refuse la génération 2.5 aux
+  // projets créés après sa fin (404 « no longer available to new users »),
+  // et la clé a changé de projet le 25 septembre. Même prix que 2.5-flash
+  // (0,30 $ / 2,50 $ le million), sans réflexion facturée. Il n'est utilisé
+  // que quand le premier refuse, donc son prix ne pèse que sur ces tours-là.
+  static const String fallbackModelName = 'gemini-3.5-flash-lite';
 
   // Le dernier recours, quand le secours refuse aussi. Le 24 septembre, 3.1
-  // refusait tout et 2.5-flash une requête sur cinq : un seul secours ne
-  // suffisait pas à éviter le message d'erreur.
-  static const String lastResortModelName = 'gemini-2.5-flash-lite';
+  // refusait tout et le secours une requête sur cinq : un seul secours ne
+  // suffisait pas à éviter le message d'erreur. 3.7-flash réfléchit par
+  // défaut (380 jetons de réflexion pour 16 de réponse, mesuré) : il reçoit
+  // la réflexion au plus bas, voir `RyzeTransport.forModel`.
+  static const String lastResortModelName = 'gemini-3.7-flash';
 
   // L'ordre dans lequel on les essaie.
   static const List<String> modelChain = [modelName, fallbackModelName, lastResortModelName];

@@ -212,9 +212,18 @@ class RyzeTransport {
 
   /// Google refuse faute de capacité, pas à cause de la requête : un autre
   /// modèle a toutes les chances de répondre.
+  ///
+  /// Le 404 aussi : Google retire des modèles aux projets récents (« no
+  /// longer available to new users »). Un maillon absent passe la main au
+  /// suivant au lieu d'afficher une erreur.
   @visibleForTesting
   static bool isOverloaded(int? statusCode) =>
-      statusCode == 429 || statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504;
+      statusCode == 404 ||
+      statusCode == 429 ||
+      statusCode == 500 ||
+      statusCode == 502 ||
+      statusCode == 503 ||
+      statusCode == 504;
 
   /// Le modèle principal est au repos jusqu'à cette heure.
   ///
@@ -286,14 +295,22 @@ class RyzeTransport {
   /// finissait en erreur, à chaque outil. Google documente une signature de
   /// remplacement pour ces appels venus d'ailleurs ; vérifié le 24 septembre,
   /// le 400 disparaît.
+  ///
+  /// Le dernier recours, 3.7-flash, réfléchit aussi par défaut : 380 jetons
+  /// de réflexion pour une réponse de 16, mesuré le 25 septembre. Il n'accepte
+  /// pas le niveau « minimal » ; il reçoit « low ».
   @visibleForTesting
   static Map<String, dynamic> forModel(Map<String, dynamic> payload, String model) {
-    if (model.startsWith('gemini-2.5')) {
-      final config = Map<String, dynamic>.from(payload['generationConfig'] as Map? ?? const {});
-      config['thinkingConfig'] = {'thinkingBudget': 0};
-      return {...payload, 'generationConfig': config};
+    Map<String, dynamic> thinking(Map<String, dynamic> p, Map<String, dynamic> cfg) {
+      final config = Map<String, dynamic>.from(p['generationConfig'] as Map? ?? const {});
+      config['thinkingConfig'] = cfg;
+      return {...p, 'generationConfig': config};
     }
-    return signed(payload);
+
+    if (model.startsWith('gemini-2.5')) return thinking(payload, {'thinkingBudget': 0});
+    final out = signed(payload);
+    if (model == GeminiConfig.lastResortModelName) return thinking(out, {'thinkingLevel': 'low'});
+    return out;
   }
 
   /// La signature que Google accepte à la place de celle qu'un autre modèle

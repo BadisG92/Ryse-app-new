@@ -78,7 +78,8 @@ void main() {
       final primary = bodies[GeminiConfig.modelName]!['generationConfig'] as Map;
       final fallback = bodies[GeminiConfig.fallbackModelName]!['generationConfig'] as Map;
       expect(primary.containsKey('thinkingConfig'), isFalse);
-      expect(fallback['thinkingConfig'], {'thinkingBudget': 0});
+      // 3.5-flash-lite ne réfléchit pas : rien à couper.
+      expect(fallback.containsKey('thinkingConfig'), isFalse);
       // le reste de la configuration passe tel quel
       expect(fallback['maxOutputTokens'], 2000);
     });
@@ -180,9 +181,21 @@ void main() {
     });
 
     test('pas les erreurs de la requête elle-même, ni l\'abonnement', () {
-      for (final code in [null, 400, 401, 402, 403, 404]) {
+      for (final code in [null, 400, 401, 402, 403]) {
         expect(RyzeTransport.isOverloaded(code), isFalse, reason: '$code');
       }
+    });
+
+    test('un modèle retiré au projet passe la main (404)', () {
+      expect(RyzeTransport.isOverloaded(404), isTrue);
+    });
+
+    test('le dernier recours réfléchit au plus bas, les autres pas du tout', () {
+      final last = RyzeTransport.forModel(payload, GeminiConfig.lastResortModelName)['generationConfig'] as Map;
+      expect(last['thinkingConfig'], {'thinkingLevel': 'low'});
+      expect(last['maxOutputTokens'], 2000);
+      final old = RyzeTransport.forModel(payload, 'gemini-2.5-flash')['generationConfig'] as Map;
+      expect(old['thinkingConfig'], {'thinkingBudget': 0});
     });
 
     test('le modèle principal garde son corps de requête intact', () {
