@@ -41,6 +41,41 @@ class PlanTools {
   /// Le jour est obligatoire dans le schéma, donc il en choisissait un.
   /// « Planifie mon petit-déjeuner », à quatre heures du matin, atterrissait
   /// jeudi. Sans indication, c'est aujourd'hui.
+  /// Comment s'écrit un repas, pour les deux surfaces.
+  ///
+  /// Le planificateur avait ces règles dans son prompt, la conversation non :
+  /// le même plat sortait plus court, les calories au jugé, et le ton du coach
+  /// débordait dans la recette. Elles vivent maintenant dans l'outil, que les
+  /// deux lisent.
+  static const String _mealRules =
+      ' Write the dish the same way wherever the request comes from: realistic '
+      'quantities (100 g, 2 eggs, one chicken breast, never 127.3 g); calories and '
+      'macros in line with the per-meal targets in the context when they are '
+      'there; a food the user named goes in exactly, never substituted; the recipe '
+      'fields in a plain, neutral voice, whatever your tone in the chat.';
+
+  /// Les trois champs de la recette, pour créer comme pour remplacer.
+  static const Map<String, dynamic> _recipeFields = {
+    'ingredients': {
+      'type': 'string',
+      'description':
+          'What it takes, one ingredient per line with its amount, each line '
+          'starting with "- ". In the user language. Always fill it: a planned '
+          'meal without its ingredients cannot be shopped for or cooked.',
+    },
+    'method': {
+      'type': 'string',
+      'description':
+          'How to make it, one numbered step per line, complete enough to cook '
+          'from: say the cooking time and the heat or oven temperature when there '
+          'is one. In the user language. Always fill it.',
+    },
+    'tip': {
+      'type': 'string',
+      'description': 'One short piece of advice on the dish, in the user language.',
+    },
+  };
+
   static String _dayHint(String what) =>
       'Day of the $what. A bare name ("thursday") is the next thursday to come, '
       'today included: on a Tuesday, "wednesday" is tomorrow and "monday" the '
@@ -279,7 +314,8 @@ class PlanTools {
           'Add a meal to the weekly plan. Use it when the user wants something planned '
           'for a coming meal, including a dish you just suggested. Do not use it to log '
           'something already eaten. Adding a second entry of the same meal type is '
-          'allowed; only replace with plan.modify_meal when they say to replace.',
+          'allowed; only replace with plan.modify_meal when they say to replace.'
+          '$_mealRules',
       properties: {
         'day': {'type': 'string', 'description': _dayHint('meal'), 'enum': _days},
         'meal_type': {
@@ -292,23 +328,7 @@ class PlanTools {
           'type': 'string',
           'description': 'One or two sentences on the dish, in the user language.',
         },
-        'ingredients': {
-          'type': 'string',
-          'description':
-              'What it takes, one ingredient per line with its amount, each line '
-              'starting with "- ". In the user language. Always fill it: a planned '
-              'meal without its ingredients cannot be shopped for or cooked.',
-        },
-        'method': {
-          'type': 'string',
-          'description':
-              'How to make it, one numbered step per line. In the user language. '
-              'Always fill it.',
-        },
-        'tip': {
-          'type': 'string',
-          'description': 'One short piece of advice on the dish, in the user language.',
-        },
+        ..._recipeFields,
         'calories': {'type': 'integer', 'description': 'Estimated calories.'},
         'proteins': {'type': 'number', 'description': 'Proteins in grams.'},
         'carbs': {'type': 'number', 'description': 'Carbs in grams.'},
@@ -568,7 +588,8 @@ class PlanTools {
       description:
           'Replace a planned meal with another one. Use it only when the user says to '
           'change or swap what is planned; to add a second dish to the same meal use '
-          'plan.create_meal instead.',
+          'plan.create_meal instead.'
+          '$_mealRules',
       properties: {
         'day': {'type': 'string', 'description': _dayHint('meal'), 'enum': _days},
         'meal_type': {
@@ -583,14 +604,20 @@ class PlanTools {
               'entries of the same meal type.',
         },
         'dish_name': {'type': 'string', 'description': 'New dish name.'},
-        'dish_description': {'type': 'string', 'description': 'New description, same format as create.'},
+        // La recette entière, comme à la création. Il n'y avait qu'une
+        // description : un repas remplacé perdait ses ingrédients et ses étapes.
+        'dish_description': {'type': 'string', 'description': 'One or two sentences on the new dish, in the user language.'},
+        ..._recipeFields,
         'calories': {'type': 'integer', 'description': 'Estimated calories.'},
         'proteins': {'type': 'number', 'description': 'Proteins in grams.'},
         'carbs': {'type': 'number', 'description': 'Carbs in grams.'},
         'fats': {'type': 'number', 'description': 'Fats in grams.'},
         'quantity_g': {'type': 'number', 'description': 'Portion size in grams.'},
       },
-      required: ['day', 'meal_type', 'dish_name', 'calories', 'proteins', 'carbs', 'fats', 'quantity_g'],
+      required: [
+        'day', 'meal_type', 'dish_name', 'ingredients', 'method',
+        'calories', 'proteins', 'carbs', 'fats', 'quantity_g',
+      ],
     ),
     needsConfirmation: (_) => true,
     preview: (args) => _confirm(

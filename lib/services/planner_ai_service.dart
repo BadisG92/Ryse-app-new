@@ -278,6 +278,26 @@ class PlannerAIService {
     'snack': 0.10,
   };
 
+  /// Les cibles du jour et de chaque repas, telles que le modèle les lit.
+  ///
+  /// Le planificateur les avait, la conversation non : ses repas prenaient
+  /// leurs calories au jugé. Les deux surfaces écrivent maintenant ce bloc.
+  static List<String> mealTargetLines({
+    required int kcal,
+    required int protein,
+    required int carbs,
+    required int fats,
+  }) =>
+      [
+        'DAILY TARGET: $kcal kcal · P ${protein}g · C ${carbs}g · F ${fats}g',
+        'PER MEAL, aim for these shares of the day:',
+        for (final entry in mealSplit.entries)
+          '  ${entry.key}: ${(kcal * entry.value).round()} kcal · '
+              'P ${(protein * entry.value).round()}g · C ${(carbs * entry.value).round()}g · '
+              'F ${(fats * entry.value).round()}g',
+        'These are targets, not exact values. Prefer an honest recipe over a perfect number.',
+      ];
+
   // =====================================================
   // ACCÈS : premium, ou mode démo de l'onboarding
   // =====================================================

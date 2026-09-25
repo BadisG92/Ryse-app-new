@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:ryze_app/ai/ryze_persona.dart';
 import 'package:ryze_app/ai/ryze_tools/ryze_tools.dart';
+import 'package:ryze_app/services/planner_ai_service.dart';
 
 /// Ce que le vrai modèle fait du vrai prompt.
 ///
@@ -67,10 +68,14 @@ Rien de prévu.''';
     String? tone,
     // Les échanges qui précèdent, en paires (utilisateur, Ryze).
     List<(String, String)> avant = const [],
+    RyzeSurface surface = RyzeSurface.coach,
+    double temperature = 0.8,
+    String surfaceRules = '',
   }) async {
     final instruction = await RyzePersona.build(
       lang: 'fr',
-      surface: RyzeSurface.coach,
+      surface: surface,
+      surfaceRules: surfaceRules,
       userName: 'Badis',
       gender: 'male',
       age: 30,
@@ -107,13 +112,13 @@ Rien de prévu.''';
         ]
       },
       'tools': [
-        {'function_declarations': ryzeTools.declarationsFor(RyzeSurface.coach)}
+        {'function_declarations': ryzeTools.declarationsFor(surface)}
       ],
       'tool_config': {
         'function_calling_config': {'mode': 'AUTO'}
       },
       // Les réglages de la conversation, tels que l'application les envoie.
-      'generationConfig': {'temperature': 0.8, 'maxOutputTokens': 8192},
+      'generationConfig': {'temperature': temperature, 'maxOutputTokens': 8192},
     };
 
     // Le modèle rend parfois 503 « high demand ». Ce n'est pas un défaut de
@@ -608,6 +613,53 @@ Tu es un COACH STRICT et exigeant. Tu ne tolères PAS les excuses. Tu pousses à
         expect(tour.noms, isNot(contains('nav.open_planner')), reason: "le planificateur s'est ouvert");
       });
     }
+  });
+
+  group('Le même plat des deux côtés', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
+    // Le détail d'un plat n'était pas le même selon qu'il venait du
+    // planificateur ou de la conversation : la conversation n'avait ni les
+    // cibles par repas, ni les règles d'écriture d'un repas.
+    final cibles = '\n\n## MEAL TARGETS\n${PlannerAIService.mealTargetLines(kcal: 2200, protein: 165, carbs: 220, fats: 73).join('\n')}';
+    const demandeRepas = 'Planifie-moi un déjeuner poulet riz pour demain';
+    final mercredi = DateTime(2026, 9, 16, 20, 0);
+
+    Map<String, dynamic> repasDe(_Tour tour) {
+      final appel = tour.premier('plan.create_meal');
+      expect(appel, isNotNull, reason: 'aucun repas créé, texte : « ${tour.texte} »');
+      return appel!.args;
+    }
+
+    void decrire(String qui, Map<String, dynamic> r) {
+      final etapes = '${r['method'] ?? ''}'.split('\n').where((l) => l.trim().isNotEmpty).length;
+      final ingredients = '${r['ingredients'] ?? ''}'.split('\n').where((l) => l.trim().isNotEmpty).length;
+      // ignore: avoid_print
+      print('  $qui : ${r['calories']} kcal, $ingredients ingrédients, $etapes étapes, astuce « ${r['tip'] ?? ''} »');
+    }
+
+    test('conversation au ton taquin et planificateur écrivent un plat comparable', () async {
+      final coach = repasDe(await demande(
+        demandeRepas,
+        now: mercredi,
+        extra: cibles,
+        tone: 'Tu es TAQUIN et sarcastique (gentiment). Tu fais des petites piques amicales.',
+      ));
+      final planner = repasDe(await demande(
+        demandeRepas,
+        now: mercredi,
+        extra: cibles,
+        surface: RyzeSurface.planner,
+        temperature: 0.4,
+        surfaceRules: 'You are on the planning screen. Only the available days below.',
+      ));
+      decrire('conversation', coach);
+      decrire('planificateur', planner);
+
+      // Le déjeuner vise 35 % de 2 200 kcal, soit 770 : à 25 % près des deux côtés.
+      for (final r in [coach, planner]) {
+        expect((r['calories'] as num).toDouble(), inInclusiveRange(770 * 0.75, 770 * 1.25));
+        expect('${r['method']}'.split('\n').where((l) => l.trim().isNotEmpty).length, greaterThanOrEqualTo(3));
+      }
+    });
   });
 
   group('Le temps de réponse', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {

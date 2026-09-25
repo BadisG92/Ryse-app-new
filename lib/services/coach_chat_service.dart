@@ -246,13 +246,23 @@ class CoachChatService {
     final profile = await RyzeContextSource.instance.build(strings);
     final prefs = await RyzeMemory.instance.load();
 
+    // Les cibles par repas, comme le planificateur : sans elles, un repas
+    // planifié depuis la conversation prenait ses calories au jugé.
+    final targets = GlobalStateManager.instance;
+    final meals = PlannerAIService.mealTargetLines(
+      kcal: targets.calorieGoal.round(),
+      protein: targets.proteinGoal,
+      carbs: targets.carbsGoal,
+      fats: targets.fatGoal,
+    );
+
     return RyzePersona.build(
       lang: lang,
       surface: RyzeSurface.coach,
       userName: GlobalStateManager.instance.userName,
       gender: _userGender,
       age: _userAge,
-      context: profile,
+      context: '$profile\n\n## MEAL TARGETS\n${meals.join('\n')}',
     ).then((prompt) {
       if (kDebugMode) {
         debugPrint('🤖 Instruction système : ${prompt.length} caractères, '

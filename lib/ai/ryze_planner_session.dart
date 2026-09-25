@@ -210,8 +210,6 @@ You are on the planning screen. The user came here to fill days ahead, not to lo
 ${planningMeals ? '''
 - Spread the day's calories using the table below, and let daily totals vary naturally: a training day carries more, a rest day slightly less.
 - Vary the dishes. The same meal twice in a week is a plan nobody follows.
-- Use realistic quantities: 100 g, 2 eggs, one chicken breast. Never 127.3 g.
-- When the user names a food, that exact food goes in the dish. Never substitute it.
 - Asked for several days, plan every available day: breakfast, lunch and dinner for each.''' : '''
 - Ask for the muscle group and the length when they are missing; choose the days yourself when the user does not care.
 - Space the same muscle group by at least one day.
@@ -253,15 +251,13 @@ ${planningMeals ? '''
       final fats = targets.fatGoal;
 
       // Une seule répartition, celle du service : la prose et le tableau se
-      // contredisaient dans la même requête.
-      lines.add('DAILY TARGET: $kcal kcal · P ${protein}g · C ${carbs}g · F ${fats}g');
-      lines.add('PER MEAL, aim for these shares of the day:');
-      for (final entry in PlannerAIService.mealSplit.entries) {
-        final part = entry.value;
-        lines.add('  ${entry.key}: ${(kcal * part).round()} kcal · '
-            'P ${(protein * part).round()}g · C ${(carbs * part).round()}g · F ${(fats * part).round()}g');
-      }
-      lines.add('These are targets, not exact values. Prefer an honest recipe over a perfect number.');
+      // contredisaient dans la même requête. La conversation écrit le même bloc.
+      lines.addAll(PlannerAIService.mealTargetLines(
+        kcal: kcal,
+        protein: protein.round(),
+        carbs: carbs.round(),
+        fats: fats.round(),
+      ));
     }
 
     return '## ${s.label('section_planner_window')}\n${lines.join('\n')}';
