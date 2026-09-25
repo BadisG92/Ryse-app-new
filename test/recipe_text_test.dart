@@ -68,4 +68,33 @@ void main() {
       expect(RecipeText.parse('   ').isEmpty, isTrue);
     });
   });
+
+  group('Une ligne par étape, une ligne par ingrédient', () {
+    // Vu sur appareil : la préparation venue de la conversation s'affichait
+    // d'un seul bloc, « 1. … 2. … 3. … » sur une ligne.
+    test('des étapes bout à bout sont remises en lignes', () {
+      final r = RecipeText.parse(
+        'Poulet riz---Ingrédients : - 150 g de poulet - 80 g de riz basmati - 1 demi-oignon'
+        '---Étapes : 1. Cuire le riz 10 min. 2. Saisir le poulet à feu vif. 3. Mélanger et servir.',
+      );
+      expect(r.steps.split('\n'), [
+        '1. Cuire le riz 10 min.',
+        '2. Saisir le poulet à feu vif.',
+        '3. Mélanger et servir.',
+      ]);
+      expect(r.ingredients.split('\n'), ['- 150 g de poulet', '- 80 g de riz basmati', '- 1 demi-oignon']);
+    });
+
+    test('un texte déjà en lignes passe tel quel', () {
+      const etapes = '1. Cuire le riz.\n2. Servir.';
+      expect(RecipeText.stepLines(etapes), etapes);
+      const liste = '- 150 g de poulet\n- 80 g de riz';
+      expect(RecipeText.listLines(liste), liste);
+    });
+
+    test('un nombre dans une phrase ne coupe pas', () {
+      const etape = '1. Préchauffer le four à 180 °C et cuire 2 filets 20 min.';
+      expect(RecipeText.stepLines(etape), etape);
+    });
+  });
 }

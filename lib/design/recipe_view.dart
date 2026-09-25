@@ -99,7 +99,35 @@ class RecipeText {
       }
     }
 
-    return RecipeText(summary: summary, ingredients: ingredients, steps: steps, tip: tip);
+    return RecipeText(
+      summary: summary,
+      ingredients: listLines(ingredients),
+      steps: stepLines(steps),
+      tip: tip,
+    );
+  }
+
+  /// Une étape par ligne, même quand le modèle les a mises bout à bout.
+  ///
+  /// La consigne demande une étape numérotée par ligne. Le planificateur,
+  /// plus sage, la suit ; la conversation écrivait souvent « 1. … 2. … 3. … »
+  /// d'un seul tenant, et la préparation s'affichait en un bloc. On coupe
+  /// devant chaque numéro qui suit une fin de phrase ; un texte déjà en
+  /// lignes passe tel quel.
+  static String stepLines(String text) {
+    if (text.contains('\n')) return text;
+    return text.replaceAllMapped(
+      RegExp(r'([.!?:])\s+(?=\d{1,2}[.)]\s)'),
+      (m) => '${m[1]}\n',
+    );
+  }
+
+  /// Un ingrédient par ligne, pour la même raison : « - 150 g de poulet
+  /// - 80 g de riz » arrivait sur une seule ligne. Seul un tiret entouré
+  /// d'espaces coupe : « demi-lune » reste entier.
+  static String listLines(String text) {
+    if (text.contains('\n') || !text.trimLeft().startsWith('-')) return text;
+    return text.replaceAll(RegExp(r'\s+-\s+(?=\S)'), '\n- ');
   }
 }
 

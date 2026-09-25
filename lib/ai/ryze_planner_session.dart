@@ -212,7 +212,6 @@ ${planningMeals ? '''
 - Vary the dishes. The same meal twice in a week is a plan nobody follows.
 - Asked for several days, plan every available day: breakfast, lunch and dinner for each.''' : '''
 - Ask for the muscle group and the length when they are missing; choose the days yourself when the user does not care.
-- Space the same muscle group by at least one day.
 - Only running, cycling, walking and HIIT exist as cardio. Anything else, say so and offer the closest.'''}
 - Only the available days below, with the key written before each date. The past cannot be planned, nor anything after the last day listed.''';
   }

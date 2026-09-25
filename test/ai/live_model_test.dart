@@ -662,6 +662,28 @@ Tu es un COACH STRICT et exigeant. Tu ne tolères PAS les excuses. Tu pousses à
     });
   });
 
+  group('La même séance des deux côtés', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
+    test('conversation et planificateur composent une séance comparable', () async {
+      const phrase = 'Planifie-moi une séance dos de 45 minutes demain';
+      final mercredi = DateTime(2026, 9, 16, 20, 0);
+      final coach = (await demande(phrase, now: mercredi,
+              tone: 'Tu es TAQUIN et sarcastique (gentiment). Tu fais des petites piques amicales.'))
+          .premier('plan.create_workout');
+      final planner = (await demande(phrase, now: mercredi, surface: RyzeSurface.planner, temperature: 0.4,
+              surfaceRules: 'You are on the planning screen. Only the available days below.'))
+          .premier('plan.create_workout');
+      expect(coach, isNotNull, reason: "la conversation n'a pas créé la séance");
+      expect(planner, isNotNull, reason: "le planificateur n'a pas créé la séance");
+      final nc = (coach!.args['exercises'] as List? ?? []).length;
+      final np = (planner!.args['exercises'] as List? ?? []).length;
+      // ignore: avoid_print
+      print('  conversation : $nc exercices, ${coach.args['duration_minutes']} min · planificateur : $np exercices, ${planner.args['duration_minutes']} min');
+      // Les deux surfaces composent la même séance, à un exercice près.
+      expect(nc, greaterThanOrEqualTo(3));
+      expect((nc - np).abs(), lessThanOrEqualTo(1));
+    });
+  });
+
   group('Le temps de réponse', skip: key == null ? 'sans GEMINI_API_KEY' : null, () {
     test('un tour simple aboutit dans un délai tenable', () async {
       // Le nombre est imprimé à chaque passage : c'est lui qui informe, pas le

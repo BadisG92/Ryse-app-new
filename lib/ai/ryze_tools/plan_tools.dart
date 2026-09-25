@@ -357,7 +357,8 @@ class PlanTools {
           'not say; do not guess them. Write the exercises yourself in "exercises": '
           'they are what goes into the session, so the session is exactly what you '
           'told the user it would be. Only leave "exercises" out when you truly have '
-          'no idea what to put in it.',
+          'no idea what to put in it. Space the same muscle group by at least one day '
+          'from what is already planned.',
       properties: {
         'day': {'type': 'string', 'description': _dayHint('session'), 'enum': _days},
         'workout_type': {
