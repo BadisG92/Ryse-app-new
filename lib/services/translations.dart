@@ -12235,9 +12235,9 @@ class AppTranslations {
       'de': 'Für heute',
     },
     'arc_rule_meals': {
-      'fr': '2 repas notés',
-      'en': '2 meals logged',
-      'de': '2 Mahlzeiten eingetragen',
+      'fr': 'Au moins 2 repas',
+      'en': 'At least 2 meals',
+      'de': 'Mindestens 2 Mahlzeiten',
     },
     'arc_rule_meals_count': {
       'fr': '{n} sur 2',
@@ -12435,9 +12435,9 @@ class AppTranslations {
       'de': 'Letzter Start: 21. Dezember.',
     },
     'arc_intro_rule_day2': {
-      'fr': '2 repas notés, bons ou pas, et ton objectif d\'eau : ta journée est validée.',
-      'en': '2 meals logged, good or bad, plus your water goal: day locked in.',
-      'de': '2 Mahlzeiten eingetragen, gut oder nicht, plus dein Wasserziel: Tag geschafft.',
+      'fr': 'Au moins 2 repas notés, bons ou pas, et ton objectif d\'eau : ta journée est validée.',
+      'en': 'At least 2 meals logged, good or bad, plus your water goal: day locked in.',
+      'de': 'Mindestens 2 Mahlzeiten eingetragen, gut oder nicht, plus dein Wasserziel: Tag geschafft.',
     },
     'arc_intro_rule_net': {
       'fr': 'Un oubli se rattrape jusqu\'au lendemain midi. Un joker à 30 jours, un autre à 60.',
@@ -12616,9 +12616,9 @@ class AppTranslations {
       'de': 'Dir fehlt noch {missing}, damit dein Tag zählt.',
     },
     'arc_notif_generic_body': {
-      'fr': 'Deux repas et ton eau avant minuit : ta journée compte.',
-      'en': 'Two meals and your water before midnight: your day counts.',
-      'de': 'Zwei Mahlzeiten und dein Wasser vor Mitternacht: Dein Tag zählt.',
+      'fr': 'Au moins 2 repas et ton eau avant minuit : ta journée compte.',
+      'en': 'At least 2 meals and your water before midnight: your day counts.',
+      'de': 'Mindestens 2 Mahlzeiten und dein Wasser vor Mitternacht: Dein Tag zählt.',
     },
     'arc_notif_grace_title': {
       'fr': 'Sauve ta série de {n} {days} avant midi',

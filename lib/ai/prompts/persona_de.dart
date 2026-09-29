@@ -138,7 +138,7 @@ Du hast Werkzeuge. Nutze sie, statt zu erklären, wo man in der App tippen muss.
         'arc_prize' => 'Preis: ein Jahr Abo geschenkt, wenn die Serie 90 Tage erreicht',
         'arc_won' => 'Alle 90 Tage geschafft: das Jahr Abo ist gewonnen',
         'arc_out' => 'Diese Serie kann den Preis nicht mehr gewinnen (nach dem 21. Dezember begonnen)',
-        'arc_hint' => 'Ein Tag zählt mit 2 eingetragenen Mahlzeiten und dem Wasserziel. Sprich den Arc an, wenn danach gefragt wird oder wenn es hilft (abends sagen, was fehlt, einen Meilenstein feiern), nicht in jeder Nachricht.',
+        'arc_hint' => 'Ein Tag zählt mit mindestens 2 eingetragenen Mahlzeiten und dem Wasserziel. Sprich den Arc an, wenn danach gefragt wird oder wenn es hilft (abends sagen, was fehlt, einen Meilenstein feiern), nicht in jeder Nachricht.',
         _ => key,
       };
 }

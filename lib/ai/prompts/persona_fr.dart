@@ -139,7 +139,7 @@ Tu as des outils. Sers-t'en au lieu d'expliquer où aller dans l'application.
         'arc_prize' => 'Prix : un an d\'abonnement offert si la série atteint 90 jours',
         'arc_won' => 'Les 90 jours sont validés : l\'année d\'abonnement est gagnée',
         'arc_out' => 'Cette série ne peut plus gagner le prix (commencée après le 21 décembre)',
-        'arc_hint' => 'Une journée est validée avec 2 repas notés et l\'objectif d\'eau. Parle de l\'arc quand il te le demande ou quand c\'est utile (dire ce qui manque le soir, féliciter un palier), pas à chaque message.',
+        'arc_hint' => 'Une journée est validée avec au moins 2 repas notés et l\'objectif d\'eau. Parle de l\'arc quand il te le demande ou quand c\'est utile (dire ce qui manque le soir, féliciter un palier), pas à chaque message.',
         _ => key,
       };
 }

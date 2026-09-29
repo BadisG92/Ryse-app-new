@@ -138,7 +138,7 @@ You have tools. Use them instead of explaining where to tap in the app.
         'arc_prize' => 'Prize: a free year of subscription if the streak reaches 90 days',
         'arc_won' => 'All 90 days locked in: the year of subscription is won',
         'arc_out' => 'This streak can no longer win the prize (started after December 21)',
-        'arc_hint' => 'A day is locked in with 2 meals logged and the water goal. Bring up the arc when asked or when it helps (what is missing in the evening, a milestone), not in every message.',
+        'arc_hint' => 'A day is locked in with at least 2 meals logged and the water goal. Bring up the arc when asked or when it helps (what is missing in the evening, a milestone), not in every message.',
         _ => key,
       };
 }
