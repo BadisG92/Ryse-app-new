@@ -13,7 +13,7 @@ de débogage qui vivaient à la racine.
 | **Aujourd'hui** (`RyseCoachWidget`, écran verrouillé) | iOS, rectangulaire, circulaire, inline | Le reste, la jauge, et la phrase du coach du home pour cette heure. Rendu monochrome par le système. | Ouvre le home. |
 | **Repas** (`RyseMealWidget.kt`, 4×2) | Android | Le même que le medium iOS. | Idem. |
 | **Eau** (`RyseWaterWidget.kt`, 2×2) | Android | Le même que le small iOS. | Les boutons ouvrent l'app avec la quantité, qui l'écrit à l'arrivée. |
-| **Winter Arc** (`RyzeArcWidget`, small, medium, rectangulaire) | iOS, accueil et écran verrouillé | Sur la nuit de la saison : la neige, la flamme de glace qui dérive, le mot d'ordre (« FOCUS. », ambre « VALIDÉ. » une fois la journée validée), le jour sur 90 et ce qui manque ; la grille des 90 dans le medium. L'écran verrouillé est fixe. Voir `WINTER_ARC.md`. | Ouvre l'écran de l'arc. |
+| **Winter Arc** (`RyzeArcWidget`, small, medium, rectangulaire) | iOS, accueil et écran verrouillé | Sur la nuit de la saison : la neige et la flamme de glace, immobiles sur iPhone, le mot d'ordre (« FOCUS. », ambre « VALIDÉ. » une fois la journée validée), le jour sur 90 et ce qui manque ; la grille des 90 dans le medium. L'écran verrouillé est fixe. Voir `WINTER_ARC.md`. | Ouvre l'écran de l'arc. |
 | **Winter Arc** (`RyzeArcWidget.kt`, 2×2, grille à partir de 250 dp) | Android | Le même, la neige et la flamme en images qui défilent. | Idem. |
 
 Les identifiants (`RyseMealWidget`, `RyseCoachWidget`, le schéma `ryse://`)

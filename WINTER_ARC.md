@@ -140,13 +140,12 @@ jamais : seules la neige et la flamme vivent. Un tap ouvre l'écran de l'arc
   n'a pas réécrit, le widget ne devine pas : il reprend le mot d'ordre et dit
   « Ouvre Ryze pour ta journée ». Un état gardé d'un autre jour est traité de même.
 - **iPhone** (`ios/RyseMealWidget/RyzeArcWidget.swift`) : petit, moyen, et écran
-  verrouillé (fixe, monochrome : « Jour 34 / 90 » et une jauge). Le mouvement
-  est la rotation d'aiguille que WidgetKit dessine lui-même
-  (`_clockHandRotationEffect`, non documenté) : chaque flocon est au bord d'une
-  roue immense centrée hors du widget (six flocons par roue, environ 35 points
-  par seconde), chaque couche de la flamme décrit un petit cercle sans pencher
-  (5,2 s, 3,7 s, 2,9 s). Immobile avec « Réduire les animations ». Si iOS cessait
-  un jour de faire tourner l'effet, le widget resterait lisible, immobile.
+  verrouillé (monochrome : « Jour 34 / 90 » et une jauge). **Immobile** : la
+  neige est dessinée, la flamme aussi, mais rien ne bouge. La première version
+  animait tout avec la rotation d'aiguille de WidgetKit
+  (`_clockHandRotationEffect`, non documentée) ; le SDK de Xcode 26 ne l'a plus
+  et le build #118 a échoué dessus (29 septembre). Aucune API publique ne permet
+  à un widget iPhone d'animer seul.
 - **Android** (`RyzeArcWidget.kt`, `widget_arc_small.xml`, `widget_arc_medium.xml`,
   `widget_arc_flame.xml` généré) : la flamme en trois calques PNG
   (`drawable-nodpi/arc_flame_*.png`), chacun dans un `ViewFlipper` d'images
@@ -159,8 +158,7 @@ jamais : seules la neige et la flamme vivent. Un tap ouvre l'écran de l'arc
   Le mot allemand porte un trait d'union conditionnel (`GE\u00ADSCHAFFT.`) : les
   deux widgets coupent là, un mot par ligne, jamais au milieu d'un mot.
 
-À vérifier sur appareil : que l'effet d'aiguille tourne bien dans le petit et
-le moyen (et à quelle cadence iOS le rafraîchit), que la neige Android défile
+À vérifier sur appareil : que la neige Android défile
 sans à-coup à chaque nappe (sinon passer à des images fixes), le rendu du mot
 d'ordre dans les trois langues, le tap qui ouvre l'arc app fermée.
 

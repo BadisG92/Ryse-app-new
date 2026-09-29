@@ -3,14 +3,9 @@
 //  RyseMealWidget
 //
 //  The Winter Arc: the day of the series out of 90, the word of the day in
-//  thick letters, and the ice flame that drifts while the snow falls. Every
-//  word comes from the app's `arc` block (lib/arc/arc_widget_data.dart); the
-//  widget only lays it out on the season's night.
-//
-//  What moves, moves with the clock-hand rotation WidgetKit draws on its own:
-//  the snowflakes sit on the rim of wheels far larger than the widget, and
-//  each layer of the flame travels on a small circle without ever tilting.
-//  No timeline entry is spent on it. With Reduce Motion, all of it stands still.
+//  thick letters, the ice flame and the snow. Every word comes from the
+//  app's `arc` block (lib/arc/arc_widget_data.dart); the widget only lays it
+//  out on the season's night. On iPhone it stands still (see SnowLayer).
 //
 
 import SwiftUI
@@ -414,48 +409,34 @@ struct ArcGridView: View {
     }
 }
 
-// MARK: - Motion
+// MARK: - Snow and flame
 
-extension View {
-    /// A full turn every `period` seconds, drawn by the system itself, as it
-    /// draws the second hand of the clock widget. Undocumented but shipped by
-    /// apps on the App Store; if iOS ever drops it, the widget stands still.
-    fileprivate func clockSpin(_ period: TimeInterval) -> some View {
-        _clockHandRotationEffect(.custom(period), in: .current, anchor: .center)
-    }
-
-    /// The same turn, the other way round: mirrored, turned, mirrored back.
-    fileprivate func clockSpinBack(_ period: TimeInterval) -> some View {
-        scaleEffect(x: -1, y: 1).clockSpin(period).scaleEffect(x: -1, y: 1)
-    }
-
-    /// Travels on a circle of `radius` in `period` seconds without tilting:
-    /// an arm turns, and the content turns back as much.
-    fileprivate func orbit(radius: CGFloat, period: TimeInterval, moving: Bool) -> some View {
-        Group {
-            if moving {
-                clockSpinBack(period).offset(x: radius).clockSpin(period)
-            } else {
-                self
-            }
-        }
-    }
-}
-
-/// Snow: each flake on the rim of a wheel centred far off to the left, so
-/// only the part of the rim that falls crosses the widget. Six flakes to a
-/// wheel, about 35 points a second, the speed of real snow.
+/// Snow, still: flakes scattered over the night, the same places every time
+/// so the widget does not flicker from one reload to the next.
+///
+/// It moved in the first version, with the clock-hand rotation WidgetKit uses
+/// for the clock widget (`_clockHandRotationEffect`). That modifier is not in
+/// the SDK of Xcode 26 (build #118 failed on it), and nothing public replaces
+/// it: a widget cannot run an animation of its own. Android keeps its falling
+/// snow (ViewFlipper frames, an official widget feature).
 struct SnowLayer: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     var body: some View {
         GeometryReader { geometry in
             let w = geometry.size.width
             let h = geometry.size.height
-            let n = max(1, Int((w / 26).rounded()))
+            // About one flake per 50 x 50 points.
+            let n = max(6, Int((w * h / 2500).rounded()))
             ZStack(alignment: .topLeading) {
                 ForEach(0..<n, id: \.self) { k in
-                    wheel(k, x: 8 + (CGFloat(k) + 0.5) * (w - 16) / CGFloat(n), h: h)
+                    // A low-discrepancy scatter: evenly spread, never a grid.
+                    let fx = CGFloat((Double(k) * 0.618_034 + 0.13).truncatingRemainder(dividingBy: 1))
+                    let fy = CGFloat((Double(k) * 0.754_878 + 0.37).truncatingRemainder(dividingBy: 1))
+                    let size = 1.6 + CGFloat(k % 3) * 0.7
+                    let alpha = 0.45 + Double((k * 3) % 4) * 0.12
+                    Circle()
+                        .fill(.white.opacity(alpha))
+                        .frame(width: size, height: size)
+                        .position(x: 4 + fx * (w - 8), y: 4 + fy * (h - 8))
                 }
             }
         }
@@ -463,60 +444,24 @@ struct SnowLayer: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
-
-    private func wheel(_ k: Int, x: CGFloat, h: CGFloat) -> some View {
-        let radius = CGFloat(360 + (k * 97) % 180)
-        let period = (2 * Double.pi * Double(radius) / 35).rounded()
-        return ZStack {
-            ForEach(0..<6, id: \.self) { j in
-                let size = 1.6 + CGFloat((k + j) % 3) * 0.7
-                let alpha = 0.45 + Double((k * 3 + j) % 4) * 0.12
-                Circle()
-                    .fill(.white.opacity(alpha))
-                    .frame(width: size, height: size)
-                    .position(x: 2 * radius, y: radius)
-                    .rotationEffect(.degrees(Double(j * 60 + (k * 23) % 60)))
-            }
-        }
-        .frame(width: 2 * radius, height: 2 * radius)
-        .modifier(Spin(period: period, moving: !reduceMotion))
-        .position(x: x - radius, y: h / 2)
-    }
-
-    private struct Spin: ViewModifier {
-        let period: TimeInterval
-        let moving: Bool
-
-        func body(content: Content) -> some View {
-            if moving { content.clockSpin(period) } else { content }
-        }
-    }
 }
 
 /// The flame of the season, drawn in three layers as in the app: blue, cyan,
-/// a white core. Each layer drifts on its own small circle at its own pace,
-/// slow enough to read as a flame breathing rather than shaking.
+/// a white core.
 struct IceFlame: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let size: CGFloat
 
     var body: some View {
         let s = size / 24
-        let moving = !reduceMotion
         ZStack {
-            ZStack {
-                FlameShape().fill(gradient(0x3FA8FF, 0x1B3FB8))
-                FlameHighlight().stroke(.white.opacity(0.55), style: StrokeStyle(lineWidth: 1.1 * s, lineCap: .round))
-            }
-            .orbit(radius: 0.18 * s, period: 5.2, moving: moving)
+            FlameShape().fill(gradient(0x3FA8FF, 0x1B3FB8))
+            FlameHighlight().stroke(.white.opacity(0.55), style: StrokeStyle(lineWidth: 1.1 * s, lineCap: .round))
 
             FlameShape().fill(gradient(0x9FE6FF, 0x38A0FF))
                 .scaleEffect(0.66, anchor: UnitPoint(x: 12.3 / 24, y: 21.6 / 24))
-                .orbit(radius: 0.42 * s, period: 3.7, moving: moving)
 
             FlameShape().fill(gradient(0xFFFFFF, 0xE4F8FF))
                 .scaleEffect(0.36, anchor: UnitPoint(x: 12.3 / 24, y: 21.2 / 24))
-                .orbit(radius: 0.5 * s, period: 2.9, moving: moving)
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
