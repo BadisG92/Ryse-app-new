@@ -5,17 +5,44 @@ import '../design/design.dart';
 import '../services/translations.dart';
 import 'arc_grid.dart';
 import 'arc_page.dart';
+import 'arc_service.dart';
 import 'arc_state.dart';
 import 'arc_words.dart';
 import 'winter_flame.dart';
 
 /// L'arc sur l'accueil : le jour, ce qui manque, et les 90 carrés en trois
 /// lignes. Un tap ouvre l'écran de l'arc.
-class ArcHomeCard extends StatelessWidget {
+///
+/// La case qui vient d'être validée se remplit sous les yeux, comme le matin,
+/// la première fois que l'accueil la montre (`ArcService.takeReveal`).
+class ArcHomeCard extends StatefulWidget {
   const ArcHomeCard({super.key, required this.state, required this.lang});
 
   final ArcState state;
   final String lang;
+
+  @override
+  State<ArcHomeCard> createState() => _ArcHomeCardState();
+}
+
+class _ArcHomeCardState extends State<ArcHomeCard> {
+  int? _reveal;
+
+  ArcState get state => widget.state;
+  String get lang => widget.lang;
+
+  @override
+  void initState() {
+    super.initState();
+    _reveal = ArcService.instance.takeReveal(state);
+  }
+
+  @override
+  void didUpdateWidget(ArcHomeCard old) {
+    super.didUpdateWidget(old);
+    final r = ArcService.instance.takeReveal(state);
+    if (r != null) _reveal = r;
+  }
 
   String _status() {
     final s = state;
@@ -82,7 +109,7 @@ class ArcHomeCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: context.vw(3.1)),
-            ArcGrid(cells: s.isSoon ? const [] : s.cells, columns: 30, gapFraction: 0.32, todayFirst: !s.isSoon),
+            ArcGrid(cells: s.isSoon ? const [] : s.cells, columns: 30, gapFraction: 0.32, todayFirst: !s.isSoon, reveal: _reveal),
           ],
         ),
       ),

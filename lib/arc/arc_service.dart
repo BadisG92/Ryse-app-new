@@ -11,6 +11,7 @@ import '../services/meal_widget_data_provider.dart';
 import '../services/global_state_manager.dart';
 import '../services/notification_service.dart';
 import '../services/weekly_planner_service.dart';
+import 'arc_banner.dart';
 import 'arc_state.dart';
 
 /// Le Winter Arc côté téléphone : il demande, il garde, il prévient.
@@ -99,14 +100,34 @@ class ArcService extends ChangeNotifier {
     }
   }
 
+  /// La case qui vient d'être validée sous les yeux : l'accueil la remplit la
+  /// prochaine fois qu'il la montre (voir [takeReveal]).
+  ({DateTime day, int index})? _reveal;
+
+  /// La case à remplir en animation, une seule fois, si elle est de ce jour.
+  int? takeReveal(ArcState s) {
+    final r = _reveal;
+    if (r == null) return null;
+    if (r.day.year != s.today.year || r.day.month != s.today.month || r.day.day != s.today.day) return null;
+    if (r.index < 0 || r.index >= s.cells.length) return null;
+    _reveal = null;
+    return r.index;
+  }
+
   void _apply(String uid, ArcState next, {required bool fromCache}) {
     final before = _stateFor == uid ? _state : null;
     final changed = before == null || jsonEncode(before.toJson()) != jsonEncode(next.toJson());
     _state = next;
     _stateFor = uid;
     if (!changed) return;
+    // Posée avant de prévenir l'accueil, pour qu'il la voie en se redessinant.
+    final validated = fromCache ? null : ArcBanner.detect(before, next);
+    if (validated != null) {
+      _reveal = (day: next.today, index: next.cells.length - (validated == ArcValidated.today ? 1 : 2));
+    }
     notifyListeners();
     if (fromCache) return;
+    if (validated != null) unawaited(ArcBanner.celebrate(validated, next));
 
     // Deux flammes : la normale garde sa règle, l'arc a la sienne. Ce qui
     // change ici ne concerne que le bloc de l'arc chez le coach et le widget.

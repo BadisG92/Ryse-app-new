@@ -12535,6 +12535,16 @@ class AppTranslations {
       'en': 'See you {date}.',
       'de': 'Wir sehen uns am {date}.',
     },
+    'arc_banner_yesterday': {
+      'fr': 'Hier validé',
+      'en': 'Yesterday locked in',
+      'de': 'Gestern geschafft',
+    },
+    'arc_banner_yesterday_sub': {
+      'fr': 'Ta série continue : {n} {days}.',
+      'en': 'Your streak goes on: {n} {days}.',
+      'de': 'Deine Serie läuft weiter: {n} {days}.',
+    },
     'arc_continue': {
       'fr': 'Continuer',
       'en': 'Continue',

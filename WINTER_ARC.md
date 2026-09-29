@@ -140,12 +140,16 @@ jamais : seules la neige et la flamme vivent. Un tap ouvre l'écran de l'arc
   n'a pas réécrit, le widget ne devine pas : il reprend le mot d'ordre et dit
   « Ouvre Ryze pour ta journée ». Un état gardé d'un autre jour est traité de même.
 - **iPhone** (`ios/RyseMealWidget/RyzeArcWidget.swift`) : petit, moyen, et écran
-  verrouillé (monochrome : « Jour 34 / 90 » et une jauge). **Immobile** : la
-  neige est dessinée, la flamme aussi, mais rien ne bouge. La première version
-  animait tout avec la rotation d'aiguille de WidgetKit
-  (`_clockHandRotationEffect`, non documentée) ; le SDK de Xcode 26 ne l'a plus
-  et le build #118 a échoué dessus (29 septembre). Aucune API publique ne permet
-  à un widget iPhone d'animer seul.
+  verrouillé (monochrome : « Jour 34 / 90 » et une jauge). La neige tombe et la
+  flamme dérive avec la rotation d'aiguille que WidgetKit dessine lui-même :
+  chaque flocon est au bord d'une roue immense centrée hors du widget (six par
+  roue, environ 35 points par seconde), chaque couche de la flamme décrit un
+  petit cercle sans pencher (5,2 s, 3,7 s, 2,9 s). Cet effet est privé : Xcode 26
+  ne l'expose plus (`_clockHandRotationEffect`, le build #118 a échoué dessus),
+  il est donc retrouvé à l'exécution par son nom et construit depuis sa forme
+  Codable (`ClockHand`, la technique de ClockHandKit, MIT). Si iOS le renomme,
+  ou avec « Réduire les animations », le widget reste immobile, neige éparpillée.
+  Risque assumé : une API privée peut valoir un refus à la revue d'Apple.
 - **Android** (`RyzeArcWidget.kt`, `widget_arc_small.xml`, `widget_arc_medium.xml`,
   `widget_arc_flame.xml` généré) : la flamme en trois calques PNG
   (`drawable-nodpi/arc_flame_*.png`), chacun dans un `ViewFlipper` d'images
@@ -161,6 +165,19 @@ jamais : seules la neige et la flamme vivent. Un tap ouvre l'écran de l'arc
 À vérifier sur appareil : que la neige Android défile
 sans à-coup à chaque nappe (sinon passer à des images fixes), le rendu du mot
 d'ordre dans les trois langues, le tap qui ouvre l'arc app fermée.
+
+### Le moment où la journée est validée (29 septembre)
+
+`lib/arc/arc_banner.dart`. Quand la réponse de la base fait passer aujourd'hui à
+validé (ou rattrape hier avant midi), un bandeau glisse en bas de l'écran, où
+qu'on soit : la nuit de la saison, la flamme de glace et ses étincelles,
+« Jour 12 validé » et « Plus que 78 jours. » (« Hier validé » / « Ta série
+continue : 12 jours. »), la vibration de réussite. Un tap ouvre l'arc. Il attend
+que « Repas ajouté · Annuler » soit parti (`RyzeUndo.visible`) et se pousse
+au-dessus si une autre écriture en affiche un. Une fois par jour et par journée
+(`arc_banner_today_<uid>`, `arc_banner_yesterday_<uid>`). Au retour sur
+l'accueil, la case se remplit sous les yeux comme le matin
+(`ArcService.takeReveal`, posée avant de prévenir l'accueil).
 
 ### Lot 2 bis
 

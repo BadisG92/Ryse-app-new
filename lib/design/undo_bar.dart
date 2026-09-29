@@ -30,6 +30,10 @@ class RyzeUndo {
   /// Height reserved above the bottom of the screen, so the bar clears the bar.
   static const double bottomInset = 96;
 
+  /// Whether a bar is on screen: what else speaks at that place (the Winter
+  /// Arc's banner) waits for it, or moves above it.
+  static final ValueNotifier<bool> visible = ValueNotifier<bool>(false);
+
   static void show(BuildContext context, {required String message, required String undoLabel, required VoidCallback onUndo}) {
     _insert(context, message: message, action: undoLabel, onAction: onUndo, danger: false);
   }
@@ -52,6 +56,7 @@ class RyzeUndo {
     _timer = null;
     _entry?.remove();
     _entry = null;
+    visible.value = false;
   }
 
   static void _insert(
@@ -81,6 +86,7 @@ class RyzeUndo {
     );
     _entry = entry;
     overlay.insert(entry);
+    visible.value = true;
     _timer = Timer(life, dismiss);
   }
 }

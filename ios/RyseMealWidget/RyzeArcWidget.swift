@@ -5,7 +5,8 @@
 //  The Winter Arc: the day of the series out of 90, the word of the day in
 //  thick letters, the ice flame and the snow. Every word comes from the
 //  app's `arc` block (lib/arc/arc_widget_data.dart); the widget only lays it
-//  out on the season's night. On iPhone it stands still (see SnowLayer).
+//  out on the season's night. The snow falls and the flame drifts with
+//  WidgetKit's clock-hand rotation (see ClockHand).
 //
 
 import SwiftUI
@@ -409,34 +410,117 @@ struct ArcGridView: View {
     }
 }
 
+// MARK: - Motion
+
+/// WidgetKit's clock-hand rotation: the one continuous motion a widget can
+/// have, drawn by the system itself as it draws the second hand of the clock
+/// widget. No timeline entry is spent on it.
+///
+/// Apple keeps it private. Xcode 26 no longer exposes `_clockHandRotationEffect`
+/// (build #118 failed on it), so the modifier is found at run time instead:
+/// its type is looked up by name and built from its own Codable form, the
+/// technique of ClockHandKit (MIT, github.com/giljihun/ClockHandKit). If iOS
+/// ever renames it, the lookup fails and the widget simply stands still.
+enum ClockHand {
+    private struct Payload: Encodable {
+        let period: TimeInterval
+        let timeZone: TimeZone
+        let anchor: UnitPoint
+
+        private enum CodingKeys: String, CodingKey {
+            case period, timeZone, anchor
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(period, forKey: .period)
+            try container.encode(timeZone, forKey: .timeZone)
+            // UnitPoint is only Codable from iOS 26: written as the pair WidgetKit reads
+            var point = container.nestedUnkeyedContainer(forKey: .anchor)
+            try point.encode(Double(anchor.x))
+            try point.encode(Double(anchor.y))
+        }
+    }
+
+    /// The modifier turning once every `period` seconds, or nil if iOS does not
+    /// have it.
+    static func modifier(period: TimeInterval) -> (any ViewModifier)? {
+        guard let type = _typeByName("9WidgetKit24_ClockHandRotationEffectV") as? any Decodable.Type,
+              let data = try? JSONEncoder().encode(Payload(period: period, timeZone: .current, anchor: .center)),
+              let effect = try? JSONDecoder().decode(type, from: data) else { return nil }
+        return effect as? any ViewModifier
+    }
+
+    /// Whether the rotation can run at all on this phone.
+    static let available: Bool = modifier(period: 60) != nil
+
+    static func apply<V: View>(to view: V, period: TimeInterval) -> AnyView {
+        guard let effect = modifier(period: period) else { return AnyView(view) }
+        return AnyView(applying(effect, to: view))
+    }
+
+    private static func applying<V: View, M: ViewModifier>(_ effect: M, to view: V) -> some View {
+        view.modifier(effect)
+    }
+}
+
+extension View {
+    /// A full turn every `period` seconds, clockwise.
+    fileprivate func clockSpin(_ period: TimeInterval) -> some View {
+        ClockHand.apply(to: self, period: period)
+    }
+
+    /// The same turn, the other way round: mirrored, turned, mirrored back.
+    fileprivate func clockSpinBack(_ period: TimeInterval) -> some View {
+        scaleEffect(x: -1, y: 1).clockSpin(period).scaleEffect(x: -1, y: 1)
+    }
+
+    /// Travels on a circle of `radius` in `period` seconds without tilting:
+    /// an arm turns, and the content turns back as much.
+    fileprivate func orbit(radius: CGFloat, period: TimeInterval, moving: Bool) -> some View {
+        Group {
+            if moving {
+                clockSpinBack(period).offset(x: radius).clockSpin(period)
+            } else {
+                self
+            }
+        }
+    }
+}
+
 // MARK: - Snow and flame
 
-/// Snow, still: flakes scattered over the night, the same places every time
-/// so the widget does not flicker from one reload to the next.
-///
-/// It moved in the first version, with the clock-hand rotation WidgetKit uses
-/// for the clock widget (`_clockHandRotationEffect`). That modifier is not in
-/// the SDK of Xcode 26 (build #118 failed on it), and nothing public replaces
-/// it: a widget cannot run an animation of its own. Android keeps its falling
-/// snow (ViewFlipper frames, an official widget feature).
+/// Snow. Moving, each flake sits on the rim of a wheel centred far off to the
+/// left, so only the part of the rim that falls crosses the widget: six flakes
+/// to a wheel, about 35 points a second, the speed of real snow. Still (Reduce
+/// Motion, or no rotation on this iOS), flakes scattered over the night, the
+/// same places every time.
 struct SnowLayer: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         GeometryReader { geometry in
             let w = geometry.size.width
             let h = geometry.size.height
-            // About one flake per 50 x 50 points.
-            let n = max(6, Int((w * h / 2500).rounded()))
-            ZStack(alignment: .topLeading) {
-                ForEach(0..<n, id: \.self) { k in
-                    // A low-discrepancy scatter: evenly spread, never a grid.
-                    let fx = CGFloat((Double(k) * 0.618_034 + 0.13).truncatingRemainder(dividingBy: 1))
-                    let fy = CGFloat((Double(k) * 0.754_878 + 0.37).truncatingRemainder(dividingBy: 1))
-                    let size = 1.6 + CGFloat(k % 3) * 0.7
-                    let alpha = 0.45 + Double((k * 3) % 4) * 0.12
-                    Circle()
-                        .fill(.white.opacity(alpha))
-                        .frame(width: size, height: size)
-                        .position(x: 4 + fx * (w - 8), y: 4 + fy * (h - 8))
+            if !reduceMotion && ClockHand.available {
+                let n = max(1, Int((w / 26).rounded()))
+                ZStack(alignment: .topLeading) {
+                    ForEach(0..<n, id: \.self) { k in
+                        wheel(k, x: 8 + (CGFloat(k) + 0.5) * (w - 16) / CGFloat(n), h: h)
+                    }
+                }
+            } else {
+                // About one flake per 50 x 50 points, evenly spread, never a grid.
+                let n = max(6, Int((w * h / 2500).rounded()))
+                ZStack(alignment: .topLeading) {
+                    ForEach(0..<n, id: \.self) { k in
+                        let fx = CGFloat((Double(k) * 0.618_034 + 0.13).truncatingRemainder(dividingBy: 1))
+                        let fy = CGFloat((Double(k) * 0.754_878 + 0.37).truncatingRemainder(dividingBy: 1))
+                        Circle()
+                            .fill(.white.opacity(0.45 + Double((k * 3) % 4) * 0.12))
+                            .frame(width: 1.6 + CGFloat(k % 3) * 0.7, height: 1.6 + CGFloat(k % 3) * 0.7)
+                            .position(x: 4 + fx * (w - 8), y: 4 + fy * (h - 8))
+                    }
                 }
             }
         }
@@ -444,24 +528,51 @@ struct SnowLayer: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
+
+    private func wheel(_ k: Int, x: CGFloat, h: CGFloat) -> some View {
+        let radius = CGFloat(360 + (k * 97) % 180)
+        let period = (2 * Double.pi * Double(radius) / 35).rounded()
+        return ZStack {
+            ForEach(0..<6, id: \.self) { j in
+                let size = 1.6 + CGFloat((k + j) % 3) * 0.7
+                let alpha = 0.45 + Double((k * 3 + j) % 4) * 0.12
+                Circle()
+                    .fill(.white.opacity(alpha))
+                    .frame(width: size, height: size)
+                    .position(x: 2 * radius, y: radius)
+                    .rotationEffect(.degrees(Double(j * 60 + (k * 23) % 60)))
+            }
+        }
+        .frame(width: 2 * radius, height: 2 * radius)
+        .clockSpin(period)
+        .position(x: x - radius, y: h / 2)
+    }
 }
 
 /// The flame of the season, drawn in three layers as in the app: blue, cyan,
-/// a white core.
+/// a white core. Each layer drifts on its own small circle at its own pace,
+/// slow enough to read as a flame breathing rather than shaking.
 struct IceFlame: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let size: CGFloat
 
     var body: some View {
         let s = size / 24
+        let moving = !reduceMotion && ClockHand.available
         ZStack {
-            FlameShape().fill(gradient(0x3FA8FF, 0x1B3FB8))
-            FlameHighlight().stroke(.white.opacity(0.55), style: StrokeStyle(lineWidth: 1.1 * s, lineCap: .round))
+            ZStack {
+                FlameShape().fill(gradient(0x3FA8FF, 0x1B3FB8))
+                FlameHighlight().stroke(.white.opacity(0.55), style: StrokeStyle(lineWidth: 1.1 * s, lineCap: .round))
+            }
+            .orbit(radius: 0.18 * s, period: 5.2, moving: moving)
 
             FlameShape().fill(gradient(0x9FE6FF, 0x38A0FF))
                 .scaleEffect(0.66, anchor: UnitPoint(x: 12.3 / 24, y: 21.6 / 24))
+                .orbit(radius: 0.42 * s, period: 3.7, moving: moving)
 
             FlameShape().fill(gradient(0xFFFFFF, 0xE4F8FF))
                 .scaleEffect(0.36, anchor: UnitPoint(x: 12.3 / 24, y: 21.2 / 24))
+                .orbit(radius: 0.5 * s, period: 2.9, moving: moving)
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
