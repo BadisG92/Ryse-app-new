@@ -150,6 +150,7 @@ jamais : seules la neige et la flamme vivent. Un tap ouvre l'écran de l'arc
   Codable (`ClockHand`, la technique de ClockHandKit, MIT). Si iOS le renomme,
   ou avec « Réduire les animations », le widget reste immobile, neige éparpillée.
   Risque assumé : une API privée peut valoir un refus à la revue d'Apple.
+  Vérifié sur l'iPhone de Badis avec le build #120 (29 septembre) : ça tourne.
 - **Android** (`RyzeArcWidget.kt`, `widget_arc_small.xml`, `widget_arc_medium.xml`,
   `widget_arc_flame.xml` généré) : la flamme en trois calques PNG
   (`drawable-nodpi/arc_flame_*.png`), chacun dans un `ViewFlipper` d'images
@@ -178,6 +179,15 @@ au-dessus si une autre écriture en affiche un. Une fois par jour et par journé
 (`arc_banner_today_<uid>`, `arc_banner_yesterday_<uid>`). Au retour sur
 l'accueil, la case se remplit sous les yeux comme le matin
 (`ArcService.takeReveal`, posée avant de prévenir l'accueil).
+
+### Les images de l'App Store (30 septembre, version 2.0.4)
+
+Huit planches dans `RYZE/planches-appstore/v4/<langue>/` (outils :
+`_outils/serie.py`, `winter.py`, `widgets.py`) : le Winter Arc en tête
+(« Lance ton Winter Arc. 90 jours = 1 an offert. », pastille « Départ jusqu'au
+21 décembre », le vrai écran de l'arc au jour 34), puis le scan, le
+planificateur, les widgets, et les autres planches v3. **À retirer vers le 21
+décembre** : après, plus aucune série ne peut gagner et la promesse ne tient plus.
 
 ### Lot 2 bis
 
