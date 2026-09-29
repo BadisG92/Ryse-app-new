@@ -22,6 +22,10 @@ enum RyzeBlock {
   /// Sexe, âge, objectif, poids, niveau d'activité, série en cours.
   profile,
 
+  /// Le Winter Arc : le jour, ce qui manque aujourd'hui, les jokers, le prix.
+  /// Vide hors saison.
+  arc,
+
   /// Ce que la semaine contient, séances **et repas**.
   weekPlan,
 
@@ -116,7 +120,8 @@ class RyzeContext {
           },
         ChangeType.planner => {RyzeBlock.weekPlan, RyzeBlock.plannerWindow},
         ChangeType.goals => {RyzeBlock.profile, RyzeBlock.today},
-        ChangeType.streak => {RyzeBlock.profile},
+        // La série et l'arc bougent ensemble : c'est la même.
+        ChangeType.streak => {RyzeBlock.profile, RyzeBlock.arc},
         // Un nouveau jour, ou un lot de changements : plus rien n'est sûr.
         ChangeType.dayReset || ChangeType.batch || ChangeType.other =>
           RyzeBlock.values.toSet(),
@@ -315,6 +320,47 @@ class RyzeContext {
     final extra = lines.length - shown.length;
     if (extra > 0) shown.add('- (+$extra)');
     return section(s, 'section_meals', shown.join('\n'));
+  }
+
+  /// Le Winter Arc, en six lignes au plus.
+  ///
+  /// Le coach n'en parlait pas : il voyait une série, sans savoir qu'elle
+  /// menait quelque part ni ce qui manquait pour tenir la journée. La consigne
+  /// d'usage voyage avec la donnée, comme pour les mouvements connus.
+  static String renderArc(
+    PersonaStrings s, {
+    required int day,
+    required int streak,
+    required bool todayHeld,
+    required int mealsMissing,
+    required int waterMissingMl,
+    int? graceMealsMissing,
+    int? graceWaterMissingMl,
+    required int jokers,
+    required bool eligible,
+    required bool won,
+    DateTime? finishOn,
+  }) {
+    String missing(int meals, int water) => [
+          if (meals > 0) '$meals ${s.label('arc_meals_unit')}',
+          if (water > 0) '$water ${s.label('arc_water_unit')}',
+        ].join(', ');
+
+    final lines = <String>[
+      '${s.label('arc_day')} $day/90 · $streak ${s.label('arc_validated')}',
+      todayHeld ? s.label('arc_today_held') : '${s.label('arc_today_missing')} : ${missing(mealsMissing, waterMissingMl)}',
+      if (graceMealsMissing != null && graceWaterMissingMl != null)
+        '${s.label('arc_grace')} : ${missing(graceMealsMissing, graceWaterMissingMl)}',
+      '${s.label('arc_jokers')} : $jokers',
+      if (won)
+        s.label('arc_won')
+      else if (eligible)
+        '${s.label('arc_prize')}${finishOn == null ? '' : ' (${DateFormat('yyyy-MM-dd').format(finishOn)})'}'
+      else
+        s.label('arc_out'),
+      s.label('arc_hint'),
+    ];
+    return section(s, 'section_arc', lines.join('\n'));
   }
 
   /// Le profil.

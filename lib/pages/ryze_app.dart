@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../arc/arc_daily.dart';
 import '../components/main_app.dart';
 import '../design/palette.dart';
 import '../components/ui/ryze_intro.dart';
@@ -175,6 +176,9 @@ class _RyzeAppState extends State<RyzeApp> {
 
   Future<void> _goToApp() async {
     if (!mounted) return;
+    // Le pacte de l'onboarding vient d'être signé : l'intro du Winter Arc ne
+    // fera pas maintenir un second bouton une minute plus tard.
+    ArcDaily.pactJustSigned = true;
     // Le profil vient d'être écrit par l'onboarding ; l'état global, lui, a
     // été chargé à l'inscription, quand il n'y avait ni prénom ni objectif.
     // Rien ne le relisait ensuite : l'accueil s'ouvrait sur « 2 000 kcal »

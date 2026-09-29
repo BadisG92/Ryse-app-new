@@ -90,13 +90,21 @@ class _HoldToSignState extends State<HoldToSign> with SingleTickerProviderStateM
                   ),
                 ),
                 Padding(
-                  padding: EdgeInsets.symmetric(vertical: context.vw(4)),
+                  padding: EdgeInsets.symmetric(vertical: context.vw(4), horizontal: context.vw(4)),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(_done ? LucideIcons.check : LucideIcons.fingerprint, size: context.vw(4.6), color: fg),
                       SizedBox(width: context.vw(2.4)),
-                      Text(_done ? widget.doneLabel : widget.label, style: OnbText.body(context, 4.3, weight: FontWeight.w600, color: fg, height: 1.2)),
+                      // Un libellé long (l'allemand) se coupe au lieu de déborder du bouton.
+                      Flexible(
+                        child: Text(
+                          _done ? widget.doneLabel : widget.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: OnbText.body(context, 4.3, weight: FontWeight.w600, color: fg, height: 1.2),
+                        ),
+                      ),
                     ],
                   ),
                 ),

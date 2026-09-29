@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../arc/arc_state.dart';
 import '../../config/subscription_config.dart';
 import '../../services/analytics_service.dart';
 import '../../services/haptic_service.dart';
@@ -344,6 +345,21 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
                   SizedBox(height: context.vh(1.6)),
                   Text(widget.goalLine ?? s.t('offer_oneliner', {'day': widget.bilanDayName}),
                       textAlign: TextAlign.center, style: OnbText.body(context, 3.4, color: OnbColors.mute, height: 1.45)),
+                  if (ArcSeason.canStartToWin(DateTime.now())) ...[
+                    SizedBox(height: context.vh(1.4)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(LucideIcons.snowflake, size: context.vw(4.1), color: OnbColors.accInk),
+                        SizedBox(width: context.vw(1.8)),
+                        Flexible(
+                          child: Text(s.t('arc_offer'),
+                              textAlign: TextAlign.center,
+                              style: OnbText.body(context, 3.3, weight: FontWeight.w600, color: OnbColors.accInk)),
+                        ),
+                      ],
+                    ),
+                  ],
                   SizedBox(height: context.vh(2.2)),
                   PopIn(delay: const Duration(milliseconds: 400), child: _Timeline(s: s, trial: trial, price: _price(_plan), store: _store)),
                   SizedBox(height: context.vh(2.2)),

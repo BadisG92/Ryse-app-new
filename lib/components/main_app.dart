@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../arc/arc_daily.dart';
+import '../arc/arc_service.dart';
 import '../home/home_page.dart';
 import '../services/localization_service.dart';
 import '../nutrition/nutrition_page.dart';
@@ -43,8 +45,11 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     AppNavigator().requestedTab.addListener(_onRequestedTab);
     _checkBilanAvailability();
+    ArcService.instance.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _offerResume();
+      // La séance interrompue d'abord, la feuille de l'arc ensuite : jamais
+      // deux feuilles l'une sur l'autre.
+      _offerResume().whenComplete(_offerArc);
       // a widget may have asked for a tab before the bar existed
       _onRequestedTab();
       // from here on, a gesture from a widget has somewhere to land
@@ -75,6 +80,9 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     // Une séance gardée sur le téléphone repart dès que l'app revient.
     if (state == AppLifecycleState.resumed) {
       WorkoutSessionStore.instance.syncPending();
+      // Revenir le lendemain sans avoir fermé l'app est aussi une première
+      // ouverture du jour.
+      ArcService.instance.refresh().whenComplete(_offerArc);
       return;
     }
     // Et les compteurs d'usage se garent : ce qui n'est pas parti est écrit
@@ -131,6 +139,12 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         builder: (_) => WorkoutSessionScreen(sessionName: live.name, exercises: const [], draft: draft),
       ),
     );
+  }
+
+  /// La feuille du matin du Winter Arc, une fois par jour.
+  Future<void> _offerArc() async {
+    if (!await AppNavigator().whenReady() || !mounted) return;
+    await ArcDaily.maybeShow(context);
   }
 
   Future<void> _checkBilanAvailability() async {

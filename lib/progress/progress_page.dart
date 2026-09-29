@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../arc/arc_page.dart';
+import '../arc/arc_state.dart';
+import '../arc/streak_pill.dart';
 import '../components/ui/global_progress_models.dart';
 import '../design/design.dart';
 import '../services/global_state_manager.dart';
@@ -135,7 +138,12 @@ class _ProgressPageState extends State<ProgressPage> with GlobalStateListener {
                         Expanded(
                           child: Text('progress_title'.tr(lang), style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
                         ),
-                        if (_data.streak > 0) _StreakPill(lang: lang, streak: _data.streak),
+                        if (_data.streak > 0)
+                          StreakPill(
+                            lang: lang,
+                            streak: _data.streak,
+                            onTap: ArcSeason.isOpen(DateTime.now()) ? () => openArcPage(context) : null,
+                          ),
                         SizedBox(width: context.vw(2.1)),
                         Semantics(
                           label: 'settings'.tr(lang),
@@ -500,33 +508,6 @@ class _LegendItem extends StatelessWidget {
         SizedBox(width: context.vw(1.5)),
         Text(label, style: RyzeText.body(context, 2.9, color: RyzeColors.mute2)),
       ],
-    );
-  }
-}
-
-class _StreakPill extends StatelessWidget {
-  const _StreakPill({required this.lang, required this.streak});
-
-  final String lang;
-  final int streak;
-
-  @override
-  Widget build(BuildContext context) {
-    final unit = (streak == 1 ? 'day' : 'days').tr(lang);
-    return Container(
-      padding: EdgeInsets.fromLTRB(context.vw(2.3), context.vw(1.5), context.vw(2.8), context.vw(1.5)),
-      decoration: BoxDecoration(color: RyzeColors.accTint, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(LucideIcons.flame, size: 14, color: RyzeColors.accInk),
-          SizedBox(width: context.vw(1.2)),
-          Text(
-            '$streak $unit',
-            style: RyzeText.body(context, 3.4, weight: FontWeight.w600, color: RyzeColors.accInk).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-          ),
-        ],
-      ),
     );
   }
 }

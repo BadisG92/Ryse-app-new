@@ -6,6 +6,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../arc/arc_home_card.dart';
+import '../arc/arc_page.dart';
+import '../arc/arc_service.dart';
+import '../arc/streak_pill.dart';
 import '../components/weekly_planner/cardio_recap_bottom_sheet.dart';
 import '../components/weekly_planner/workout_recap_bottom_sheet.dart';
 import '../design/design.dart';
@@ -613,7 +617,13 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                     delay: const Duration(milliseconds: 40),
                     dy: 8,
                     animate: animate,
-                    child: _TopBar(lang: lang, name: _name, streak: gs.currentStreak, date: now),
+                    child: _TopBar(
+                      lang: lang,
+                      name: _name,
+                      streak: gs.currentStreak,
+                      date: now,
+                      onStreakTap: ArcService.instance.state == null ? null : () => openArcPage(context),
+                    ),
                   ),
                   SizedBox(height: context.vw(4.6)),
                   PopIn(
@@ -684,6 +694,23 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                       still: reduce,
                     ),
                   ),
+                  // Le Winter Arc : la série du jour, sous la phrase du coach.
+                  ListenableBuilder(
+                    listenable: ArcService.instance,
+                    builder: (context, _) {
+                      final arc = ArcService.instance.state;
+                      if (arc == null || arc.isEnded) return const SizedBox.shrink();
+                      return Padding(
+                        padding: EdgeInsets.only(top: context.vw(4.6)),
+                        child: PopIn(
+                          delay: const Duration(milliseconds: 1150),
+                          dy: 8,
+                          animate: animate,
+                          child: ArcHomeCard(state: arc, lang: lang),
+                        ),
+                      );
+                    },
+                  ),
                   SizedBox(height: context.vw(4.6)),
                   PopIn(
                     delay: const Duration(milliseconds: 1500),
@@ -712,18 +739,20 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
 /// The date and the first name on the left, the streak as an amber pill on
 /// the right. Small and quiet: the instrument below is the headline.
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.lang, required this.name, required this.streak, required this.date});
+  const _TopBar({required this.lang, required this.name, required this.streak, required this.date, this.onStreakTap});
   final String lang;
   final String name;
   final int streak;
   final DateTime date;
+
+  /// La flamme ouvre l'arc : c'est la même série.
+  final VoidCallback? onStreakTap;
 
   @override
   Widget build(BuildContext context) {
     // « Mardi 8 » ne dit pas grand-chose : Nutrition ecrit « Mardi 8 septembre »
     // et l'accueil doit dire la meme date de la meme facon.
     final day = RyzeDates.full(date, lang);
-    final unit = (streak == 1 ? 'day' : 'days').tr(lang);
     return Row(
       children: [
         Expanded(
@@ -739,22 +768,7 @@ class _TopBar extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (streak > 0)
-          Container(
-            padding: EdgeInsets.fromLTRB(context.vw(2.3), context.vw(1.5), context.vw(2.8), context.vw(1.5)),
-            decoration: BoxDecoration(color: RyzeColors.accTint, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(LucideIcons.flame, size: 14, color: RyzeColors.accInk),
-                SizedBox(width: context.vw(1.2)),
-                Text(
-                  '$streak $unit',
-                  style: RyzeText.body(context, 3.4, weight: FontWeight.w600, color: RyzeColors.accInk).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-                ),
-              ],
-            ),
-          ),
+        if (streak > 0) StreakPill(lang: lang, streak: streak, onTap: onStreakTap),
       ],
     );
   }

@@ -427,7 +427,11 @@ class GlobalStateManager {
     final a = DateTime(last.year, last.month, last.day);
     final now = DateTime.now();
     final b = DateTime(now.year, now.month, now.day);
-    return b.difference(a).inDays <= 1;
+    final gap = b.difference(a).inDays;
+    // Le Winter Arc laisse jusqu'au lendemain midi pour compléter une
+    // journée : avant midi, une série dont la dernière case date d'avant-hier
+    // n'est pas encore perdue.
+    return gap <= 1 || (gap == 2 && now.hour < 12);
   }
 
   /// Démarrer la vérification périodique du changement de jour

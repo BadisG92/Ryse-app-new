@@ -9,7 +9,14 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter/material.dart' show MaterialPageRoute;
+import '../arc/arc_page.dart';
+import '../arc/arc_service.dart';
+import '../arc/arc_state.dart';
+import '../arc/arc_words.dart';
 import '../models/notification_models.dart';
+import '../services/app_navigator.dart';
+import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/dashboard_service.dart';
 import '../services/streak_service.dart';
@@ -404,6 +411,12 @@ class NotificationService {
   /// Planifier la protection de série avec message engageant
   /// NOTE: Pas de message IA ici car les données de streak sont dynamiques
   Future<void> _scheduleStreakProtection(NotificationPreferences prefs) async {
+    // Pendant le Winter Arc, protéger la série veut dire tenir la journée :
+    // ce sont les rappels de l'arc qui prennent la place de celui-ci.
+    if (ArcSeason.isOpen(DateTime.now())) {
+      await scheduleArcReminders(ArcService.instance.state);
+      return;
+    }
     final firstName = await _getUserFirstName();
     final languageCode = LocalizationService.instance.currentLanguageCode;
     final isFrench = languageCode == 'fr';
@@ -700,6 +713,14 @@ class NotificationService {
   void _onNotificationTapped(NotificationResponse response) {
     if (kDebugMode) debugPrint('📲 Notification tapped: ${response.payload}');
 
+    if (response.payload == arcPayload) {
+      AppNavigator().whenReady().then((ready) {
+        if (!ready) return;
+        AppNavigator().navigatorState?.push(MaterialPageRoute(builder: (_) => const ArcPage()));
+      });
+      return;
+    }
+
     // TODO: Navigation selon le type de notification
     // Ex: ouvrir la page nutrition pour meal reminder
     // Ex: ouvrir la page hydratation pour water reminder
@@ -789,6 +810,86 @@ class NotificationService {
       await _notifications.cancel(i);
     }
     if (kDebugMode) debugPrint('🗑️ Water reminders cancelled (IDs: 10-13)');
+  }
+
+  // === WINTER ARC ===
+
+  /// Ce soir, demain soir, après-demain soir, et demain matin.
+  static const int arcTonightId = 100;
+  static const int arcTomorrowId = 101;
+  static const int arcDayAfterId = 102;
+  static const int arcGraceId = 103;
+  static const String arcPayload = 'arc';
+
+  /// Les rappels du Winter Arc, reposés à chaque réponse de la base.
+  ///
+  /// - 20 h 30 ce soir, si la journée n'est pas encore tenue, avec ce qui
+  ///   manque ;
+  /// - 10 h demain, si la journée n'est pas tenue et qu'une série est en jeu :
+  ///   hier sera alors rattrapable jusqu'à midi ;
+  /// - 20 h 30 demain et après-demain, au cas où l'app ne serait pas rouverte
+  ///   d'ici là (chaque ouverture les repose).
+  ///
+  /// Une journée tenue annule ceux de ce soir et de demain matin. Ils
+  /// remplacent la « protection de série » de 20 h pendant la saison, sous le
+  /// même réglage.
+  Future<void> scheduleArcReminders(ArcState? s) async {
+    try {
+      if (!_initialized) await initialize();
+      for (final id in [arcTonightId, arcTomorrowId, arcDayAfterId, arcGraceId]) {
+        await _notifications.cancel(id);
+      }
+      final prefs = getPreferences();
+      if (!prefs.notificationsEnabled || !prefs.streakProtectionEnabled) return;
+      if (s == null || !s.isOpen || s.won || WeeklyPlannerService.isDemoMode) return;
+
+      final lang = LocalizationService.instance.currentLanguageCode;
+      final now = tz.TZDateTime.now(tz.local);
+      // En jours de calendrier : un jour de changement d'heure dure 23 ou
+      // 25 heures.
+      tz.TZDateTime at(int days, int hour, int minute) =>
+          tz.TZDateTime(tz.local, now.year, now.month, now.day + days, hour, minute);
+
+      Future<void> one(int id, tz.TZDateTime when, String title, String body) async {
+        if (!when.isAfter(now) || !prefs.canSendNotificationAt(when)) return;
+        await _notifications.zonedSchedule(
+          id,
+          title,
+          body,
+          when,
+          _notificationDetails(),
+          // Un rappel du soir à quelques minutes près suffit : pas besoin de
+          // la permission des alarmes exactes.
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          payload: arcPayload,
+        );
+      }
+
+      final title = 'arc_name'.tr(lang);
+      final today = s.todayStatus;
+      if (today != null && !today.held) {
+        final missing = ArcWords.missing(meals: today.mealsMissing, waterMl: today.waterMissingMl, lang: lang);
+        await one(
+          arcTonightId,
+          at(0, 20, 30),
+          'arc_notif_tonight_title'.tr(lang).replaceAll('{n}', '${s.dayNumber}'),
+          'arc_notif_tonight_body'.tr(lang).replaceAll('{missing}', missing),
+        );
+        if (s.streak > 0) {
+          await one(
+            arcGraceId,
+            at(1, 10, 0),
+            'arc_notif_grace_title'.tr(lang).replaceAll('{n}', '${s.streak}').replaceAll('{days}', ArcWords.days(s.streak, lang)),
+            'arc_notif_grace_body'.tr(lang),
+          );
+        }
+      }
+      await one(arcTomorrowId, at(1, 20, 30), title, 'arc_notif_generic_body'.tr(lang));
+      await one(arcDayAfterId, at(2, 20, 30), title, 'arc_notif_generic_body'.tr(lang));
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ Winter Arc reminders: $e');
+    }
   }
 
   /// Annuler la notification de protection de série

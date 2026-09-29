@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../arc/arc_service.dart';
 import '../services/ai_workout_generation_service.dart';
 import '../services/coach_context_builder.dart';
 import '../services/global_state_manager.dart';
@@ -75,6 +76,7 @@ class RyzeContextSource {
       RyzeBlock.today: await ctx.block(RyzeBlock.today, () => _today(s)),
       RyzeBlock.meals: await ctx.block(RyzeBlock.meals, () => _meals(s)),
       RyzeBlock.profile: await ctx.block(RyzeBlock.profile, () => _profile(s)),
+      RyzeBlock.arc: await ctx.block(RyzeBlock.arc, () => _arc(s)),
       RyzeBlock.weekPlan: await ctx.block(RyzeBlock.weekPlan, () => _week(s)),
       RyzeBlock.history14d: await ctx.block(RyzeBlock.history14d, () => _history(s)),
       RyzeBlock.recentSessions: await ctx.block(RyzeBlock.recentSessions, () => _sessions(s)),
@@ -129,6 +131,27 @@ class RyzeContextSource {
         .where((l) => l.isNotEmpty)
         .toList();
     return RyzeContext.renderMeals(s, lignes);
+  }
+
+  /// L'arc tel que l'app l'a reçu de la base : rien à redemander ici.
+  Future<String> _arc(PersonaStrings s) async {
+    final a = ArcService.instance.state;
+    if (a == null || !a.isOpen) return '';
+    final today = a.todayStatus;
+    return RyzeContext.renderArc(
+      s,
+      day: a.dayNumber,
+      streak: a.streak,
+      todayHeld: a.todayHeld,
+      mealsMissing: today?.mealsMissing ?? 0,
+      waterMissingMl: today?.waterMissingMl ?? 0,
+      graceMealsMissing: a.rescuable ? a.grace!.mealsMissing : null,
+      graceWaterMissingMl: a.rescuable ? a.grace!.waterMissingMl : null,
+      jokers: a.jokers,
+      eligible: a.eligible,
+      won: a.won,
+      finishOn: a.streak > 0 ? a.finishOn : null,
+    );
   }
 
   Future<String> _profile(PersonaStrings s) async {

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../arc/arc_service.dart';
+import '../arc/arc_state.dart';
 import '../config/supabase_config.dart';
 import 'global_state_manager.dart';
 
@@ -11,6 +13,9 @@ class StreakService {
   /// Une série est faite de journées qui se suivent : une seule journée
   /// d'écart la casse.
   static const int _toleranceDays = 1;
+
+  /// La série se compte selon les règles de l'arc à partir de son ouverture.
+  static bool get _arcCounts => !DateTime.now().isBefore(ArcSeason.opens);
   
   /// La série telle qu'elle est, sans la modifier.
   ///
@@ -19,6 +24,12 @@ class StreakService {
   /// la dernière journée est trop ancienne est déjà cassée, et vaut zéro tant
   /// que rien de neuf n'est noté.
   static Future<int> getCurrentStreak() async {
+    // Depuis le 1er octobre, la série est celle du Winter Arc, et c'est la
+    // base qui la tient (`arc_state()`) : une seule série dans l'app.
+    if (_arcCounts) {
+      final arc = ArcService.instance.state ?? await ArcService.instance.refresh();
+      if (arc != null && !arc.isSoon) return arc.streak;
+    }
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return 0;
@@ -140,6 +151,13 @@ class StreakService {
   /// série. Même journée, rien ne bouge ; la journée d'après, elle avance ;
   /// après une coupure, elle repart à un.
   static Future<void> notifyActivity() async {
+    // Pendant et après la saison, noter quelque chose ne fait plus avancer la
+    // série à coup sûr : il faut deux repas et l'eau. On redemande donc à la
+    // base, qui écrit elle-même `streak_count`.
+    if (_arcCounts) {
+      ArcService.instance.refreshSoon();
+      return;
+    }
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;

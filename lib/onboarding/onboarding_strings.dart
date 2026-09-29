@@ -386,6 +386,13 @@ class OnbStrings {
       'en': 'All of Ryze, training and nutrition: chat planner, guided sessions, meal scan, 24/7 coach, check-in every {day}.',
       'de': 'Ganz Ryze, Sport und Ernährung: Chat-Planer, angeleitete Einheiten, Mahlzeiten-Scan, Coach rund um die Uhr, Bilanz jeden {day}.',
     },
+    // Winter Arc (WINTER_ARC.md) : montré jusqu’au 21 décembre, dernier jour
+    // où une série peut commencer et gagner.
+    'arc_offer': {
+      'fr': 'Winter Arc : tiens 90 jours d’affilée, ton année suivante est offerte.',
+      'en': 'Winter Arc: hold 90 days in a row and your next year is free.',
+      'de': 'Winter Arc: Halte 90 Tage am Stück durch, dein nächstes Jahr ist geschenkt.',
+    },
     'tl_now': {'fr': 'Aujourd’hui', 'en': 'Today', 'de': 'Heute'},
     'tl_now_sub': {
       'fr': 'Ta semaine, le scan des repas, le programme et les deux coachs. Tout est ouvert.',
