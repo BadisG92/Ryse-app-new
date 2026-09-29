@@ -170,6 +170,81 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage>
     await _loadStrip();
   }
 
+  // ------------------------------------------------------------------ water
+
+  /// L'eau d'un jour passé se complète comme celle du jour.
+  ///
+  /// Les verres de l'historique étaient en lecture seule : un repas oublié se
+  /// rattrapait, pas l'eau. Or le Winter Arc laisse jusqu'au lendemain midi
+  /// pour compléter la veille, repas et eau, et promettait donc un rattrapage
+  /// impossible. Le verre est noté à l'heure qu'il est, ce jour-là, comme un
+  /// repas ajouté après coup.
+  DateTime get _at => _atOn(_selected);
+
+  static DateTime _atOn(DateTime day) {
+    final now = DateTime.now();
+    return DateTime(day.year, day.month, day.day, now.hour, now.minute);
+  }
+
+  Future<void> _setGlasses(int glasses) async {
+    final current = (_waterMl / 1000 / GlassRow.glassLitres).floor();
+    if (glasses == current) return;
+
+    if (glasses > current) {
+      setState(() => _waterMl += 250);
+      final ok = await WaterService.addWaterEntry(amount: 250, sourceType: 'glass', consumedAt: _at);
+      if (!mounted) return;
+      if (!ok) {
+        RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
+        await _load();
+        return;
+      }
+      RyzeUndo.show(
+        context,
+        message: 'undo_glass_added'.tr(_lang),
+        undoLabel: 'undo'.tr(_lang),
+        onUndo: _removeLastGlass,
+      );
+      return;
+    }
+
+    // going down: drop that day's most recent entries until the level is reached
+    final day = _selected;
+    final target = glasses * 250;
+    final entries = await WaterService.getWaterEntriesOn(day);
+    var total = entries.fold<int>(0, (s, e) => s + e.amount);
+    var removed = 0;
+    for (final entry in entries) {
+      if (total <= target) break;
+      final ok = await WaterService.deleteWaterEntry(entry.id, amountToRemove: entry.amount, day: day);
+      if (!ok) break;
+      total -= entry.amount;
+      removed++;
+    }
+    if (!mounted) return;
+    await _load();
+    if (!mounted || removed == 0) return;
+    RyzeUndo.show(
+      context,
+      message: 'undo_glass_removed'.tr(_lang),
+      undoLabel: 'undo'.tr(_lang),
+      onUndo: () async {
+        for (var i = 0; i < removed; i++) {
+          await WaterService.addWaterEntry(amount: 250, sourceType: 'glass', consumedAt: _atOn(day));
+        }
+        if (mounted) await _load();
+      },
+    );
+  }
+
+  Future<void> _removeLastGlass() async {
+    final day = _selected;
+    final entries = await WaterService.getWaterEntriesOn(day);
+    if (entries.isEmpty) return;
+    await WaterService.deleteWaterEntry(entries.first.id, amountToRemove: entries.first.amount, day: day);
+    if (mounted) await _load();
+  }
+
   Future<void> _add(WeekSlot slot) async {
     final mealName = 'meal_name_${slot.name}'.tr(_lang);
     await AddFoodSheet.show(
@@ -291,7 +366,7 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage>
                   litres: _waterMl / 1000,
                   goalLitres: _waterGoalMl / 1000,
                   shown: true,
-                  onSet: null,
+                  onSet: _setGlasses,
                   onOther: null,
                 ),
                 SizedBox(height: context.vw(7)),

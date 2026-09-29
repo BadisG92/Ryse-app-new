@@ -15,6 +15,11 @@ import 'water_queue.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
+  static bool _isToday(DateTime d) {
+    final n = DateTime.now();
+    return d.year == n.year && d.month == n.month && d.day == n.day;
+  }
+
   static SupabaseClient get _supabase => SupabaseConfig.client;
 
   /// Types de contenants disponibles avec leurs volumes par défaut
@@ -37,16 +42,22 @@ class WaterService {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('Utilisateur non connecté');
 
-      // Le verre s'affiche tout de suite : l'écriture, elle, est attendue.
-      GlobalStateManager.instance.updateWater(amount / 1000.0); // Convertir ml en L
+      final at = consumedAt ?? DateTime.now();
+      // Un verre noté pour hier (le Winter Arc laisse jusqu'à midi pour
+      // compléter la veille) ne touche pas au compteur du jour.
+      final today = _isToday(at);
 
-      // OPTIMISATION: Mise à jour optimiste immédiate de l'UI (garde pour compatibilité)
-      await OptimisticUpdateService.updateWaterOptimistic(amount);
+      // Le verre s'affiche tout de suite : l'écriture, elle, est attendue.
+      if (today) {
+        GlobalStateManager.instance.updateWater(amount / 1000.0); // Convertir ml en L
+
+        // OPTIMISATION: Mise à jour optimiste immédiate de l'UI (garde pour compatibilité)
+        await OptimisticUpdateService.updateWaterOptimistic(amount);
+      }
 
       // L'identifiant vient d'ici, pas de la base : si l'écriture échoue et
       // que la file la rejoue, elle retombe sur la même clé primaire et ne
       // peut donc pas ajouter le verre deux fois.
-      final at = consumedAt ?? DateTime.now();
       final id = const Uuid().v4();
 
       // Hors ligne, le verre était perdu : il s'affichait, l'écriture
@@ -91,11 +102,13 @@ class WaterService {
 
       // Ce qui suit ne conditionne pas la réussite : le verre est en base.
       debugPrint('✅ Eau ajoutée en base - sync rapide');
-      unawaited(MealWidgetDataProvider.updateWidgetData());
-      unawaited(NotificationService().updateLastActivity());
-      unawaited(NotificationService().cancelWaterReminders());
-      unawaited(NotificationService().cancelActivityBasedReminders());
-      // Boire fait partie des journées suivies.
+      if (today) {
+        unawaited(MealWidgetDataProvider.updateWidgetData());
+        unawaited(NotificationService().updateLastActivity());
+        unawaited(NotificationService().cancelWaterReminders());
+        unawaited(NotificationService().cancelActivityBasedReminders());
+      }
+      // Boire fait partie des journées suivies, celle d'hier comprise.
       unawaited(StreakService.notifyActivity());
 
       return true;
@@ -150,8 +163,11 @@ class WaterService {
   /// Le journal lit cette liste pour savoir quel verre retirer. Hors ligne
   /// elle était vide, donc retirer un verre qu'on venait d'ajouter ne faisait
   /// rien : les verres gardés doivent s'y voir comme les autres.
-  static Future<List<WaterEntry>> getTodayWaterEntries() async {
-    final today = DateTime.now();
+  static Future<List<WaterEntry>> getTodayWaterEntries() => getWaterEntriesOn(DateTime.now());
+
+  /// Les entrées d'un jour donné : l'historique en a besoin pour retirer un
+  /// verre noté pour hier.
+  static Future<List<WaterEntry>> getWaterEntriesOn(DateTime today) async {
     final pending = await WaterQueue.instance.pendingAddsOn(today);
     final kept = [
       for (final glass in pending)
@@ -171,7 +187,7 @@ class WaterService {
         if (user == null) throw Exception('Utilisateur non connecté');
 
         final startOfDay = DateTime(today.year, today.month, today.day);
-        final endOfDay = startOfDay.add(const Duration(days: 1));
+        final endOfDay = DateTime(today.year, today.month, today.day + 1);
 
         final response = await _supabase
             .from('water_entries')
@@ -222,10 +238,10 @@ class WaterService {
   }
 
   /// Supprimer une entrée d'eau avec mise à jour optimiste
-  static Future<bool> deleteWaterEntry(String entryId, {int? amountToRemove}) async {
+  static Future<bool> deleteWaterEntry(String entryId, {int? amountToRemove, DateTime? day}) async {
     try {
-      // Si on connait la quantité, mise à jour optimiste
-      if (amountToRemove != null) {
+      // Si on connait la quantité, mise à jour optimiste — du jour seulement.
+      if (amountToRemove != null && (day == null || _isToday(day))) {
         GlobalStateManager.instance.updateWater(-amountToRemove / 1000.0); // NOUVEAU
         await OptimisticUpdateService.updateWaterOptimistic(-amountToRemove);
       }
@@ -257,6 +273,7 @@ class WaterService {
 
       debugPrint('✅ Eau supprimée de la base');
       unawaited(MealWidgetDataProvider.updateWidgetData());
+      if (day != null && !_isToday(day)) unawaited(StreakService.notifyActivity());
 
       return true;
     } catch (e) {

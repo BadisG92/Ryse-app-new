@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../components/nutrition_recipes_hybrid.dart';
 import '../design/design.dart';
+import '../services/app_navigator.dart';
 import '../services/localization_service.dart';
 import '../services/ryze_dates.dart';
 import '../services/translations.dart';
@@ -24,11 +25,31 @@ class NutritionPage extends StatefulWidget {
 }
 
 class _NutritionPageState extends State<NutritionPage> {
-  final PageController _pages = PageController();
+  late final PageController _pages;
   int _index = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // Arriver depuis la feuille du Winter Arc, c'est arriver sur l'historique.
+    final asked = AppNavigator().requestedNutritionPage.value;
+    AppNavigator().requestedNutritionPage.value = null;
+    _index = asked ?? 0;
+    _pages = PageController(initialPage: _index);
+    AppNavigator().requestedNutritionPage.addListener(_onRequested);
+  }
+
+  /// Une demande qui arrive alors que l'onglet est déjà ouvert.
+  void _onRequested() {
+    final asked = AppNavigator().requestedNutritionPage.value;
+    if (asked == null || !mounted) return;
+    AppNavigator().requestedNutritionPage.value = null;
+    _go(asked);
+  }
+
+  @override
   void dispose() {
+    AppNavigator().requestedNutritionPage.removeListener(_onRequested);
     _pages.dispose();
     super.dispose();
   }

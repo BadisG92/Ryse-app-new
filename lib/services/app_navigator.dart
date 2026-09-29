@@ -18,6 +18,16 @@ class AppNavigator {
     requestedTab.value = tab;
   }
 
+  /// La page de l'onglet Nutrition à montrer en y arrivant : 1 pour
+  /// l'historique, qui s'ouvre sur hier. C'est là que la feuille du Winter Arc
+  /// envoie compléter la veille avant midi.
+  final ValueNotifier<int?> requestedNutritionPage = ValueNotifier<int?>(null);
+
+  void requestNutritionHistory() {
+    requestedNutritionPage.value = 1;
+    requestTab('nutrition');
+  }
+
   /// L'animation d'ouverture est finie. L'app principale est construite
   /// sous elle pendant qu'elle joue, ce qui suffit pour la préparer mais pas
   /// pour poser une feuille dessus : une feuille ouverte sur le logo qui
