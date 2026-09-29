@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The current sheet of snow falls out through the bottom (see arc_snow_in). -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="4500"
+    android:fromYDelta="0%"
+    android:interpolator="@android:anim/linear_interpolator"
+    android:toYDelta="100%" />

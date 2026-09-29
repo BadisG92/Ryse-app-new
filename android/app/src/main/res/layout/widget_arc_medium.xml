@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Winter Arc, medium: the small one's column, and the 90 days as a
+     grid of ten by nine drawn by RyzeArcWidget.kt.
+     RyzeArcWidget.kt fills the words, all written by the app
+     (lib/arc/arc_widget_data.dart), and swaps the moving snow and flame for
+     still ones when the phone removes animations. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/arc_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/arc_ground">
+
+    <!-- The snow: two sheets of the same flakes end to end, falling for
+         ever (res/anim/arc_snow_in and _out). Shown still when the phone
+         removes animations. -->
+    <ViewFlipper
+        android:id="@+id/arc_snow_moving"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:autoStart="true"
+        android:flipInterval="4500"
+        android:inAnimation="@anim/arc_snow_in"
+        android:outAnimation="@anim/arc_snow_out">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/arc_snow" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/arc_snow" />
+    </ViewFlipper>
+
+    <FrameLayout
+        android:id="@+id/arc_snow_still"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/arc_snow"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/arc_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="WINTER ARC"
+                android:textSize="9.5sp"
+                android:fontFamily="@font/instrument_sans"
+                android:fontVariationSettings="'wght' 700"
+                android:letterSpacing="0.14"
+                android:textColor="@color/arc_ice_hi"
+                android:maxLines="1"
+                tools:ignore="HardcodedText" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/arc_tag"
+                    android:layout_width="112dp"
+                    android:layout_height="54dp"
+                    android:text=""
+                    android:textSize="25sp"
+                    android:fontFamily="@font/archivo"
+                    android:fontVariationSettings="'wght' 800"
+                    android:letterSpacing="-0.01"
+                    android:lineSpacingMultiplier="0.88"
+                    android:includeFontPadding="false"
+                    android:gravity="start|center_vertical"
+                    android:textColor="@android:color/white"
+                    android:maxLines="2"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="11sp"
+                    android:autoSizeMaxTextSize="25sp"
+                    android:autoSizeStepGranularity="1sp" />
+
+                <include
+                    layout="@layout/widget_arc_flame"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:baselineAligned="true">
+
+                <TextView
+                    android:id="@+id/arc_day"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="24sp"
+                    android:fontFamily="@font/archivo"
+                    android:fontVariationSettings="'wght' 800"
+                    android:letterSpacing="-0.03"
+                    android:fontFeatureSettings="tnum"
+                    android:includeFontPadding="false"
+                    android:textColor="@android:color/white"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/arc_of"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:text="/90"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/archivo"
+                    android:fontVariationSettings="'wght' 600"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/arc_of"
+                    android:maxLines="1"
+                    tools:ignore="HardcodedText" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/arc_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text=""
+                android:textSize="10.5sp"
+                android:fontFamily="@font/instrument_sans"
+                android:fontVariationSettings="'wght' 600"
+                android:lineSpacingMultiplier="0.95"
+                android:textColor="@color/arc_amber"
+                android:maxLines="2"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/arc_grid"
+            android:layout_width="118.5dp"
+            android:layout_height="106.4dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="14dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null" />
+    </LinearLayout>
+</FrameLayout>

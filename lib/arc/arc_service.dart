@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../ai/ryze_context.dart';
 import '../config/supabase_config.dart';
+import '../services/meal_widget_data_provider.dart';
 import '../services/global_state_manager.dart';
 import '../services/notification_service.dart';
 import '../services/weekly_planner_service.dart';
@@ -106,16 +108,10 @@ class ArcService extends ChangeNotifier {
     notifyListeners();
     if (fromCache) return;
 
-    // Une seule série dans l'app : la flamme de l'accueil, de la Progression
-    // et du coach est celle de l'arc. Avant le 1er octobre la base ne compte
-    // encore rien, et l'ancienne flamme reste en place.
-    if (!next.isSoon) {
-      final last = next.lastValid;
-      GlobalStateManager.instance.updateStreak(
-        next.streak,
-        lastDate: last == null ? null : '${last.year}-${last.month.toString().padLeft(2, '0')}-${last.day.toString().padLeft(2, '0')}',
-      );
-    }
+    // Deux flammes : la normale garde sa règle, l'arc a la sienne. Ce qui
+    // change ici ne concerne que le bloc de l'arc chez le coach et le widget.
+    RyzeContext.instance.invalidate({RyzeBlock.arc});
+    unawaited(MealWidgetDataProvider.updateWidgetData());
     unawaited(NotificationService().scheduleArcReminders(next));
   }
 

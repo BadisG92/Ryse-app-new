@@ -91,6 +91,13 @@ class GlobalStateManager {
   int get fatGoal => WeeklyPlannerService.isDemoMode ? 67 : _fatGoal;
   int get currentStreak => WeeklyPlannerService.isDemoMode ? 12 : _currentStreak;
 
+  /// Le premier jour de la flamme en cours, ou null s'il n'y en a pas.
+  DateTime? get streakStart {
+    final last = _streakDate == null ? null : DateTime.tryParse(_streakDate!);
+    if (last == null || currentStreak <= 0) return null;
+    return DateTime(last.year, last.month, last.day - (currentStreak - 1));
+  }
+
   // Getters - Informations utilisateur
   String get userName => WeeklyPlannerService.isDemoMode ? '' : _userName;
   bool get isPremium => UnifiedSubscriptionService().isPremium;
@@ -427,11 +434,7 @@ class GlobalStateManager {
     final a = DateTime(last.year, last.month, last.day);
     final now = DateTime.now();
     final b = DateTime(now.year, now.month, now.day);
-    final gap = b.difference(a).inDays;
-    // Le Winter Arc laisse jusqu'au lendemain midi pour compléter une
-    // journée : avant midi, une série dont la dernière case date d'avant-hier
-    // n'est pas encore perdue.
-    return gap <= 1 || (gap == 2 && now.hour < 12);
+    return b.difference(a).inDays <= 1;
   }
 
   /// Démarrer la vérification périodique du changement de jour

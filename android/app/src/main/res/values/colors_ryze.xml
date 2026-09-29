@@ -21,4 +21,15 @@
     <color name="ryze_paper_55">#8CF5F6F8</color>
     <color name="ryze_paper_35">#59F5F6F8</color>
     <color name="ryze_paper_30">#4DF5F6F8</color>
+
+    <!-- The Winter Arc's night (lib/arc/winter_flame.dart, RyzeArcWidget.swift):
+         the one widget off the edition's paper -->
+    <color name="arc_night">#0B132B</color>
+    <color name="arc_night_2">#16224A</color>
+    <color name="arc_ice_hi">#9FE6FF</color>
+    <color name="arc_amber">#F2A93B</color>
+    <color name="arc_amber_deep">#D8891A</color>
+    <color name="arc_joker">#CFE9F7</color>
+    <color name="arc_idle">#21FFFFFF</color>
+    <color name="arc_of">#8CFFFFFF</color>
 </resources>

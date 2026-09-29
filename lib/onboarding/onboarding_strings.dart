@@ -389,9 +389,9 @@ class OnbStrings {
     // Winter Arc (WINTER_ARC.md) : montré jusqu’au 21 décembre, dernier jour
     // où une série peut commencer et gagner.
     'arc_offer': {
-      'fr': 'Winter Arc : tiens 90 jours d’affilée, ton année suivante est offerte.',
-      'en': 'Winter Arc: hold 90 days in a row and your next year is free.',
-      'de': 'Winter Arc: Halte 90 Tage am Stück durch, dein nächstes Jahr ist geschenkt.',
+      'fr': 'Winter Arc : 90 jours d’affilée et ton année suivante est offerte.',
+      'en': 'Winter Arc: go 90 days in a row and your next year is free.',
+      'de': 'Winter Arc: Schaff 90 Tage am Stück und dein nächstes Jahr ist geschenkt.',
     },
     'tl_now': {'fr': 'Aujourd’hui', 'en': 'Today', 'de': 'Heute'},
     'tl_now_sub': {

@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../arc/arc_home_card.dart';
 import '../arc/arc_page.dart';
 import '../arc/arc_service.dart';
+import '../arc/arc_state.dart';
 import '../arc/streak_pill.dart';
 import '../components/weekly_planner/cardio_recap_bottom_sheet.dart';
 import '../components/weekly_planner/workout_recap_bottom_sheet.dart';
@@ -617,12 +618,18 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                     delay: const Duration(milliseconds: 40),
                     dy: 8,
                     animate: animate,
-                    child: _TopBar(
-                      lang: lang,
-                      name: _name,
-                      streak: gs.currentStreak,
-                      date: now,
-                      onStreakTap: ArcService.instance.state == null ? null : () => openArcPage(context),
+                    // Les deux flammes : l'arc bouge sans passer par l'état global.
+                    child: ListenableBuilder(
+                      listenable: ArcService.instance,
+                      builder: (context, _) => _TopBar(
+                        lang: lang,
+                        name: _name,
+                        streak: gs.currentStreak,
+                        streakStart: gs.streakStart,
+                        arc: ArcService.instance.state,
+                        date: now,
+                        onStreakTap: () => openArcPage(context),
+                      ),
                     ),
                   ),
                   SizedBox(height: context.vw(4.6)),
@@ -739,10 +746,12 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
 /// The date and the first name on the left, the streak as an amber pill on
 /// the right. Small and quiet: the instrument below is the headline.
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.lang, required this.name, required this.streak, required this.date, this.onStreakTap});
+  const _TopBar({required this.lang, required this.name, required this.streak, this.streakStart, this.arc, required this.date, this.onStreakTap});
   final String lang;
   final String name;
   final int streak;
+  final DateTime? streakStart;
+  final ArcState? arc;
   final DateTime date;
 
   /// La flamme ouvre l'arc : c'est la même série.
@@ -768,7 +777,7 @@ class _TopBar extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (streak > 0) StreakPill(lang: lang, streak: streak, onTap: onStreakTap),
+        StreakPills(lang: lang, streak: streak, streakStart: streakStart, arc: arc, onArcTap: onStreakTap),
       ],
     );
   }

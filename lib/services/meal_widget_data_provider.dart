@@ -7,6 +7,8 @@ import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../arc/arc_service.dart';
+import '../arc/arc_widget_data.dart';
 import '../components/weekly_planner/week_strip.dart';
 import '../config/supabase_config.dart';
 import '../design/glass_row.dart';
@@ -33,6 +35,8 @@ import 'weekly_planner_service.dart';
 /// slots   [{ slot, state, label, word, kind? }]   state: free | planned | done
 /// lines   [{ from, text }]        the coach's line from that hour on
 /// strings { … }                   every word, in the app's language
+/// arc?    { soon, day, held, won, cells, tag, status, lock, stale }
+///                                 the Winter Arc, absent outside the season
 /// theme   { key, ink, ink2, acc, accInk }   the palette the user chose
 /// ```
 /// Numbers travel raw and the widget formats them for `lang`, so a glass
@@ -55,7 +59,7 @@ class MealWidgetDataProvider {
 
   static const MethodChannel channel = MethodChannel('com.ryze.widget/data');
 
-  static const List<String> _androidWidgets = ['RyseMealWidget', 'RyseWaterWidget'];
+  static const List<String> _androidWidgets = ['RyseMealWidget', 'RyseWaterWidget', 'RyzeArcWidget'];
 
   /// The hours at which the coach's frame changes, as in [HomeSuggestion].
   static const List<int> _bands = [0, 5, 11, 14, 18, 22];
@@ -172,6 +176,9 @@ class MealWidgetDataProvider {
         }(),
     ];
 
+    // Le Winter Arc : son propre bloc, absent hors saison.
+    final arc = ArcWidgetData.build(ArcService.instance.state, lang);
+
     return {
       'v': contractVersion,
       'day': DateFormat('yyyy-MM-dd').format(date),
@@ -181,6 +188,7 @@ class MealWidgetDataProvider {
       'slots': slots,
       'lines': lines,
       'strings': strings(lang),
+      if (arc != null) 'arc': arc,
       'theme': theme(),
       // for a human reading the JSON; nothing parses it
       'updatedAt': date.toIso8601String(),
@@ -241,6 +249,8 @@ class MealWidgetDataProvider {
         'open_app': 'widget_open_app'.tr(lang),
         // the word of a free slot, for the widget to reset a stale day itself
         'free_word': 'slot_free'.tr(lang),
+        'title_arc': 'widget_arc_title'.tr(lang),
+        'desc_arc': 'widget_arc_description'.tr(lang),
       };
 
   static String _stateName(SlotState s) => switch (s) {

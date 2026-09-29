@@ -18,19 +18,24 @@ import 'winter_flame.dart';
 
 /// La première rencontre avec le Winter Arc.
 ///
-/// Une fois par compte, à la première ouverture pendant la saison. Refaite
+/// Une fois par compte à la première ouverture pendant la saison, et une
+/// fois avant l'ouverture pour s'engager d'avance (WINTER_ARC.md). Refaite
 /// après un conseil (texte, design, psychologie, voix de la tendance) :
 /// une affiche plutôt qu'une feuille de réglages.
 ///
 /// - En haut, la nuit : le panda en capuche dans sa vraie scène, bord à bord,
 ///   et le titre qui porte toute l'offre.
 /// - En bas, la bande des 90 cases telle que l'accueil la montrera, avec les
-///   jours déjà tenus en ambre : la preuve, plutôt qu'une phrase.
+///   jours déjà validés en ambre : la preuve, plutôt qu'une phrase.
 /// - Deux règles, pas trois. Les jokers sont annoncés avec leurs dates, pour
 ///   que personne ne croie en avoir un dès le départ.
-/// - Un seul geste : maintenir pour tenir l'hiver. C'est aussi le seul moment
+/// - Un seul geste : maintenir pour s'engager. C'est aussi le seul moment
 ///   où demander les notifications a du sens.
-Future<void> showArcIntro(BuildContext context, ArcState state, String lang, {bool alreadyCommitted = false}) async {
+///
+/// `source` dit d'où vient l'engagement pour l'analytique : `intro` (le geste
+/// ici), `onboarding` (le pacte de l'onboarding), `preseason` (le geste fait
+/// avant l'ouverture).
+Future<void> showArcIntro(BuildContext context, ArcState state, String lang, {bool alreadyCommitted = false, String? source}) async {
   RyzeFeedback.confirm();
   final committed = await showModalBottomSheet<bool>(
     context: context,
@@ -43,6 +48,7 @@ Future<void> showArcIntro(BuildContext context, ArcState state, String lang, {bo
       onRules: () => showArcRules(context, lang),
       onCommitted: () => Navigator.of(sheet).pop(true),
       alreadyCommitted: alreadyCommitted,
+      source: source,
     ),
   );
   if (committed != true) {
@@ -53,8 +59,8 @@ Future<void> showArcIntro(BuildContext context, ArcState state, String lang, {bo
   if (state.rescuable) AppNavigator().requestNutritionHistory();
 }
 
-/// Les quatre situations, dites chacune à sa façon.
-enum ArcIntroCase { fresh, started, before, grace }
+/// Les situations, dites chacune à sa façon. `soon` : avant l'ouverture.
+enum ArcIntroCase { soon, fresh, started, before, grace }
 
 class ArcIntroSheet extends StatefulWidget {
   const ArcIntroSheet({
@@ -65,6 +71,7 @@ class ArcIntroSheet extends StatefulWidget {
     required this.onCommitted,
     this.nudges = true,
     this.alreadyCommitted = false,
+    this.source,
   });
 
   final ArcState state;
@@ -80,7 +87,11 @@ class ArcIntroSheet extends StatefulWidget {
   /// maintenir, un simple bouton.
   final bool alreadyCommitted;
 
+  /// D'où vient l'engagement, pour l'analytique (voir [showArcIntro]).
+  final String? source;
+
   static ArcIntroCase caseOf(ArcState s) {
+    if (s.isSoon) return ArcIntroCase.soon;
     if (s.rescuable) return ArcIntroCase.grace;
     if (s.streak > 0) return ArcIntroCase.started;
     if (s.best >= 2) return ArcIntroCase.before;
@@ -95,7 +106,7 @@ class _ArcIntroSheetState extends State<ArcIntroSheet> with TickerProviderStateM
   /// L'entrée orchestrée, en une seule horloge.
   late final AnimationController _in = AnimationController(vsync: this, duration: const Duration(milliseconds: 1900));
 
-  /// Les cases déjà tenues qui s'allument une à une.
+  /// Les cases déjà validées qui s'allument une à une.
   late final AnimationController _lit = AnimationController(vsync: this);
 
   bool _committed = false;
@@ -163,7 +174,7 @@ class _ArcIntroSheetState extends State<ArcIntroSheet> with TickerProviderStateM
     AnalyticsService.logEvent('arc_pact_signed', parameters: {
       'case': ArcIntroSheet.caseOf(s).name,
       'day': s.dayNumber,
-      'source': widget.alreadyCommitted ? 'onboarding' : 'intro',
+      'source': widget.source ?? (widget.alreadyCommitted ? 'onboarding' : 'intro'),
     });
     // Les notifications se demandent ici ou jamais : juste après s'être
     // engagé, la question a un sens. Une seule fois par installation.
@@ -177,6 +188,8 @@ class _ArcIntroSheetState extends State<ArcIntroSheet> with TickerProviderStateM
 
   String _status() {
     switch (ArcIntroSheet.caseOf(s)) {
+      case ArcIntroCase.soon:
+        return 'arc_intro_status_soon'.tr(lang).replaceAll('{date}', ArcWords.longDate(ArcSeason.opens, lang));
       case ArcIntroCase.grace:
         final g = s.grace!;
         return 'arc_intro_status_grace'.tr(lang).replaceAll('{missing}', ArcWords.missing(meals: g.mealsMissing, waterMl: g.waterMissingMl, lang: lang));
@@ -260,7 +273,7 @@ class _ArcIntroSheetState extends State<ArcIntroSheet> with TickerProviderStateM
                           if (widget.nudges) ...[
                             SizedBox(height: context.vw(2)),
                             Text(
-                              (_committed ? 'arc_intro_nudge_done' : 'arc_intro_nudge').tr(lang),
+                              _nudge(),
                               textAlign: TextAlign.center,
                               style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
                             ),
@@ -285,6 +298,13 @@ class _ArcIntroSheetState extends State<ArcIntroSheet> with TickerProviderStateM
         ),
       ),
     );
+  }
+
+  /// Sous le bouton : les rappels du soir, puis le rendez-vous.
+  String _nudge() {
+    if (!_committed) return 'arc_intro_nudge'.tr(lang);
+    if (s.isSoon) return 'arc_intro_nudge_soon_done'.tr(lang).replaceAll('{date}', ArcWords.longDate(ArcSeason.opens, lang));
+    return 'arc_intro_nudge_done'.tr(lang);
   }
 
   Widget _fade(double t, double a, double b, Widget child) {
@@ -445,7 +465,7 @@ class _BandHeader extends StatelessWidget {
 }
 
 /// La bande des 90, identique à celle de l'accueil. Elle apparaît sous un
-/// front de givre qui la traverse, puis les jours déjà tenus s'allument un à
+/// front de givre qui la traverse, puis les jours déjà validés s'allument un à
 /// un, et la case d'aujourd'hui se pose à la fin.
 class _Band extends StatelessWidget {
   const _Band({required this.earned, required this.reveal, required this.lit, required this.done});

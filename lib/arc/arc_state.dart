@@ -168,12 +168,13 @@ class ArcState {
   /// Hier est incomplet, rattrapable, et il y a une série à sauver.
   bool get rescuable => grace != null && streak > 0;
 
-  /// Le jour où la série atteindra 90, si elle tient.
+  /// Le jour où la série atteindra 90, si rien ne la coupe. Avant
+  /// l'ouverture, celle qui partirait le premier jour.
   ///
   /// En jours de calendrier et non en durée : 89 fois 24 heures traversent le
   /// passage à l'heure d'hiver et tombent la veille à 23 h.
   DateTime get finishOn {
-    final d = streakStart ?? today;
+    final d = streakStart ?? (isSoon ? ArcSeason.opens : today);
     return DateTime(d.year, d.month, d.day + ArcSeason.length - 1);
   }
 

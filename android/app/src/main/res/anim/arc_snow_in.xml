@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The snow's next sheet comes down from above as the current one leaves:
+     the same sheet twice, end to end, so the snow never stops. Linear and as
+     long as the flip interval of the snow's ViewFlipper. -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="4500"
+    android:fromYDelta="-100%"
+    android:interpolator="@android:anim/linear_interpolator"
+    android:toYDelta="0%" />

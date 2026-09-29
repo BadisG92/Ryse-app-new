@@ -1,6 +1,6 @@
 # Les widgets Ryze
 
-Trois widgets iOS et deux widgets Android, dessinés sur le design system
+Quatre widgets iOS et trois widgets Android, dessinés sur le design system
 (`DESIGN.md`) et pilotés par l'app. Ce document remplace les dix-sept notes
 de débogage qui vivaient à la racine.
 
@@ -13,6 +13,8 @@ de débogage qui vivaient à la racine.
 | **Aujourd'hui** (`RyseCoachWidget`, écran verrouillé) | iOS, rectangulaire, circulaire, inline | Le reste, la jauge, et la phrase du coach du home pour cette heure. Rendu monochrome par le système. | Ouvre le home. |
 | **Repas** (`RyseMealWidget.kt`, 4×2) | Android | Le même que le medium iOS. | Idem. |
 | **Eau** (`RyseWaterWidget.kt`, 2×2) | Android | Le même que le small iOS. | Les boutons ouvrent l'app avec la quantité, qui l'écrit à l'arrivée. |
+| **Winter Arc** (`RyzeArcWidget`, small, medium, rectangulaire) | iOS, accueil et écran verrouillé | Sur la nuit de la saison : la neige, la flamme de glace qui dérive, le mot d'ordre (« FOCUS. », ambre « VALIDÉ. » une fois la journée validée), le jour sur 90 et ce qui manque ; la grille des 90 dans le medium. L'écran verrouillé est fixe. Voir `WINTER_ARC.md`. | Ouvre l'écran de l'arc. |
+| **Winter Arc** (`RyzeArcWidget.kt`, 2×2, grille à partir de 250 dp) | Android | Le même, la neige et la flamme en images qui défilent. | Idem. |
 
 Les identifiants (`RyseMealWidget`, `RyseCoachWidget`, le schéma `ryse://`)
 gardent l'orthographe du premier widget : les changer orphelinerait tout
@@ -40,6 +42,9 @@ Android. Il est construit par `MealWidgetDataProvider.buildPayload()`.
   ],
   "lines": [ { "from": 0, "text": "…" }, { "from": 5, "text": "…" }, { "from": 11, "text": "…" } ],
   "strings": { "lead_remaining": "Il te reste", "unit": "kcal", "eaten_tpl": "{n} kcal mangées", "…": "…" },
+  "arc": { "soon": false, "day": 34, "held": false, "won": false, "cells": "hhth…p",
+           "tag": "FOCUS.", "tag_open": "FOCUS.", "status": "Encore 1 repas",
+           "lock": "Jour 34 / 90", "stale": "Ouvre Ryze pour ta journée" },
   "theme": { "key": "theme_nuit", "dark": false,
              "paper0": "#F8F9FB", "paper": "#F5F6F8", "paper2": "#EEF0F4", "surf": "#FFFFFF",
              "text": "#0B132B", "mute": "#5F6779", "mute2": "#9AA1B2", "idle": "#D5DAE1",
@@ -75,6 +80,10 @@ Les règles qui font tenir l'ensemble :
   et les bords des créneaux sont des `ImageView` teintées, seule couleur que
   `RemoteViews` sait changer sur une forme ; la jauge suit l'accent et le
   gris de repos à partir d'Android 12 et garde l'ambre d'origine avant.
+- **Le Winter Arc est l'exception** : il porte la nuit de la saison quelle
+  que soit l'édition, comme l'écran de l'arc dans l'app. Son bloc `arc` est
+  absent tant que l'app ne connaît pas l'arc ; le lendemain, tant que l'app
+  n'a pas réécrit, il affiche `tag_open` et `stale` plutôt que de deviner.
 - **Pas de mode démo** : le provider n'écrit rien quand
   `WeeklyPlannerService.isDemoMode` est vrai.
 
@@ -115,9 +124,13 @@ ios/RyseMealWidget/RyzeWaterWidget.swift      Eau
 ios/RyseMealWidget/RyzeMealsWidget.swift      Repas
 ios/RyseMealWidget/RyzeTodayWidget.swift      Aujourd'hui (écran verrouillé)
 ios/RyseMealWidget/AddWaterIntent.swift       + 1 verre sans ouvrir l'app
+ios/RyseMealWidget/RyzeArcWidget.swift        Winter Arc (neige, flamme, grille)
+lib/arc/arc_widget_data.dart                  le bloc arc du contrat
 android/.../widget/RyzeWidgetData.kt          lecture du contrat
 android/.../widget/RyseMealWidget.kt          Repas
 android/.../widget/RyseWaterWidget.kt         Eau
+android/.../widget/RyzeArcWidget.kt           Winter Arc
+android/.../res/layout/widget_arc_*.xml       ses mises en page (flame : générée)
 android/.../res/values/colors_ryze.xml        les jetons
 android/.../res/font/                         Archivo, Instrument Sans
 ```

@@ -5,7 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../arc/arc_page.dart';
-import '../arc/arc_state.dart';
+import '../arc/arc_service.dart';
 import '../arc/streak_pill.dart';
 import '../components/ui/global_progress_models.dart';
 import '../design/design.dart';
@@ -138,12 +138,16 @@ class _ProgressPageState extends State<ProgressPage> with GlobalStateListener {
                         Expanded(
                           child: Text('progress_title'.tr(lang), style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
                         ),
-                        if (_data.streak > 0)
-                          StreakPill(
+                        ListenableBuilder(
+                          listenable: ArcService.instance,
+                          builder: (context, _) => StreakPills(
                             lang: lang,
                             streak: _data.streak,
-                            onTap: ArcSeason.isOpen(DateTime.now()) ? () => openArcPage(context) : null,
+                            streakStart: GlobalStateManager.instance.streakStart,
+                            arc: ArcService.instance.state,
+                            onArcTap: () => openArcPage(context),
                           ),
+                        ),
                         SizedBox(width: context.vw(2.1)),
                         Semantics(
                           label: 'settings'.tr(lang),

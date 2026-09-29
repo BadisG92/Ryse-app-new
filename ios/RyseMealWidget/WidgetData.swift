@@ -355,5 +355,10 @@ enum WidgetFallback {
         "slot_planned": ["fr": "Prévu", "en": "Planned", "de": "Geplant"],
         "slot_done": ["fr": "Fait", "en": "Done", "de": "Erledigt"],
         "sample_line": ["fr": "Tu n'as presque rien bu aujourd'hui.", "en": "You've barely had any water today.", "de": "Du hast heute kaum getrunken."],
+        "title_arc": ["fr": "Winter Arc", "en": "Winter Arc", "de": "Winter Arc"],
+        "desc_arc": ["fr": "Ta série de 90 jours, la neige et la flamme", "en": "Your 90-day streak, the snow and the flame", "de": "Deine 90-Tage-Serie, der Schnee und die Flamme"],
+        "arc_tag_open": ["fr": "FOCUS.", "en": "FOCUS.", "de": "FOCUS."],
+        "arc_sample_status": ["fr": "Encore 1 repas", "en": "1 meal to go", "de": "Noch 1 Mahlzeit"],
+        "arc_sample_lock": ["fr": "Jour 34 / 90", "en": "Day 34 / 90", "de": "Tag 34 / 90"],
     ]
 }

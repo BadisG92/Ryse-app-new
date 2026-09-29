@@ -12175,14 +12175,14 @@ class AppTranslations {
       'de': ' und ',
     },
     'arc_card_held': {
-      'fr': 'Journée tenue',
-      'en': 'Day locked in',
-      'de': 'Tag geschafft',
+      'fr': 'Journée validée. Bien joué.',
+      'en': 'Day locked in. Nice work.',
+      'de': 'Tag geschafft. Stark.',
     },
     'arc_card_missing': {
-      'fr': 'Il manque {missing}',
-      'en': '{missing} to go',
-      'de': 'Noch {missing}',
+      'fr': 'Encore {missing}. Tu peux le faire.',
+      'en': '{missing} to go. You\'ve got this.',
+      'de': 'Noch {missing}. Du schaffst das.',
     },
     'arc_card_soon': {
       'fr': 'Commence le {date}',
@@ -12195,44 +12195,44 @@ class AppTranslations {
       'de': 'Tag 1: heute',
     },
     'arc_card_won': {
-      'fr': '90 jours tenus',
+      'fr': '90 jours validés',
       'en': '90 days locked in',
       'de': '90 Tage geschafft',
     },
     'arc_page_sub_soon': {
-      'fr': 'L\'arc s\'ouvre le {date}. 90 jours d\'affilée, et un an d\'abonnement offert à qui les tient.',
-      'en': 'The arc opens on {date}. 90 days in a row, and a free year of subscription for whoever holds them.',
-      'de': 'Der Arc öffnet am {date}. 90 Tage am Stück, und wer sie hält, bekommt ein Jahr Abo geschenkt.',
+      'fr': 'Le Winter Arc commence le {date}. 90 jours d\'affilée, et ton année d\'abonnement est offerte.',
+      'en': 'The Winter Arc starts on {date}. Go 90 days straight and your year of subscription is on us.',
+      'de': 'Der Winter Arc startet am {date}. Schaff 90 Tage am Stück und du bekommst ein Jahr Abo geschenkt.',
     },
     'arc_page_sub_start': {
-      'fr': 'Ta série commence le premier jour que tu tiens : 2 repas notés et ton eau.',
-      'en': 'Your streak starts the first day you lock in: 2 meals logged and your water.',
-      'de': 'Deine Serie beginnt am ersten Tag, den du schaffst: 2 eingetragene Mahlzeiten und dein Wasser.',
+      'fr': 'Ta série démarre à ton premier jour validé. Pourquoi pas aujourd\'hui ?',
+      'en': 'Your streak starts the first day you lock in. Why not today?',
+      'de': 'Deine Serie startet am ersten Tag, den du schaffst. Warum nicht heute?',
     },
     'arc_page_sub_run': {
-      'fr': 'Encore {n} {days}. Si tu tiens, l\'arc se termine le {date}.',
-      'en': '{n} {days} to go. Hold on and the arc ends on {date}.',
-      'de': 'Noch {n} {days}. Wenn du durchhältst, endet der Arc am {date}.',
+      'fr': 'Encore {n} {days} et ton année est offerte. Rendez-vous le {date}.',
+      'en': '{n} more {days} and your year is on us. See you on {date}.',
+      'de': 'Noch {n} {days}, dann ist dein Jahr geschenkt. Wir sehen uns am {date}.',
     },
     'arc_page_sub_won': {
-      'fr': '90 jours d\'affilée. Ton année d\'abonnement est offerte.',
-      'en': '90 days in a row. Your year of subscription is on us.',
-      'de': '90 Tage am Stück. Dein Jahr Abo geht auf uns.',
+      'fr': '90 jours d\'affilée. Tu l\'as fait, ton année est offerte.',
+      'en': '90 days straight. You did it, your year is on us.',
+      'de': '90 Tage am Stück. Geschafft, dein Jahr geht auf uns.',
     },
     'arc_page_sub_out': {
-      'fr': 'Ta série continue. Le prix se jouait sur une série commencée au plus tard le 21 décembre.',
-      'en': 'Your streak goes on. The prize was for a streak started by December 21.',
-      'de': 'Deine Serie geht weiter. Der Preis galt für eine Serie, die bis zum 21. Dezember begonnen hat.',
+      'fr': 'Le prix se jouait sur une série commencée avant le 21 décembre. Ta série, elle, continue : ne lâche rien.',
+      'en': 'The prize was for streaks started by December 21. Yours keeps going: don\'t stop now.',
+      'de': 'Der Preis galt für Serien, die bis zum 21. Dezember begonnen haben. Deine läuft weiter: Bleib dran.',
     },
     'arc_page_sub_ended': {
-      'fr': 'L\'hiver est fini. Ta série, elle, continue.',
-      'en': 'Winter is over. Your streak goes on.',
-      'de': 'Der Winter ist vorbei. Deine Serie geht weiter.',
+      'fr': 'L\'hiver est fini. Ta discipline, elle, reste.',
+      'en': 'Winter is over. Your discipline stays.',
+      'de': 'Der Winter ist vorbei. Deine Disziplin bleibt.',
     },
     'arc_today': {
-      'fr': 'Aujourd\'hui',
-      'en': 'Today',
-      'de': 'Heute',
+      'fr': 'Pour valider aujourd\'hui',
+      'en': 'To lock in today',
+      'de': 'Für heute',
     },
     'arc_rule_meals': {
       'fr': '2 repas notés',
@@ -12280,19 +12280,19 @@ class AppTranslations {
       'de': 'Joker',
     },
     'arc_jokers_hint': {
-      'fr': 'Un joker à 30 jours, un autre à 60. Il sauve tout seul une journée ratée.',
-      'en': 'One streak freeze at 30 days, another at 60. It saves a missed day on its own.',
-      'de': 'Ein Joker bei 30 Tagen, ein weiterer bei 60. Er rettet einen verpassten Tag von selbst.',
+      'fr': 'Un joker à 30 jours, un autre à 60. Ils te sauvent une journée ratée, tout seuls.',
+      'en': 'A streak freeze at 30 days, another at 60. They save a missed day on their own.',
+      'de': 'Ein Joker bei 30 Tagen, einer bei 60. Sie retten einen verpassten Tag von selbst.',
     },
     'arc_best': {
-      'fr': 'Meilleure série : {n} {days}',
-      'en': 'Best streak: {n} {days}',
-      'de': 'Beste Serie: {n} {days}',
+      'fr': 'Ton record : {n} {days}. À battre.',
+      'en': 'Your record: {n} {days}. Beat it.',
+      'de': 'Dein Rekord: {n} {days}. Schlag ihn.',
     },
     'arc_prize': {
-      'fr': 'Tiens 90 jours d\'affilée : un an d\'abonnement offert.',
-      'en': 'Hold 90 days in a row: a free year of subscription.',
-      'de': 'Halte 90 Tage am Stück durch: ein Jahr Abo geschenkt.',
+      'fr': '90 jours d\'affilée et ton année d\'abonnement est offerte.',
+      'en': 'Go 90 days straight and your year of subscription is on us.',
+      'de': 'Schaff 90 Tage am Stück und du bekommst ein Jahr Abo geschenkt.',
     },
     'arc_rules_link': {
       'fr': 'Le règlement',
@@ -12300,7 +12300,7 @@ class AppTranslations {
       'de': 'Die Teilnahmebedingungen',
     },
     'arc_legend_held': {
-      'fr': 'Tenue',
+      'fr': 'Validée',
       'en': 'Locked in',
       'de': 'Geschafft',
     },
@@ -12335,9 +12335,9 @@ class AppTranslations {
       'de': 'Jede Person mit einem Ryze-Abo, automatisch. Es gibt nichts extra zu zahlen und keine Anmeldung.',
     },
     'arc_rules_day_t': {
-      'fr': 'Une journée tenue',
+      'fr': 'Une journée validée',
       'en': 'A day locked in',
-      'de': 'Ein geschaffter Tag',
+      'de': 'Wann ein Tag zählt',
     },
     'arc_rules_day_b': {
       'fr': 'Au moins 2 repas notés, à deux moments différents (petit-déjeuner, déjeuner, dîner ou collation), et ton objectif d\'eau atteint. Ce qui est noté pour une journée compte jusqu\'au lendemain midi, à l\'heure de ton téléphone.',
@@ -12350,9 +12350,9 @@ class AppTranslations {
       'de': 'Die Serie',
     },
     'arc_rules_streak_b': {
-      'fr': 'Elle commence le premier jour tenu, à partir du 1er octobre 2026. Une journée ratée la remet à zéro, sauf si tu as un joker : tu en gagnes un à 30 jours et un à 60 jours, deux au plus. Il sauve automatiquement une journée ratée, qui compte alors dans la série.',
+      'fr': 'Elle commence au premier jour validé, à partir du 1er octobre 2026. Une journée ratée la remet à zéro, sauf si tu as un joker : tu en gagnes un à 30 jours et un à 60 jours, deux au plus. Il sauve automatiquement une journée ratée, qui compte alors dans la série.',
       'en': 'It starts on the first day locked in, from October 1, 2026. A missed day resets it to zero, unless you have a streak freeze: you earn one at 30 days and one at 60 days, two at most. It automatically saves a missed day, which then counts in the streak.',
-      'de': 'Sie beginnt am ersten gehaltenen Tag, ab dem 1. Oktober 2026. Ein verpasster Tag setzt sie auf null zurück, außer du hast einen Joker: Du bekommst einen bei 30 Tagen und einen bei 60 Tagen, höchstens zwei. Er rettet automatisch einen verpassten Tag, der dann in der Serie zählt.',
+      'de': 'Sie beginnt am ersten geschafften Tag, ab dem 1. Oktober 2026. Ein verpasster Tag setzt sie auf null zurück, außer du hast einen Joker: Du bekommst einen bei 30 Tagen und einen bei 60 Tagen, höchstens zwei. Er rettet automatisch einen verpassten Tag, der dann in der Serie zählt.',
     },
     'arc_rules_prize_t': {
       'fr': 'Le prix',
@@ -12385,7 +12385,7 @@ class AppTranslations {
       'de': 'Die Challenge wird vom Herausgeber von Ryze veranstaltet und endet am 20. März 2027. Apple und Google sind weder Veranstalter noch Partner dieser Challenge und sponsern sie nicht.',
     },
     'arc_held_title': {
-      'fr': 'Jour {n} tenu',
+      'fr': 'Jour {n} validé',
       'en': 'Day {n} locked in',
       'de': 'Tag {n} geschafft',
     },
@@ -12405,9 +12405,9 @@ class AppTranslations {
       'de': '90 Tage am Stück.\nEin Jahr Ryze gratis.',
     },
     'arc_intro_title_plain': {
-      'fr': '90 jours d\'affilée.\nTiens l\'hiver.',
+      'fr': '90 jours d\'affilée.\nRelève le défi.',
       'en': '90 days straight.\nWin the winter.',
-      'de': '90 Tage am Stück.\nHalte den Winter durch.',
+      'de': '90 Tage am Stück.\nNimm die Challenge an.',
     },
     'arc_intro_status_today': {
       'fr': 'Ton jour 1, c\'est aujourd\'hui.',
@@ -12415,13 +12415,13 @@ class AppTranslations {
       'de': 'Tag 1 ist heute.',
     },
     'arc_intro_status_started': {
-      'fr': 'Tu as déjà tenu {n} {days}. Sans le savoir.',
+      'fr': 'Tu as déjà validé {n} {days}. Sans le savoir.',
       'en': 'Already {n} {days} in. You didn\'t even know.',
       'de': 'Schon {n} {days} geschafft. Ohne es zu wissen.',
     },
     'arc_intro_status_before': {
-      'fr': 'Tu as déjà tenu {n} jours sans le savoir. Maintenant, tu sais.',
-      'en': 'You held {n} days without knowing. Now you know.',
+      'fr': 'Tu avais déjà validé {n} jours sans le savoir. Maintenant, tu sais.',
+      'en': 'You\'d already locked in {n} days without knowing. Now you know.',
       'de': '{n} Tage geschafft, ohne es zu wissen. Jetzt weißt du\'s.',
     },
     'arc_intro_status_grace': {
@@ -12435,7 +12435,7 @@ class AppTranslations {
       'de': 'Letzter Start: 21. Dezember.',
     },
     'arc_intro_rule_day2': {
-      'fr': '2 repas notés, bons ou pas, et ton objectif d\'eau : la journée est tenue.',
+      'fr': '2 repas notés, bons ou pas, et ton objectif d\'eau : ta journée est validée.',
       'en': '2 meals logged, good or bad, plus your water goal: day locked in.',
       'de': '2 Mahlzeiten eingetragen, gut oder nicht, plus dein Wasserziel: Tag geschafft.',
     },
@@ -12445,9 +12445,9 @@ class AppTranslations {
       'de': 'Vergessen? Du hast bis 12 Uhr am nächsten Tag. Ein Joker bei 30 Tagen, einer bei 60.',
     },
     'arc_intro_hold': {
-      'fr': 'Maintiens pour tenir l\'hiver',
+      'fr': 'Maintiens pour t\'engager',
       'en': 'Hold to lock in',
-      'de': 'Halten zum Durchstarten',
+      'de': 'Gedrückt halten zum Mitmachen',
     },
     'arc_intro_hold_done': {
       'fr': 'C\'est parti',
@@ -12474,6 +12474,67 @@ class AppTranslations {
       'en': 'Day 90 · {date}',
       'de': 'Tag 90 · {date}',
     },
+    'widget_arc_tag_open': {
+      'fr': 'FOCUS.',
+      'en': 'FOCUS.',
+      'de': 'FOCUS.',
+    },
+    'widget_arc_tag_held': {
+      'fr': 'VALIDÉ.',
+      'en': 'LOCKED IN.',
+      // le trait d'union conditionnel dit au widget où couper s'il manque de place
+      'de': 'GE\u00ADSCHAFFT.',
+    },
+    'widget_arc_title': {
+      'fr': 'Winter Arc',
+      'en': 'Winter Arc',
+      'de': 'Winter Arc',
+    },
+    'widget_arc_description': {
+      'fr': 'Ta série de 90 jours, la neige et la flamme',
+      'en': 'Your 90-day streak, the snow and the flame',
+      'de': 'Deine 90-Tage-Serie, der Schnee und die Flamme',
+    },
+    'widget_arc_of': {
+      'fr': '/90',
+      'en': '/90',
+      'de': '/90',
+    },
+    'widget_arc_held': {
+      'fr': 'Journée validée',
+      'en': 'Day locked in',
+      'de': 'Tag geschafft',
+    },
+    'widget_arc_missing': {
+      'fr': 'Encore {missing}',
+      'en': '{missing} to go',
+      'de': 'Noch {missing}',
+    },
+    'widget_arc_start': {
+      'fr': 'Jour 1 : aujourd\'hui',
+      'en': 'Day 1: today',
+      'de': 'Tag 1: heute',
+    },
+    'widget_arc_stale': {
+      'fr': 'Ouvre Ryze pour ta journée',
+      'en': 'Open Ryze to log your day',
+      'de': 'Öffne Ryze für deinen Tag',
+    },
+    'widget_arc_lock': {
+      'fr': 'Jour {n} / 90',
+      'en': 'Day {n} / 90',
+      'de': 'Tag {n} / 90',
+    },
+    'arc_intro_status_soon': {
+      'fr': 'Ton jour 1 : {date}.',
+      'en': 'Your day 1: {date}.',
+      'de': 'Dein Tag 1: {date}.',
+    },
+    'arc_intro_nudge_soon_done': {
+      'fr': 'Rendez-vous {date}.',
+      'en': 'See you {date}.',
+      'de': 'Wir sehen uns am {date}.',
+    },
     'arc_continue': {
       'fr': 'Continuer',
       'en': 'Continue',
@@ -12487,7 +12548,7 @@ class AppTranslations {
     'arc_joker_sub': {
       'fr': 'Hier n\'était pas complet : la case est gelée, et elle compte. Jokers restants : {n}.',
       'en': 'Yesterday wasn\'t complete: the square is frozen, and it counts. Freezes left: {n}.',
-      'de': 'Gestern war nicht vollständig: Das Feld ist eingefroren und zählt trotzdem. Übrige Joker: {n}.',
+      'de': 'Gestern war nicht vollständig: Das Feld ist eingefroren und zählt trotzdem. Verbleibende Joker: {n}.',
     },
     'arc_grace_title': {
       'fr': 'Hier n\'est pas complet',
@@ -12502,7 +12563,7 @@ class AppTranslations {
     'arc_grace_cta': {
       'fr': 'Compléter hier',
       'en': 'Finish yesterday',
-      'de': 'Gestern vervollständigen',
+      'de': 'Gestern nachtragen',
     },
     'arc_later': {
       'fr': 'Plus tard',
@@ -12516,7 +12577,7 @@ class AppTranslations {
     },
     'arc_break_sub': {
       'fr': 'Pas de joker cette fois. Le jour 1, c\'est aujourd\'hui.',
-      'en': 'No joker this time. Day 1 is today.',
+      'en': 'No streak freeze this time. Day 1 is today.',
       'de': 'Diesmal kein Joker. Tag 1 ist heute.',
     },
     'arc_restart': {
@@ -12540,9 +12601,9 @@ class AppTranslations {
       'de': 'Tag {n} · Winter Arc',
     },
     'arc_notif_tonight_body': {
-      'fr': 'Il te manque {missing} pour tenir ta journée.',
-      'en': 'You still need {missing} to hold your day.',
-      'de': 'Dir fehlt noch {missing}, um deinen Tag zu halten.',
+      'fr': 'Il te manque {missing} pour valider ta journée.',
+      'en': 'You still need {missing} to lock in your day.',
+      'de': 'Dir fehlt noch {missing}, damit dein Tag zählt.',
     },
     'arc_notif_generic_body': {
       'fr': 'Deux repas et ton eau avant minuit : ta journée compte.',
@@ -12550,9 +12611,9 @@ class AppTranslations {
       'de': 'Zwei Mahlzeiten und dein Wasser vor Mitternacht: Dein Tag zählt.',
     },
     'arc_notif_grace_title': {
-      'fr': 'Ta série de {n} {days} tient jusqu\'à midi',
-      'en': 'Your streak of {n} {days} holds until noon',
-      'de': 'Deine Serie von {n} {days} hält bis 12 Uhr',
+      'fr': 'Sauve ta série de {n} {days} avant midi',
+      'en': 'Save your streak of {n} {days} before noon',
+      'de': 'Rette deine Serie von {n} {days} bis 12 Uhr',
     },
     'arc_notif_grace_body': {
       'fr': 'Si hier n\'est pas complet, note ce qui manque avant midi pour la garder.',

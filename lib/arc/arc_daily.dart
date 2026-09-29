@@ -55,14 +55,20 @@ class ArcDaily {
 
   /// Le choix, sans rien afficher : ce que la base a rendu, et ce que ce
   /// téléphone a déjà montré.
+  ///
+  /// Avant l'ouverture, l'intro s'annonce une fois (`soonSeen`) : on s'y
+  /// engage déjà. Le premier jour, elle revient une dernière fois pour dire
+  /// que c'est parti, sans redemander le geste.
   static ArcMorning pick(
     ArcState s, {
     required bool introSeen,
     required bool wonSeen,
+    bool soonSeen = false,
     DateTime? breakSeen,
     DateTime? jokerSeen,
   }) {
     if (s.won && !wonSeen) return ArcMorning.won;
+    if (s.isSoon) return introSeen || soonSeen ? ArcMorning.none : ArcMorning.intro;
     if (!s.isOpen) return ArcMorning.none;
     if (!introSeen) return ArcMorning.intro;
     if (s.rescuable) return ArcMorning.grace;
@@ -84,7 +90,7 @@ class ArcDaily {
     try {
       await ArcService.instance.firstAnswer;
       final s = ArcService.instance.state;
-      if (s == null || s.isSoon) return;
+      if (s == null) return;
 
       final prefs = await SharedPreferences.getInstance();
       String key(String name) => 'arc_${name}_$uid';
@@ -95,6 +101,7 @@ class ArcDaily {
         s,
         introSeen: prefs.getBool(key('intro')) ?? false,
         wonSeen: prefs.getBool(key('won')) ?? false,
+        soonSeen: prefs.getBool(key('intro_soon')) ?? false,
         breakSeen: DateTime.tryParse(prefs.getString(key('break')) ?? ''),
         jokerSeen: DateTime.tryParse(prefs.getString(key('joker')) ?? ''),
       );
@@ -103,6 +110,9 @@ class ArcDaily {
       // rouvrir pendant qu'elle est encore à l'écran.
       await prefs.setString(key('seen'), today);
       switch (what) {
+        case ArcMorning.intro when s.isSoon:
+          // L'annonce : l'intro du premier jour reste à venir.
+          await prefs.setBool(key('intro_soon'), true);
         case ArcMorning.intro:
           await prefs.setBool(key('intro'), true);
           // Ce qui s'est passé avant l'intro n'est pas une nouvelle : sans
@@ -122,19 +132,22 @@ class ArcDaily {
           break;
       }
       if (what == ArcMorning.none || !context.mounted) return;
-      await _show(context, s, what);
+      // Engagé avant l'ouverture : le premier jour, un simple « C'est parti ».
+      final pactBefore = prefs.getString('arc_pact_$uid') != null;
+      await _show(context, s, what, pactBefore: pactBefore);
     } finally {
       _busy = false;
     }
   }
 
-  static Future<void> _show(BuildContext context, ArcState s, ArcMorning what) async {
+  static Future<void> _show(BuildContext context, ArcState s, ArcMorning what, {bool pactBefore = false}) async {
     final lang = LocalizationService.instance.currentLanguageCode;
     // La première fois, ce n'est pas une feuille de plus : c'est l'affiche.
     if (what == ArcMorning.intro) {
-      final committed = pactJustSigned;
+      final onboarding = pactJustSigned;
       pactJustSigned = false;
-      return showArcIntro(context, s, lang, alreadyCommitted: committed);
+      final source = onboarding ? 'onboarding' : (pactBefore && !s.isSoon ? 'preseason' : 'intro');
+      return showArcIntro(context, s, lang, alreadyCommitted: source != 'intro', source: source);
     }
     final today = s.todayStatus;
     final todayMissing = today == null || today.held ? '' : ArcWords.missing(meals: today.mealsMissing, waterMl: today.waterMissingMl, lang: lang);

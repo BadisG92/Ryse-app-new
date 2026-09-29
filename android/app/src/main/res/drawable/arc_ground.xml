@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Winter Arc's night: the one widget that leaves the edition's paper,
+     as the arc screen does in the app. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:endColor="@color/arc_night_2"
+        android:startColor="@color/arc_night" />
+    <corners android:radius="@dimen/widget_radius" />
+</shape>

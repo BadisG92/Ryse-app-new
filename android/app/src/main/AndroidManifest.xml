@@ -111,6 +111,20 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_water_info" />
         </receiver>
+
+        <!-- Ryze Winter Arc Widget -->
+        <receiver
+            android:name=".widget.RyzeArcWidget"
+            android:exported="true"
+            android:label="@string/widget_arc_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.ryze.app.ACTION_UPDATE_WIDGETS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_arc_info" />
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

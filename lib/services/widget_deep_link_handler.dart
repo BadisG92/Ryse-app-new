@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../arc/arc_page.dart';
 import '../components/weekly_planner/week_strip.dart';
 import '../config/supabase_config.dart';
 import '../design/feedback.dart';
@@ -92,6 +93,11 @@ class WidgetDeepLinkHandler {
         case 'home':
           _closeOurSheet();
           AppNavigator().requestTab('home');
+        case 'arc':
+          // Le widget du Winter Arc ouvre l'écran de l'arc, par-dessus l'accueil.
+          _closeOurSheet();
+          AppNavigator().requestTab('home');
+          AppNavigator().navigatorState?.push(MaterialPageRoute(builder: (_) => const ArcPage()));
         default:
           if (kDebugMode) debugPrint('⚠️ Widget link not understood: $uri');
       }

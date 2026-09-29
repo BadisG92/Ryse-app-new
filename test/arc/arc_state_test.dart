@@ -121,8 +121,21 @@ void main() {
   });
 
   group('La feuille du matin', () {
-    ArcMorning pick(ArcState s, {bool intro = true, bool won = false, DateTime? breakSeen, DateTime? jokerSeen}) =>
-        ArcDaily.pick(s, introSeen: intro, wonSeen: won, breakSeen: breakSeen, jokerSeen: jokerSeen);
+    ArcMorning pick(ArcState s, {bool intro = true, bool won = false, bool soon = false, DateTime? breakSeen, DateTime? jokerSeen}) =>
+        ArcDaily.pick(s, introSeen: intro, wonSeen: won, soonSeen: soon, breakSeen: breakSeen, jokerSeen: jokerSeen);
+
+    test("avant l'ouverture, l'arc s'annonce une fois, puis revient le premier jour", () {
+      final soon = ArcState.fromJson({'phase': 'soon', 'today': '2026-09-29', 'streak': 0, 'cells': '', 'eligible': true});
+      expect(pick(soon, intro: false), ArcMorning.intro);
+      expect(pick(soon, intro: false, soon: true), ArcMorning.none);
+      // Le 1er octobre, l'annonce vue n'empêche pas l'intro du premier jour.
+      expect(pick(ArcState.fromJson(_answer(cells: '', streak: 0)), intro: false, soon: true), ArcMorning.intro);
+    });
+
+    test("avant l'ouverture, la fin prévue part du 1er octobre", () {
+      final soon = ArcState.fromJson({'phase': 'soon', 'today': '2026-09-29', 'streak': 0, 'cells': '', 'eligible': true});
+      expect(soon.finishOn, DateTime(2026, 12, 29));
+    });
 
     test('la première fois, l\'arc s\'annonce', () {
       expect(pick(ArcState.fromJson(_answer(cells: 'hhp', streak: 2)), intro: false), ArcMorning.intro);

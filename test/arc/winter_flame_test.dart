@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'package:ryze_app/arc/arc_state.dart';
 import 'package:ryze_app/arc/streak_pill.dart';
 import 'package:ryze_app/arc/winter_flame.dart';
 
@@ -25,16 +26,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('la pastille prend la flamme de glace pendant la saison, l\'ambre sinon', (tester) async {
-    Widget pill(bool winter) => MaterialApp(home: Center(child: StreakPill(lang: 'fr', streak: 12, winter: winter)));
+  group('Les deux flammes', () {
+    final arc = ArcState.fromJson({'phase': 'open', 'today': '2026-10-10', 'streak': 3, 'cells': 'hhhp', 'eligible': true});
 
-    await tester.pumpWidget(pill(true));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(WinterFlame), findsOneWidget);
-    expect(find.text('12 jours'), findsOneWidget);
+    Future<void> pump(WidgetTester tester, Widget pills) async {
+      await tester.pumpWidget(MaterialApp(home: Center(child: pills)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
-    await tester.pumpWidget(pill(false));
-    expect(find.byType(WinterFlame), findsNothing);
-    expect(find.byIcon(LucideIcons.flame), findsOneWidget);
+    testWidgets('une flamme tenue avant le 1er octobre reste à côté de celle de l\'arc', (tester) async {
+      await pump(tester, StreakPills(lang: 'fr', streak: 25, streakStart: DateTime(2026, 9, 16), arc: arc, today: DateTime(2026, 10, 10)));
+      expect(find.byIcon(LucideIcons.flame), findsOneWidget);
+      expect(find.byType(WinterFlame), findsOneWidget);
+      // Côte à côte, chacune ne montre que son nombre.
+      expect(find.text('25'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+    });
+
+    testWidgets('une flamme née pendant la saison ne s\'affiche pas : seule celle de l\'arc', (tester) async {
+      await pump(tester, StreakPills(lang: 'fr', streak: 9, streakStart: DateTime(2026, 10, 2), arc: arc, today: DateTime(2026, 10, 10)));
+      expect(find.byIcon(LucideIcons.flame), findsNothing);
+      expect(find.byType(WinterFlame), findsOneWidget);
+      expect(find.text('3 jours'), findsOneWidget);
+    });
+
+    testWidgets('avant la saison, la flamme normale seule, comme avant', (tester) async {
+      await pump(tester, StreakPills(lang: 'fr', streak: 5, streakStart: DateTime(2026, 9, 25), today: DateTime(2026, 9, 29)));
+      expect(find.byIcon(LucideIcons.flame), findsOneWidget);
+      expect(find.byType(WinterFlame), findsNothing);
+      expect(find.text('5 jours'), findsOneWidget);
+    });
   });
 }

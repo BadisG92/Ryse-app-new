@@ -209,13 +209,29 @@ class _Headline extends StatelessWidget {
         Text(_sub(), style: RyzeText.body(context, 3.9, color: RyzeColors.mute)),
       ],
     );
-    // La flamme de la série, en grand, qui vit à côté du jour.
+    // Le jour, et le panda de la saison à côté.
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(child: text),
-        SizedBox(width: context.vw(3.1)),
-        WinterFlame(size: context.vw(18)),
+        SizedBox(width: context.vw(2)),
+        // Le panda en capuche, coupé à la poitrine : le bas se fond dans la
+        // page au lieu de finir sur une ligne nette.
+        ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (r) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, Colors.white, Colors.transparent],
+            stops: [0, 0.72, 1],
+          ).createShader(r),
+          child: Image.asset(
+            'assets/images/coach_ryze_winter_arc_bust.webp',
+            width: context.vw(34),
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
       ],
     );
   }

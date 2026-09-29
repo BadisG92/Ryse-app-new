@@ -10,4 +10,6 @@
     <string name="widget_water_name">Water</string>
     <string name="widget_water_description">Today\'s glasses, and one more in a tap</string>
     <string name="widget_open_app">Open Ryze</string>
+    <string name="widget_arc_name" translatable="false">Winter Arc</string>
+    <string name="widget_arc_description">Your 90-day streak, the snow and the flame</string>
 </resources>

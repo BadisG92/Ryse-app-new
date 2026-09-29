@@ -35,6 +35,15 @@ class ArcWords {
     }
   }
 
+  /// « jeudi 1 octobre », quand le jour de la semaine compte.
+  static String longDate(DateTime d, String lang) {
+    try {
+      return DateFormat.MMMMEEEEd(lang).format(d);
+    } catch (_) {
+      return date(d, lang);
+    }
+  }
+
   /// « 29 déc. », pour une date qui doit tenir sur une ligne serrée.
   static String shortDate(DateTime d, String lang) {
     try {
