@@ -9968,10 +9968,13 @@ class AppTranslations {
       'en': 'Switch to sport',
       'de': 'Zum Sport wechseln',
     },
+    // « Activer mon programme » promettait la fin du parcours, alors que le
+    // chapitre du coach suit. Le bouton fait ce qu'il dit : la semaine de la
+    // démo est gardée à ce moment-là.
     'onboarding_demo_finish': {
-      'fr': 'Activer mon programme',
-      'en': 'Activate my program',
-      'de': 'Mein Programm aktivieren',
+      'fr': 'Garder cette semaine',
+      'en': 'Keep this week',
+      'de': 'Diese Woche behalten',
     },
     'onboarding_demo_skip': {
       'fr': 'Passer cette étape',

@@ -329,6 +329,31 @@ class OnbStrings {
     'price_default_monthly': {'fr': '9,99 €', 'en': '€9.99', 'de': '9,99 €'},
     'price_default_weekly': {'fr': '2,99 €', 'en': '€2.99', 'de': '2,99 €'},
     'price_default_monthly_equiv': {'fr': '5,83 €', 'en': '€5.83', 'de': '5,83 €'},
+    // ---------- before the planner demo: what it does, in the order it happens ----------
+    'pi_title': {
+      'fr': 'Tes deux coachs planifient ta semaine avec toi.',
+      'en': 'Your two coaches plan your week with you.',
+      'de': 'Deine zwei Coaches planen deine Woche mit dir.',
+    },
+    'pi_1_t': {'fr': 'Tu dis ce que tu veux', 'en': 'Say what you want', 'de': 'Sag, was du willst'},
+    'pi_1_s': {
+      'fr': '«\u00A03 séances cette semaine, et des dîners rapides.\u00A0»',
+      'en': '“3 workouts this week, and quick dinners.”',
+      'de': '„3 Einheiten diese Woche und schnelle Abendessen.“',
+    },
+    'pi_2_t': {'fr': 'Ils construisent la semaine', 'en': 'They build the week', 'de': 'Sie bauen die Woche'},
+    'pi_2_s': {
+      'fr': 'Repas et séances, calés sur tes {kcal} kcal par jour.',
+      'en': 'Meals and workouts, set to your {kcal} kcal a day.',
+      'de': 'Mahlzeiten und Einheiten, passend zu deinen {kcal} kcal pro Tag.',
+    },
+    'pi_3_t': {'fr': 'Tu valides ou tu ajustes', 'en': 'You approve or adjust', 'de': 'Du bestätigst oder passt an'},
+    'pi_3_s': {
+      'fr': 'Change un repas, déplace une séance : ils suivent.',
+      'en': 'Swap a meal, move a workout: they follow.',
+      'de': 'Tausch eine Mahlzeit, verschieb eine Einheit: sie ziehen mit.',
+    },
+    'pi_cta': {'fr': 'Essayer le planificateur', 'en': 'Try the planner', 'de': 'Planer ausprobieren'},
     'cta_see_app': {'fr': 'Voir l’app pour de vrai', 'en': 'See the app for real', 'de': 'Die App in echt sehen'},
 
     // ---------- Chapter 4 ----------

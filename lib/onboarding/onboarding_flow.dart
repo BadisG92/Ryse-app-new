@@ -30,6 +30,7 @@ import 'screens/hello_content.dart';
 import 'screens/onboarding_paywall_screen.dart';
 import 'screens/pact_content.dart';
 import 'screens/planner_demo_step.dart';
+import 'screens/planner_intro_content.dart';
 import 'widgets/chapter_card.dart';
 import 'widgets/choices.dart';
 import 'widgets/onb_widgets.dart';
@@ -181,6 +182,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
             // only when the provider did not already give one
             _Step('name', chapter: 2, coach: OnbCoach.sport, skip: (_) => !_signedIn || (_accountName ?? '').trim().isNotEmpty),
             const _Step('ch3', card: true),
+            // what the planner is for, before landing in a chat
+            const _Step('planner_intro', chapter: 3, coach: OnbCoach.duo),
             const _Step('planner', chapter: 3, bare: true),
             const _Step('ch4', card: true),
             const _Step('personality', chapter: 4, coach: OnbCoach.sport),
@@ -537,6 +540,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
         return s.t('answers_title');
       case 'both':
         return s.t('both_title');
+      case 'planner_intro':
+        return s.t('pi_title');
       case 'personality':
         return s.t('q_personality');
       case 'bilan':
@@ -713,6 +718,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
       return ChapterCard(number: '0$n', title: s.t('ch${n}_title'), subtitle: s.t('ch${n}_sub'), onDone: _next);
     }
     switch (step.id) {
+      case 'planner_intro':
+        return _shell(
+          step,
+          body: PlannerIntroContent(s: s, kcal: OnbMetabolics.dailyCalories(a)),
+          cta: OnbButton(label: s.t('pi_cta'), onPressed: _next),
+        );
       case 'planner':
         return _plannerStep(step);
       case 'offer':
