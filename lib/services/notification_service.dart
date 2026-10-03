@@ -43,6 +43,25 @@ class NotificationService {
 
   static const String _prefsKey = 'notification_preferences';
 
+  /// Android 14 refuse `SCHEDULE_EXACT_ALARM` par défaut : une alarme exacte
+  /// lève alors `exact_alarms_not_permitted`, et comme la planification
+  /// commence par un `cancelAll`, il ne restait aucun rappel. Un rappel de
+  /// repas à quelques minutes près vaut mieux qu'aucun : on ne demande l'exact
+  /// que quand le système l'accorde. La réponse est relue à chaque passage
+  /// complet, l'utilisateur peut l'avoir changée dans les réglages.
+  bool? _exactAlarmsAllowed;
+
+  Future<AndroidScheduleMode> _androidScheduleMode() async {
+    if (!Platform.isAndroid) return AndroidScheduleMode.exactAllowWhileIdle;
+    _exactAlarmsAllowed ??= await _notifications
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.canScheduleExactNotifications() ??
+        false;
+    return _exactAlarmsAllowed!
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+  }
+
   /// Initialiser le service de notifications
   Future<void> initialize() async {
     if (_initialized) return;
@@ -54,7 +73,7 @@ class NotificationService {
       tz.setLocalLocation(tz.getLocation(timeZoneName));
 
       // Configuration Android
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidSettings = AndroidInitializationSettings('@drawable/ic_stat_ryze');
 
       // Configuration iOS
       // Rien n'est demandé ici : initialize() tourne au lancement, et avec ces
@@ -203,6 +222,7 @@ class NotificationService {
 
     _isScheduling = true;
     _lastScheduleTime = now;
+    _exactAlarmsAllowed = null;
 
     try {
       final prefs = getPreferences();
@@ -548,7 +568,7 @@ class NotificationService {
       body,
       scheduledDate,
       _notificationDetails(),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: await _androidScheduleMode(),
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time, // Répéter chaque jour
       payload: payload,
@@ -586,7 +606,7 @@ class NotificationService {
       body,
       scheduledDate,
       _notificationDetails(),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: await _androidScheduleMode(),
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       payload: payload,
@@ -628,7 +648,7 @@ class NotificationService {
         day1Body,
         evening(1),
         _notificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: await _androidScheduleMode(),
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         payload: 'paywall_winback',
       );
@@ -638,7 +658,7 @@ class NotificationService {
         day3Body,
         evening(3),
         _notificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: await _androidScheduleMode(),
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         payload: 'paywall_winback',
       );
@@ -674,7 +694,7 @@ class NotificationService {
         body,
         when,
         _notificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: await _androidScheduleMode(),
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         payload: 'rest_end',
       );
@@ -1043,7 +1063,7 @@ class NotificationService {
         ),
         notificationTime,
         _notificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: await _androidScheduleMode(),
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         payload: NotificationPayload(
           type: NotificationType.reengagement,

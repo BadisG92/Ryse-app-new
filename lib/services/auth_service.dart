@@ -30,6 +30,13 @@ class AuthService extends ChangeNotifier {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   bool _googleSignInInitialized = false;
 
+  /// Sign in with Apple only exists natively on Apple platforms. On Android
+  /// the plugin needs a web flow (Services ID + return URL on Apple's side,
+  /// callback on Supabase's side) that is not configured, and throws before
+  /// showing anything. The screens hide the button on that answer.
+  static bool get supportsAppleSignIn =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
@@ -370,6 +377,10 @@ class AuthService extends ChangeNotifier {
     _clearError();
 
     try {
+      if (!supportsAppleSignIn) {
+        _setError('auth_error_apple_failed');
+        return false;
+      }
       if (kDebugMode) debugPrint('🍎 Starting Apple Sign In...');
 
       final rawNonce = _generateNonce();

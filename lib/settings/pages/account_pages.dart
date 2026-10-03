@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -345,7 +347,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           ),
         ),
         SizedBox(height: context.vw(2.1)),
-        Text('subscription_info'.tr(lang), style: RyzeText.body(context, 2.9, color: RyzeColors.mute2, height: 1.4)),
+        Text((Platform.isIOS ? 'subscription_info' : 'subscription_info_android').tr(lang), style: RyzeText.body(context, 2.9, color: RyzeColors.mute2, height: 1.4)),
         SizedBox(height: context.vw(5.1)),
         _Check(label: 'understand_permanent'.tr(lang), value: _understand, onChanged: (v) => setState(() => _understand = v)),
         _Check(label: 'accept_data_loss'.tr(lang), value: _accept, onChanged: (v) => setState(() => _accept = v)),

@@ -115,9 +115,9 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
         SizedBox(height: context.vw(1.6)),
         Text(s.t('both_caption', {'n': '$_weeks', 'goal': _goalLabel()}), style: OnbText.body(context, 3.6, weight: FontWeight.w500, color: OnbColors.mute)),
         SizedBox(height: context.vh(2)),
-        _Line(index: 0, icon: LucideIcons.dumbbell, text: s.t('both_line_coach', {'n': '$_sessions', 'p': '${BothCoachesContent.pricePerSession}'}), amount: _money(_coach)),
+        _Line(index: 0, icon: LucideIcons.dumbbell, text: s.t('both_line_coach', {'n': '$_sessions', 'p': _money(BothCoachesContent.pricePerSession)}), amount: _money(_coach)),
         SizedBox(height: context.vw(2)),
-        _Line(index: 1, icon: LucideIcons.apple, text: s.t('both_line_nutri', {'n': '$_consults', 'p': '${BothCoachesContent.pricePerConsult}'}), amount: _money(_nutri)),
+        _Line(index: 1, icon: LucideIcons.apple, text: s.t('both_line_nutri', {'n': '$_consults', 'p': _money(BothCoachesContent.pricePerConsult)}), amount: _money(_nutri)),
         SizedBox(height: context.vw(2)),
         _Line(index: 2, icon: LucideIcons.unlink, text: s.t('both_missing'), amount: '—', missing: true),
         SizedBox(height: context.vh(2.6)),
@@ -202,7 +202,7 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
         SizedBox(height: context.vh(2)),
         PopIn(
           delay: const Duration(milliseconds: 2700),
-          child: Text(s.t('both_note'), style: OnbText.body(context, 2.9, color: OnbColors.mute2, height: 1.35)),
+          child: Text(s.t('both_note', {'s1': _money(40), 's2': _money(70), 'c1': _money(50), 'c2': _money(80)}), style: OnbText.body(context, 2.9, color: OnbColors.mute2, height: 1.35)),
         ),
       ],
     );

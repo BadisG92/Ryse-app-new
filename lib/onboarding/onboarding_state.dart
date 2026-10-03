@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +25,9 @@ class OnbAnswers {
   String motivationText = '';
   List<String> obstacles = [];
   String? personality;
+
+  /// The tone written by the user when [personality] is `custom`.
+  String personalityCustom = '';
   int? bilanDay; // 1 = Monday … 7 = Sunday, like `weekly_bilan_day`
   String plan = 'annual';
 
@@ -31,6 +35,19 @@ class OnbAnswers {
   /// across twenty kilos before answering. Only untouched values move.
   bool _bodyTouched = false;
   void markBodyTouched() => _bodyTouched = true;
+
+  /// The target follows the weight until the user moves it. A fixed 74 kg
+  /// told a 95 kg man he had 35 weeks ahead before he had touched anything.
+  bool targetTouched = false;
+
+  /// A first step rather than the whole road: 8 % down (3 to 10 kg) or 5 %
+  /// up (2 to 6 kg), on a whole graduation of the ruler in use.
+  void suggestTarget() {
+    final gain = goal == 'gain';
+    final step = gain ? (weightKg * 0.05).clamp(2.0, 6.0) : (weightKg * 0.08).clamp(3.0, 10.0);
+    final raw = (gain ? weightKg + step : weightKg - step).clamp(35.0, 200.0);
+    targetKg = isMetric ? (raw * 2).round() / 2 : OnbUnits.lbToKg(OnbUnits.kgToLb(raw));
+  }
 
   void applyFemaleDefaults() {
     if (_bodyTouched) return;
@@ -49,6 +66,7 @@ class OnbAnswers {
         'heightCm': heightCm,
         'weightKg': weightKg,
         'targetKg': targetKg,
+        'targetTouched': targetTouched,
         'isMetric': isMetric,
         'activity': activity,
         'restrictions': restrictions,
@@ -56,6 +74,7 @@ class OnbAnswers {
         'motivationText': motivationText,
         'obstacles': obstacles,
         'personality': personality,
+        'personalityCustom': personalityCustom,
         'bilanDay': bilanDay,
         'plan': plan,
       };
@@ -69,6 +88,8 @@ class OnbAnswers {
     a.heightCm = (j['heightCm'] as num?)?.toInt() ?? a.heightCm;
     a.weightKg = (j['weightKg'] as num?)?.toDouble() ?? a.weightKg;
     a.targetKg = (j['targetKg'] as num?)?.toDouble() ?? a.targetKg;
+    // a run saved before the flag existed keeps the target it had
+    a.targetTouched = j['targetTouched'] as bool? ?? true;
     a.isMetric = j['isMetric'] as bool? ?? true;
     a.activity = j['activity'] as String?;
     a.restrictions = List<String>.from(j['restrictions'] as List? ?? const []);
@@ -76,6 +97,7 @@ class OnbAnswers {
     a.motivationText = j['motivationText'] as String? ?? '';
     a.obstacles = List<String>.from(j['obstacles'] as List? ?? const []);
     a.personality = j['personality'] as String?;
+    a.personalityCustom = j['personalityCustom'] as String? ?? '';
     a.bilanDay = (j['bilanDay'] as num?)?.toInt();
     a.plan = j['plan'] as String? ?? 'annual';
     return a;
@@ -161,6 +183,15 @@ class OnbProjection {
 /// Unit helpers. Storage is always metric; only the display converts.
 class OnbUnits {
   OnbUnits._();
+
+  /// Feet and pounds where people weigh themselves that way. An American
+  /// who first has to find the "lb" switch to give his weight starts badly.
+  /// The UK stays metric: bodies are weighed in stones there, which the
+  /// rulers do not offer, and the switch is one tap away.
+  static bool get regionUsesImperial {
+    final region = PlatformDispatcher.instance.locale.countryCode?.toUpperCase();
+    return const {'US', 'LR', 'MM'}.contains(region);
+  }
 
   static int cmToIn(int cm) => (cm / 2.54).round();
   static int inToCm(int inches) => (inches * 2.54).round();

@@ -6743,9 +6743,9 @@ class AppTranslations {
       'de': 'Fangen wir an?',
     },
     'auth.createSubtitle': {
-      'fr': 'Crée ton compte, les deux coachs prennent la suite. Deux minutes, pas plus.',
-      'en': 'Create your account, the two coaches take it from there. Two minutes, no more.',
-      'de': 'Erstelle dein Konto, die beiden Coaches übernehmen. Zwei Minuten, nicht mehr.',
+      'fr': 'Crée ton compte, les deux coachs prennent la suite : quelques questions, puis ta semaine.',
+      'en': 'Create your account, the two coaches take it from there: a few questions, then your week.',
+      'de': 'Erstelle dein Konto, die beiden Coaches übernehmen: ein paar Fragen, dann deine Woche.',
     },
     'auth.loginTitle': {
       'fr': 'Bon retour.',
@@ -8338,6 +8338,17 @@ class AppTranslations {
       'de':
           'Hinweis: Dein Abonnement muss separat in den App Store-Einstellungen gekündigt werden',
     },
+    // Le même avertissement, mais pour le store qui encaisse réellement sur
+    // Android. Nommer l'App Store à un utilisateur Android l'envoie chercher
+    // un réglage qui n'existe pas chez lui.
+    'subscription_info_android': {
+      'fr':
+          'Note : Votre abonnement doit être annulé séparément dans Google Play',
+      'en':
+          'Note: Your subscription must be canceled separately in Google Play',
+      'de':
+          'Hinweis: Dein Abonnement muss separat in Google Play gekündigt werden',
+    },
     'confirm_deletion': {
       'fr': 'Confirmer la suppression',
       'en': 'Confirm deletion',
@@ -8880,6 +8891,18 @@ class AppTranslations {
       'fr': 'Idée de snack protéiné',
       'en': 'Protein snack idea',
       'de': 'Protein-Snack-Idee',
+    },
+    // L'onboarding montre le ton sur une excuse écrite d'avance ; la sienne,
+    // la personne l'écrit ici, au vrai coach.
+    'coach_chat_suggestion_excuse': {
+      'fr': 'Écoute ma meilleure excuse',
+      'en': 'Hear my best excuse',
+      'de': 'Hör dir meine beste Ausrede an',
+    },
+    'coach_chat_excuse_prefill': {
+      'fr': 'Ma meilleure excuse : ',
+      'en': 'My best excuse: ',
+      'de': 'Meine beste Ausrede: ',
     },
     'coach_chat_premium_unlimited': {
       'fr': 'Illimité',
@@ -12630,6 +12653,7 @@ class AppTranslations {
       'en': 'If yesterday isn\'t complete, log what\'s missing before noon to keep it.',
       'de': 'Wenn gestern nicht vollständig ist, trag vor 12 Uhr ein, was fehlt, um sie zu behalten.',
     },
+
     // Le dossier : ce que Ryze a retenu, écrit dans sa voix, avec son tampon.
     // La première chose de l'application faite pour sortir d'elle.
     'coach_chat_suggestion_dossier': {

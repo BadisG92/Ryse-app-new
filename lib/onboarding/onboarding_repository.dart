@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -139,10 +140,10 @@ class OnboardingRepository {
     }
   }
 
-  Future<void> savePersonality(String key) async {
+  Future<void> savePersonality(String key, {String? customText}) async {
     try {
       final type = CoachPersonalityType.values.firstWhere((t) => t.name == key, orElse: () => CoachPersonalityType.friendly);
-      await CoachPersonalityService.instance.setPersonality(type);
+      await CoachPersonalityService.instance.setPersonality(type, customText: type == CoachPersonalityType.custom ? customText : null);
     } catch (e) {
       debugPrint('❌ Onboarding savePersonality: $e');
     }
@@ -233,6 +234,40 @@ class OnboardingRepository {
     } catch (e) {
       debugPrint('⚠️ recordPaywallExit: $e');
     }
+  }
+
+  /// Les envois partent dans l'ordre des étapes : deux écrans franchis en une
+  /// seconde ne doivent pas arriver à l'envers et laisser l'avant-dernier.
+  Future<void> _progressTail = Future.value();
+  static String? _appVersion;
+
+  /// Où en est la personne, dans `onboarding_progress` : une ligne par compte
+  /// et par parcours, réécrite à chaque étape. [event] vaut `view` (une étape
+  /// arrive à l'écran), `left` (l'app passe en arrière-plan) ou `done`.
+  ///
+  /// L'étape est écrite à l'arrivée, pas au départ : une app tuée sans
+  /// prévenir laisse quand même la dernière. Ne lève jamais et ne se fait
+  /// jamais attendre, c'est de la mesure.
+  void trackProgress(String event, {required String mode, String? step, int? chapter}) {
+    if (_supabase.auth.currentUser == null) return;
+    _progressTail = _progressTail.then((_) async {
+      try {
+        if (_appVersion == null) {
+          final info = await PackageInfo.fromPlatform();
+          _appVersion = '${info.version}+${info.buildNumber}';
+        }
+        await _supabase.rpc('onb_progress', params: {
+          'p_mode': mode,
+          'p_event': event,
+          'p_step': step,
+          'p_chapter': chapter,
+          'p_app_version': _appVersion,
+          'p_platform': defaultTargetPlatform.name.toLowerCase(),
+        }).timeout(const Duration(seconds: 6));
+      } catch (e) {
+        debugPrint('⚠️ onb_progress $event: $e');
+      }
+    });
   }
 
   Future<bool> markCompleted() async {

@@ -115,13 +115,20 @@ class CoachPersonalityService {
 
     debugPrint('🎭 CoachPersonality: Building instruction for type=${personality.type.name}, customText=${personality.customText}, gender=$gender');
 
+    return instructionFor(personality.type, personality.customText, lang, gender: gender);
+  }
+
+  /// La même consigne, pour un ton qui n'est pas encore enregistré :
+  /// l'onboarding fait répondre le coach dans le ton qu'on est en train de
+  /// choisir, avant que rien ne soit écrit en base.
+  static String instructionFor(CoachPersonalityType type, String? customText, String lang, {String? gender}) {
     // Termes genrés adaptés - on évite les termes trop familiers
     final isFemale = gender == 'female';
     final casualTermFr = isFemale ? "ma belle" : "mec";
     final casualTermEn = isFemale ? "girl" : "dude";
     final casualTermDe = isFemale ? "Mädel" : "Kumpel";
 
-    switch (personality.type) {
+    switch (type) {
       case CoachPersonalityType.friendly:
         if (lang == 'fr') return '''ADOPTE CE TON OBLIGATOIREMENT DANS CHAQUE MESSAGE:
 Tu es un POTE, un ami proche. Tu tutoies toujours. Tu utilises un langage décontracté ("$casualTermFr", "t'inquiète", "on gère", "c'est cool"). Tu célèbres les petites victoires avec enthousiasme. Tu es chaleureux et tu mets à l'aise. Exemples de phrases typiques: "Hey! Super ça!", "T'as géré!", "On lâche rien!"''';
@@ -163,17 +170,17 @@ Du bist ULTRA DIREKT. Null Geschwätz. Kurze, sachliche Antworten. KEINE Emojis 
 You are ULTRA DIRECT. Zero fluff. Short, factual responses. NO emojis (or 1 max). No chatter, no "how are you". You give the info, period. Maximum efficiency. Typical phrases: "500 kcal left. Eat light.", "Workout done. Good.", "Hydrate. 0.5L behind."''';
 
       case CoachPersonalityType.custom:
-        if (personality.customText != null && personality.customText!.isNotEmpty) {
+        if (customText != null && customText.isNotEmpty) {
           if (lang == 'fr') return '''INSTRUCTION DE PERSONNALITÉ PERSONNALISÉE - APPLIQUE CECI À 100% DANS CHAQUE MESSAGE:
-${personality.customText}
+$customText
 
 Tu DOIS absolument respecter cette instruction de personnalité. C'est la demande explicite de l'utilisateur. Chaque mot, chaque phrase doit refléter ce style. Ne reviens JAMAIS à un ton normal ou générique.''';
           if (lang == 'de') return '''BENUTZERDEFINIERTE PERSÖNLICHKEITSANWEISUNG - WENDE DIES ZU 100% IN JEDER NACHRICHT AN:
-${personality.customText}
+$customText
 
 Du MUSST diese Persönlichkeitsanweisung unbedingt befolgen. Dies ist die ausdrückliche Anfrage des Nutzers. Jedes Wort, jeder Satz muss diesen Stil widerspiegeln. Kehre NIEMALS zu einem normalen oder generischen Ton zurück.''';
           return '''CUSTOM PERSONALITY INSTRUCTION - APPLY THIS 100% IN EVERY SINGLE MESSAGE:
-${personality.customText}
+$customText
 
 You MUST absolutely follow this personality instruction. This is the user's explicit request. Every word, every sentence must reflect this style. NEVER fall back to a normal or generic tone.''';
         }
@@ -260,23 +267,27 @@ You are a BUDDY, a close friend. You use casual language ("$casualTermEn", "no w
   }
 
   /// Obtient le label localisé pour un type de personnalité
+  /// Les noms se lisent d'un coup d'œil et ne se recouvrent pas : « Direct »
+  /// se confondait avec « Strict », et Friendly avec Supportive en anglais,
+  /// deux façons de dire « gentil ». Le ton libre porte le même nom partout,
+  /// onboarding et réglages.
   static String getLocalizedLabel(CoachPersonalityType type, String lang) {
     final isFr = lang == 'fr';
     final isDe = lang == 'de';
 
     switch (type) {
       case CoachPersonalityType.friendly:
-        return isFr ? 'Bon pote' : isDe ? 'Freundlich' : 'Friendly';
+        return isFr ? 'Bon pote' : isDe ? 'Kumpel' : 'Buddy';
       case CoachPersonalityType.strict:
         return isFr ? 'Strict' : isDe ? 'Streng' : 'Strict';
       case CoachPersonalityType.supportive:
-        return isFr ? 'Rassurant' : isDe ? 'Unterstützend' : 'Supportive';
+        return isFr ? 'Rassurant' : isDe ? 'Sanft' : 'Gentle';
       case CoachPersonalityType.sassy:
         return isFr ? 'Taquin' : isDe ? 'Frech' : 'Sassy';
       case CoachPersonalityType.direct:
-        return isFr ? 'Direct' : isDe ? 'Direkt' : 'Direct';
+        return isFr ? 'Zéro blabla' : isDe ? 'Kein Blabla' : 'No fluff';
       case CoachPersonalityType.custom:
-        return isFr ? 'Personnalisé' : isDe ? 'Benutzerdefiniert' : 'Custom';
+        return isFr ? 'À ta façon' : isDe ? 'Dein Stil' : 'Your way';
     }
   }
 

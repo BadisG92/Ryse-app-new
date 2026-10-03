@@ -763,8 +763,10 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   }
 
   Widget _buildSuggestionChips(String lang) {
+    final excuse = 'coach_chat_suggestion_excuse'.tr(lang);
     return RyzeChatChips(
       labels: [
+        excuse,
         'coach_chat_suggestion_dinner'.tr(lang),
         'coach_chat_suggestion_leg_workout'.tr(lang),
         'coach_chat_suggestion_macros'.tr(lang),
@@ -772,6 +774,16 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         'coach_chat_suggestion_snack'.tr(lang),
       ],
       onTap: (text) {
+        // La meilleure excuse ne part pas toute seule : elle s'écrit. La
+        // suggestion amorce la phrase et ouvre le clavier, et le coach y
+        // répond dans le ton choisi, avec le contexte du jour.
+        if (text == excuse) {
+          final start = 'coach_chat_excuse_prefill'.tr(lang);
+          _textController.text = start;
+          _textController.selection = TextSelection.collapsed(offset: start.length);
+          _focusNode.requestFocus();
+          return;
+        }
         _textController.text = text;
         _sendMessage();
       },

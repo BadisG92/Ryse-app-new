@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -17,8 +18,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 ///
 /// Rien n'est envoyé au moment du geste. Les comptes s'accumulent en mémoire,
 /// partent par lots, et survivent à une fermeture de l'app : le tampon est
-/// écrit sur le téléphone à chaque mise en veille. Un envoi qui échoue est
-/// remis dans le tampon, jamais perdu, jamais réessayé en boucle.
+/// écrit sur le téléphone à chaque mise en veille, où que l'on soit dans
+/// l'app. Un envoi qui échoue est remis dans le tampon, jamais perdu, jamais
+/// réessayé en boucle.
 class UsageStats {
   UsageStats._();
 
@@ -36,14 +38,28 @@ class UsageStats {
 
   static final Map<String, int> _pending = {};
   static Timer? _timer;
-  static bool _sending = false;
   static bool _started = false;
+  static AppLifecycleListener? _lifecycle;
+
+  /// L'envoi en cours, s'il y en a un. La mise en veille l'attend avant de
+  /// tenter le sien : sinon ce qui s'est passé pendant l'envoi reste sur le
+  /// téléphone, et n'en repart qu'au prochain lancement.
+  static Future<void>? _inFlight;
 
   /// À appeler une fois au lancement : reprend ce que la dernière exécution
   /// n'a pas eu le temps d'envoyer.
   static Future<void> start() async {
     if (_started) return;
     _started = true;
+    // Garé à chaque mise en veille, quel que soit l'écran : l'onboarding et
+    // la connexion n'ont pas l'écran principal au-dessus d'eux, et c'est
+    // justement là que les gens s'en vont.
+    _lifecycle ??= AppLifecycleListener(onStateChange: (state) {
+      if (state != AppLifecycleState.paused && state != AppLifecycleState.detached) return;
+      // Après les autres observateurs : l'onboarding compte son « onb_left »
+      // dans ce même battement, et il doit partir dans ce lot-ci.
+      scheduleMicrotask(() => unawaited(park()));
+    });
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_bufferKey);
@@ -77,7 +93,7 @@ class UsageStats {
 
   /// Envoie ce qui est en attente. Appelé aussi quand l'app passe en veille.
   static Future<void> flush() async {
-    if (_sending || _pending.isEmpty) return;
+    if (_inFlight != null || _pending.isEmpty) return;
 
     // Lire le client avant que Supabase soit initialisé lève : ces compteurs
     // partent de partout, y compris d'un événement posé au tout début du
@@ -90,7 +106,8 @@ class UsageStats {
       return;
     }
 
-    _sending = true;
+    final sent = Completer<void>();
+    _inFlight = sent.future;
     final batch = Map<String, int>.from(_pending);
     _pending.clear();
     _timer?.cancel();
@@ -102,19 +119,24 @@ class UsageStats {
           for (final e in batch.entries) {'event': e.key, 'count': e.value},
         ],
       }).timeout(const Duration(seconds: 8));
+      // Ce qui avait été garé sur le téléphone vient de partir avec le reste.
+      // Le laisser, c'était le compter une seconde fois au prochain lancement.
+      await _forgetParked();
     } catch (e) {
       // Remis dans le tampon : ce qui n'est pas parti n'est pas perdu, et le
       // prochain lot le reprendra.
       batch.forEach((k, v) => _pending[k] = (_pending[k] ?? 0) + v);
       if (kDebugMode) debugPrint('⚠️ [USAGE] $e');
     } finally {
-      _sending = false;
+      _inFlight = null;
+      sent.complete();
     }
   }
 
   /// L'app part en arrière-plan : on écrit le tampon sur le téléphone après
   /// avoir tenté un dernier envoi.
   static Future<void> park() async {
+    await _inFlight;
     await flush();
     if (_pending.isEmpty) return;
     try {
@@ -122,6 +144,15 @@ class UsageStats {
       await prefs.setString(_bufferKey, jsonEncode(_pending));
     } catch (_) {
       // tant pis : ce sont des compteurs, pas des données de l'utilisateur
+    }
+  }
+
+  static Future<void> _forgetParked() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_bufferKey);
+    } catch (_) {
+      // au pire, quelques gestes comptés deux fois
     }
   }
 }

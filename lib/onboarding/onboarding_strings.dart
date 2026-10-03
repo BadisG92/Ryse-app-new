@@ -80,6 +80,12 @@ class OnbStrings {
       'en': 'A few quick questions. No typing.',
       'de': 'Ein paar schnelle Fragen. Ohne Tippen.',
     },
+    // when the account did not bring a first name, one word is typed after all
+    'ch1_sub_name': {
+      'fr': 'Quelques questions rapides. Un seul mot à taper : ton prénom.',
+      'en': 'A few quick questions. Just one word to type: your first name.',
+      'de': 'Ein paar schnelle Fragen. Nur ein Wort zum Tippen: dein Vorname.',
+    },
     'ch2_title': {'fr': 'Ton pourquoi', 'en': 'Your why', 'de': 'Dein Warum'},
     'ch2_sub': {
       'fr': 'Deux questions, et ce qu’on en fait.',
@@ -112,7 +118,7 @@ class OnbStrings {
     'name_hint': {
       'fr': 'C’est comme ça que les coachs t’appelleront, et c’est ce que tu signeras.',
       'en': 'That’s how the coaches will call you, and what you’ll sign with.',
-      'de': 'So werden dich die Coaches nennen – und damit unterschreibst du.',
+      'de': 'So werden dich die Coaches nennen, und damit unterschreibst du.',
     },
     'react_name': {
       'fr': 'Enchanté, {n}.',
@@ -280,8 +286,8 @@ class OnbStrings {
     },
     'both_caption': {'fr': 'sur {n} semaines · objectif {goal}', 'en': 'over {n} weeks · goal {goal}', 'de': 'über {n} Wochen · Ziel {goal}'},
     'both_goal_maintain': {'fr': 'maintien', 'en': 'maintain', 'de': 'halten'},
-    'both_line_coach': {'fr': '{n} séances de coach · {p} €', 'en': '{n} coaching sessions · €{p}', 'de': '{n} Coaching-Einheiten · {p} €'},
-    'both_line_nutri': {'fr': '{n} consultations nutrition · {p} €', 'en': '{n} nutrition consultations · €{p}', 'de': '{n} Ernährungsberatungen · {p} €'},
+    'both_line_coach': {'fr': '{n} séances de coach · {p}', 'en': '{n} coaching sessions · {p}', 'de': '{n} Coaching-Einheiten · {p}'},
+    'both_line_nutri': {'fr': '{n} consultations nutrition · {p}', 'en': '{n} nutrition consultations · {p}', 'de': '{n} Ernährungsberatungen · {p}'},
     'both_missing': {
       'fr': 'Coordination entre les deux : à toi de faire le lien',
       'en': 'Coordination between the two: up to you',
@@ -317,9 +323,9 @@ class OnbStrings {
       'de': 'Die Begleitung geht nach dem Ziel weiter, ohne Termine'
     },
     'both_note': {
-      'fr': 'Tarifs indicatifs, bas de fourchette : 40 à 70 € la séance, 50 à 80 € la consultation.',
-      'en': 'Indicative low-end prices: €40 to 70 per session, €50 to 80 per consultation.',
-      'de': 'Richtpreise, untere Spanne: 40 bis 70 € pro Einheit, 50 bis 80 € pro Beratung.'
+      'fr': 'Tarifs indicatifs, bas de fourchette : {s1} à {s2} la séance, {c1} à {c2} la consultation.',
+      'en': 'Indicative low-end prices: {s1} to {s2} per session, {c1} to {c2} per consultation.',
+      'de': 'Richtpreise, untere Spanne: {s1} bis {s2} pro Einheit, {c1} bis {c2} pro Beratung.'
     },
     // store price fallbacks, shown only while RevenueCat has not answered
     'price_default_annual': {'fr': '69,99 €', 'en': '€69.99', 'de': '69,99 €'},
@@ -330,28 +336,264 @@ class OnbStrings {
 
     // ---------- Chapter 4 ----------
     'q_personality': {'fr': 'Comment tu veux qu’on te parle ?', 'en': 'How do you want us to talk to you?', 'de': 'Wie sollen wir mit dir reden?'},
-    'pers_hint': {'fr': 'Choisis un ton, on te montre.', 'en': 'Pick a tone, we’ll show you.', 'de': 'Wähl einen Ton, wir zeigen es dir.'},
-    'pers_friendly': {
-      'fr': 'Yes {n} ! Séance à 18h, on y va ensemble. Tu vas kiffer.',
-      'en': 'Yes {n}! Session at 6pm, we go together. You’ll love it.',
-      'de': 'Yes {n}! Training um 18 Uhr, wir ziehen das zusammen durch. Wird dir gefallen.'
+    // ---------- the tone: one excuse, theirs, and six ways to answer it ----------
+    'tone_you': {
+      'fr': 'Toi, ce soir',
+      'en': 'You, tonight',
+      'de': 'Du, heute Abend',
     },
-    'pers_strict': {
-      'fr': '18h, séance. Pas de négociation, {n}. On avance.',
-      'en': '6pm, session. No negotiation, {n}. We move.',
-      'de': '18 Uhr, Training. Keine Diskussion, {n}. Weiter geht’s.'
+    'tone_idle': {
+      'fr': 'Choisis qui te répond.',
+      'en': 'Pick who answers.',
+      'de': 'Wähl, wer dir antwortet.',
     },
-    'pers_supportive': {
-      'fr': 'Belle semaine, {n}. Ce soir on y va doucement, mais on y va.',
-      'en': 'Good week, {n}. Tonight we go easy, but we go.',
-      'de': 'Gute Woche, {n}. Heute Abend machen wir es ruhig, aber wir machen es.'
+    'tone_where': {
+      'fr': 'Tu l’entendras dans le chat, ton bilan de la semaine et l’avis du coach sur ta journée.',
+      'en': 'You’ll hear it in the chat, your weekly check-in and the coach’s take on your day.',
+      'de': 'Du hörst ihn im Chat, in deiner Wochenbilanz und im Kommentar des Coachs zu deinem Tag.',
     },
-    'pers_sassy': {
-      'fr': 'Encore sur le canapé, {n} ? Le tapis de course s’ennuie sans toi.',
-      'en': 'Still on the couch, {n}? The treadmill misses you.',
-      'de': 'Noch auf dem Sofa, {n}? Das Laufband vermisst dich.'
+    // the excuse comes from the first reason ticked in chapter 2 (obs_*)
+    'exc_time': {
+      'fr': 'Pas le temps aujourd’hui.',
+      'en': 'No time today.',
+      'de': 'Heute keine Zeit.',
     },
-    'pers_direct': {'fr': 'Séance 18h. 45 min. Go.', 'en': 'Session 6pm. 45 min. Go.', 'de': 'Training 18 Uhr. 45 Min. Los.'},
+    'exc_motiv': {
+      'fr': 'Pas la force ce soir.',
+      'en': 'No energy tonight.',
+      'de': 'Heute Abend keine Kraft.',
+    },
+    'exc_diet': {
+      'fr': 'J’ai craqué sur un burger.',
+      'en': 'I caved for a burger.',
+      'de': 'Ich bin beim Burger schwach geworden.',
+    },
+    'exc_know': {
+      'fr': 'Je sais pas quoi faire, alors je fais rien.',
+      'en': 'No idea what to do, so I’m doing nothing.',
+      'de': 'Ich weiß nicht, was ich machen soll, also mach ich nichts.',
+    },
+    'exc_slow': {
+      'fr': 'La balance bouge pas. À quoi bon ?',
+      'en': 'The scale won’t move. What’s the point?',
+      'de': 'Die Waage bewegt sich nicht. Wozu also?',
+    },
+    'exc_none': {
+      'fr': 'Il pleut, flemme.',
+      'en': 'It’s raining. Can’t be bothered.',
+      'de': 'Es regnet, keine Lust.',
+    },
+    // written in advance: instant, and each tone makes its own move
+    // (the buddy bargains, strict challenges, gentle allows, sassy teases,
+    // no fluff orders). {n} is the first name, removed cleanly when unknown.
+    'rep_time_friendly': {
+      'fr': 'T’inquiète {n}. 15 minutes chrono, et je te rends ta soirée. Deal ?',
+      'en': 'No stress {n}. 15 minutes flat, then your evening’s yours. Deal?',
+      'de': 'Keine Sorge, {n}. 15 Minuten, dann gehört der Abend dir. Deal?',
+    },
+    'rep_time_strict': {
+      'fr': 'Pas le temps, ou pas la priorité ? 20 minutes, {n}. Trouve-les.',
+      'en': 'No time, or not a priority? 20 minutes, {n}. Find them.',
+      'de': 'Keine Zeit oder keine Priorität? 20 Minuten, {n}. Finde sie.',
+    },
+    'rep_time_supportive': {
+      'fr': 'Les journées pleines, ça arrive, {n}. Dix minutes ce soir, c’est déjà une victoire.',
+      'en': 'Full days happen, {n}. Ten minutes tonight is already a win.',
+      'de': 'Volle Tage passieren, {n}. Zehn Minuten heute Abend sind schon ein Sieg.',
+    },
+    'rep_time_sassy': {
+      'fr': 'Pas le temps ? Ton téléphone, lui, en trouve. 😏',
+      'en': 'No time? Your phone seems to find plenty. 😏',
+      'de': 'Keine Zeit? Dein Handy findet jede Menge. 😏',
+    },
+    'rep_time_direct': {
+      'fr': '15 min. Ce soir. Je te donne la séance.',
+      'en': '15 min. Tonight. I’ll give you the session.',
+      'de': '15 Min. Heute Abend. Ich geb dir die Einheit.',
+    },
+    'rep_motiv_friendly': {
+      'fr': 'Je connais, {n}. 10 minutes ensemble, musique à fond, puis canapé. Deal ?',
+      'en': 'Been there, {n}. 10 minutes together, music up, then couch. Deal?',
+      'de': 'Kenn ich, {n}. 10 Minuten zusammen, Musik laut, dann Sofa. Deal?',
+    },
+    'rep_motiv_strict': {
+      'fr': 'Pas la force, ou pas l’envie ? 20 minutes, {n}. Maintenant.',
+      'en': 'No energy, or no will? 20 minutes, {n}. Now.',
+      'de': 'Keine Kraft oder keine Lust? 20 Minuten, {n}. Jetzt.',
+    },
+    'rep_motiv_supportive': {
+      'fr': 'Alors ce soir, on se repose, {n}. Une soirée calme ne défait rien.',
+      'en': 'Then tonight we rest, {n}. One quiet evening undoes nothing.',
+      'de': 'Dann ruhen wir uns heute aus, {n}. Ein ruhiger Abend macht nichts kaputt.',
+    },
+    'rep_motiv_sassy': {
+      'fr': 'Pas la force de bouger, {n}, mais celle de scroller ? 😏',
+      'en': 'No energy to move, {n}, but plenty to scroll? 😏',
+      'de': 'Keine Kraft zum Bewegen, {n}, aber zum Scrollen schon? 😏',
+    },
+    'rep_motiv_direct': {
+      'fr': '15 min de mobilité. Puis au lit.',
+      'en': '15 min mobility. Then bed.',
+      'de': '15 Min. Mobility. Dann ins Bett.',
+    },
+    'rep_diet_friendly': {
+      'fr': 'Un burger, c’est pas un drame, {n}. Tu l’as kiffé au moins ?',
+      'en': 'A burger’s no big deal, {n}. Did you at least enjoy it?',
+      'de': 'Ein Burger ist kein Drama, {n}. Hat er wenigstens geschmeckt?',
+    },
+    'rep_diet_strict': {
+      'fr': 'Un repas ne décide rien, {n}. Le suivant, si. Fais-le compter.',
+      'en': 'One meal decides nothing, {n}. The next one does. Make it count.',
+      'de': 'Eine Mahlzeit entscheidet nichts, {n}. Die nächste schon. Lass sie zählen.',
+    },
+    'rep_diet_supportive': {
+      'fr': 'Tu as le droit de te faire plaisir, {n}. Rien n’est perdu.',
+      'en': 'You’re allowed to enjoy a meal, {n}. Nothing is lost.',
+      'de': 'Du darfst genießen, {n}. Nichts ist verloren.',
+    },
+    'rep_diet_sassy': {
+      'fr': 'Et tu ne m’as même pas gardé une frite, {n} ? 😏',
+      'en': 'And you didn’t even save me a fry, {n}? 😏',
+      'de': 'Und mir hast du nicht mal eine Pommes aufgehoben, {n}? 😏',
+    },
+    'rep_diet_direct': {
+      'fr': 'Noté. Prochain repas : légumes et protéines.',
+      'en': 'Noted. Next meal: veggies and protein.',
+      'de': 'Notiert. Nächste Mahlzeit: Gemüse und Protein.',
+    },
+    'rep_know_friendly': {
+      'fr': 'C’est mon job, ça ! Je te prépare un truc simple, tu n’as qu’à suivre.',
+      'en': 'That’s my job! I’ll set up something simple, you just follow.',
+      'de': 'Das ist mein Job! Ich bau dir was Einfaches, du musst nur mitmachen.',
+    },
+    'rep_know_strict': {
+      'fr': 'Ne rien faire, c’est aussi un choix, {n}. Moi je choisis : 3 exercices, ce soir.',
+      'en': 'Doing nothing is a choice too, {n}. I’m choosing: 3 exercises, tonight.',
+      'de': 'Nichts tun ist auch eine Entscheidung, {n}. Ich entscheide: 3 Übungen, heute Abend.',
+    },
+    'rep_know_supportive': {
+      'fr': 'C’est normal de ne pas savoir par où commencer, {n}. On y va pas à pas.',
+      'en': 'It’s normal not to know where to start, {n}. We go step by step.',
+      'de': 'Es ist normal, nicht zu wissen, wo man anfängt, {n}. Wir gehen Schritt für Schritt.',
+    },
+    'rep_know_sassy': {
+      'fr': 'Donc ton plan, c’est le canapé ? Audacieux, {n}. 😏',
+      'en': 'So your plan is the couch? Bold, {n}. 😏',
+      'de': 'Dein Plan ist also das Sofa? Mutig, {n}. 😏',
+    },
+    'rep_know_direct': {
+      'fr': '3 exercices. 20 min. Je te les donne.',
+      'en': '3 exercises. 20 min. I’ll give them to you.',
+      'de': '3 Übungen. 20 Min. Ich geb sie dir.',
+    },
+    'rep_slow_friendly': {
+      'fr': 'Je sais, c’est frustrant. Mais t’es là, {n}, et ça compte énormément.',
+      'en': 'I know, it’s frustrating. But you’re here, {n}, and that counts for a lot.',
+      'de': 'Ich weiß, das nervt. Aber du bist da, {n}, und das zählt viel.',
+    },
+    'rep_slow_strict': {
+      'fr': 'La balance ment à court terme. Tes habitudes, non. On continue, {n}.',
+      'en': 'The scale lies short term. Your habits don’t. Keep going, {n}.',
+      'de': 'Die Waage lügt kurzfristig. Deine Gewohnheiten nicht. Weiter, {n}.',
+    },
+    'rep_slow_supportive': {
+      'fr': 'Le corps change avant la balance, {n}. Laisse-lui le temps.',
+      'en': 'Your body changes before the scale does, {n}. Give it time.',
+      'de': 'Der Körper verändert sich vor der Waage, {n}. Gib ihm Zeit.',
+    },
+    'rep_slow_sassy': {
+      'fr': 'Tu parles à la balance maintenant, {n} ? 😏 Moi je regarde ta semaine.',
+      'en': 'Talking to the scale now, {n}? 😏 I’m looking at your week.',
+      'de': 'Redest du jetzt mit der Waage, {n}? 😏 Ich schau auf deine Woche.',
+    },
+    'rep_slow_direct': {
+      'fr': 'Une pesée ne dit rien. On regarde la tendance sur 4 semaines.',
+      'en': 'One weigh-in means nothing. We watch the 4-week trend.',
+      'de': 'Ein Wiegen sagt nichts. Wir schauen auf den 4-Wochen-Trend.',
+    },
+    'rep_none_friendly': {
+      'fr': 'La pluie, l’ennemi juré ! Séance au salon, on y va ensemble ?',
+      'en': 'Rain, our sworn enemy! Living room session, together?',
+      'de': 'Regen, unser Erzfeind! Training im Wohnzimmer, zusammen?',
+    },
+    'rep_none_strict': {
+      'fr': 'La pluie ne rentre pas dans ton salon, {n}. On y va.',
+      'en': 'Rain doesn’t get into your living room, {n}. Let’s go.',
+      'de': 'Der Regen kommt nicht in dein Wohnzimmer, {n}. Los.',
+    },
+    'rep_none_supportive': {
+      'fr': 'Ce temps n’aide pas, je sais. Quelques étirements au chaud, ça compte aussi.',
+      'en': 'This weather doesn’t help, I know. A few stretches somewhere warm count too.',
+      'de': 'Das Wetter hilft nicht, ich weiß. Ein paar Dehnübungen im Warmen zählen auch.',
+    },
+    'rep_none_sassy': {
+      'fr': 'Tu ne vas pas fondre, promis, {n}. 😏',
+      'en': 'You won’t melt, I promise, {n}. 😏',
+      'de': 'Du schmilzt schon nicht, versprochen, {n}. 😏',
+    },
+    'rep_none_direct': {
+      'fr': 'Séance maison. 20 min. Go.',
+      'en': 'Home session. 20 min. Go.',
+      'de': 'Training zu Hause. 20 Min. Los.',
+    },
+    // "your way": the only keyboard of the flow, in a sheet
+    'tone_sheet_title': {
+      'fr': 'Dis-lui comment te parler.',
+      'en': 'Tell your coach how to talk to you.',
+      'de': 'Sag deinem Coach, wie er mit dir reden soll.',
+    },
+    'tone_sheet_sub': {
+      'fr': 'Il s’y tiendra, à chaque message.',
+      'en': 'It’ll stick to it, every message.',
+      'de': 'Er hält sich daran, in jeder Nachricht.',
+    },
+    'tone_sheet_hint': {
+      'fr': 'Ex. : comme une grande sœur, cash et drôle.',
+      'en': 'E.g. like a big sister, blunt and funny.',
+      'de': 'Z. B.: wie eine große Schwester, direkt und witzig.',
+    },
+    'tone_sheet_try': {
+      'fr': 'Essayer ce ton',
+      'en': 'Try this tone',
+      'de': 'Diesen Ton testen',
+    },
+    // examples a preset tone cannot do
+    'tone_ex_sister_label': {
+      'fr': 'Grande sœur',
+      'en': 'Big sister',
+      'de': 'Große Schwester',
+    },
+    'tone_ex_sister': {
+      'fr': 'Parle-moi comme une grande sœur : cash, drôle, toujours de mon côté.',
+      'en': 'Talk to me like a big sister: blunt, funny, always on my side.',
+      'de': 'Sprich mit mir wie eine große Schwester: direkt, witzig, immer auf meiner Seite.',
+    },
+    'tone_ex_caster_label': {
+      'fr': 'Commentateur',
+      'en': 'Commentator',
+      'de': 'Kommentator',
+    },
+    'tone_ex_caster': {
+      'fr': 'Commente mes journées comme un match, avec du suspense.',
+      'en': 'Call my days like a live match, full of suspense.',
+      'de': 'Kommentiere meine Tage wie ein Live-Spiel, voller Spannung.',
+    },
+    'tone_ex_butler_label': {
+      'fr': 'Majordome',
+      'en': 'Butler',
+      'de': 'Butler',
+    },
+    'tone_ex_butler': {
+      'fr': 'Parle-moi comme un majordome anglais, poli et pince-sans-rire.',
+      'en': 'Talk to me like a British butler, polite and bone-dry.',
+      'de': 'Sprich mit mir wie ein englischer Butler, höflich und trocken.',
+    },
+    // never an error message four screens before the paywall
+    'tone_custom_fallback': {
+      'fr': 'Noté. Je te parlerai comme ça, à chaque message.',
+      'en': 'Noted. I’ll talk to you like this, every message.',
+      'de': 'Notiert. So rede ich mit dir, in jeder Nachricht.',
+    },
     'cta_tone': {'fr': 'C’est ce ton-là', 'en': 'That’s the tone', 'de': 'Genau dieser Ton'},
     'q_bilan': {
       'fr': 'Chaque semaine, cinq minutes ensemble pour faire le point. Quel jour ?',

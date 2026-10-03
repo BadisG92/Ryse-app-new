@@ -157,15 +157,17 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             SizedBox(height: context.vh(3)),
-            PopIn(
-              delay: const Duration(milliseconds: 480),
-              child: AuthSocialButton(
-                provider: 'apple',
-                label: 'auth.continueApple'.tr(lang),
-                onPressed: busy ? null : () => _handleSocial('apple'),
+            if (AuthService.supportsAppleSignIn) ...[
+              PopIn(
+                delay: const Duration(milliseconds: 480),
+                child: AuthSocialButton(
+                  provider: 'apple',
+                  label: 'auth.continueApple'.tr(lang),
+                  onPressed: busy ? null : () => _handleSocial('apple'),
+                ),
               ),
-            ),
-            SizedBox(height: context.vw(3)),
+              SizedBox(height: context.vw(3)),
+            ],
             PopIn(
               delay: const Duration(milliseconds: 550),
               child: AuthSocialButton(

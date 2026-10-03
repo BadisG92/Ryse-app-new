@@ -18,6 +18,7 @@ import 'onboarding_repository.dart';
 import 'onboarding_state.dart';
 import 'onboarding_strings.dart';
 import 'onboarding_theme.dart';
+import 'tone_test.dart';
 import 'screens/answers_content.dart';
 import 'screens/both_coaches_content.dart';
 import 'screens/hello_content.dart';
@@ -29,6 +30,7 @@ import 'widgets/choices.dart';
 import 'widgets/onb_widgets.dart';
 import 'widgets/pickers.dart';
 import 'widgets/projection_chart.dart';
+import 'widgets/tone_scene.dart';
 
 enum OnbMode {
   /// New user: the whole flow, ending on the hard paywall.
@@ -73,6 +75,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
   late final TextEditingController _nameCtrl;
   final FocusNode _nameFocus = FocusNode();
   bool _nameFocused = false;
+
+  // ------------------------------------------------------- le ton, à l'essai
+  //
+  // Les cinq tons répondent par une réplique écrite d'avance. Seul le ton
+  // écrit à la main fait répondre le vrai coach : on garde sa réponse et le
+  // texte auquel elle répond, pour qu'une feuille rouverte puis refermée sans
+  // changement ne repose pas la question.
+  String? _customReply;
+  String _customAnswered = '';
+  bool _customThinking = false;
+  int _customReplies = 0;
+
   late final List<_Step> _steps;
   bool _finishing = false;
   int _idx = 0;
@@ -116,7 +130,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    a = widget.resume?.answers ?? OnbAnswers();
+    a = widget.resume?.answers ?? (OnbAnswers()..isMetric = !OnbUnits.regionUsesImperial);
     _motivationCtrl = TextEditingController(text: a.motivationText);
     _nameCtrl = TextEditingController(text: a.firstName ?? '');
     _nameFocus.addListener(() {
@@ -175,6 +189,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
         if (mounted) setState(() => _profileSaved = v);
       });
     }
+    _logView(_steps[_idx]);
     _onEnter(_steps[_idx]);
   }
 
@@ -210,14 +225,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
       }
     }
     _stepAt = DateTime.now();
+    _logView(step);
+    _onEnter(step);
+    if (!step.card) OnbProgressStore.save(step.id, a);
+  }
+
+  String get _modeName => widget.mode == OnbMode.full ? 'full' : 'coach_only';
+
+  /// Une étape arrive à l'écran : l'entonnoir dans Firebase, et la ligne de
+  /// la personne dans Supabase, qui dit où elle en est sans passer par lui.
+  /// Le premier écran compte aussi : quitter sur « hello » est une réponse.
+  void _logView(_Step step) {
     AnalyticsService.logEvent('onb_step_view', parameters: {
       'step_id': step.id,
       'chapter': step.chapter,
-      'mode': widget.mode == OnbMode.full ? 'full' : 'coach_only',
+      'mode': _modeName,
       'resumed': widget.resume != null ? 1 : 0,
     });
-    _onEnter(step);
-    if (!step.card) OnbProgressStore.save(step.id, a);
+    _repo.trackProgress('view', mode: _modeName, step: step.id, chapter: step.chapter);
   }
 
   void _next() {
@@ -330,7 +355,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
     setState(() => _signed = true);
     AnalyticsService.logEvent('onb_pact_signed', parameters: {'bilan_day': a.bilanDay ?? 0, 'personality': a.personality ?? ''});
     if (a.bilanDay != null) await _repo.saveBilanDay(a.bilanDay!);
-    if (a.personality != null) await _repo.savePersonality(a.personality!);
+    if (a.personality != null) await _repo.savePersonality(a.personality!, customText: a.personalityCustom);
     if (widget.mode == OnbMode.coachOnly) {
       await _repo.saveCoachInsights(a, s);
     }
@@ -351,6 +376,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
       'ms_on_step': _msOnStep,
       'ms_total': _msTotal,
     });
+    _repo.trackProgress('left', mode: _modeName);
   }
 
   @override
@@ -392,10 +418,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
     });
     AnalyticsService.logEvent('onb_completed', parameters: {
       'ms_total': _msTotal,
-      'mode': widget.mode == OnbMode.full ? 'full' : 'coach_only',
+      'mode': _modeName,
       'demo_plan_saved': demoSaved ? 1 : 0,
       'server_synced': synced ? 1 : 0,
     });
+    _repo.trackProgress('done', mode: _modeName, step: _steps[_idx].id, chapter: _steps[_idx].chapter);
     await widget.onComplete();
   }
 
@@ -537,6 +564,55 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
     return s.lang == 'fr' ? name.toLowerCase() : name;
   }
 
+  /// L'excuse de la personne : la première raison cochée au chapitre 2.
+  String get _excuseKey => OnbToneScript.excuseKey(a.obstacles);
+
+  /// Ce que le coach répond à cette excuse, dans le ton sélectionné.
+  String? get _toneReply {
+    final key = a.personality;
+    if (key == null) return null;
+    if (key == 'custom') return _customReply ?? (_customThinking ? null : s.t('tone_custom_fallback'));
+    return OnbToneScript.withName(s.t('rep_${_excuseKey}_$key'), _name);
+  }
+
+  /// « À ta façon » : la feuille, puis le vrai coach répond à la même excuse
+  /// dans le ton écrit. Refermer la feuille sans valider garde le ton d'avant.
+  Future<void> _openCustomTone() async {
+    final text = await OnbCustomToneSheet.show(context, s: s, initial: a.personalityCustom);
+    if (!mounted || text == null) return;
+    setState(() {
+      a.personality = 'custom';
+      a.personalityCustom = text;
+    });
+    if (text == _customAnswered && _customReply != null) return;
+    if (_customReplies >= OnbToneTest.maxReplies) {
+      setState(() => _customReply = s.t('tone_custom_fallback'));
+      return;
+    }
+    _customReplies++;
+    _customAnswered = text;
+    setState(() {
+      _customThinking = true;
+      _customReply = null;
+    });
+    final reply = await OnbToneTest.reply(
+      type: CoachPersonalityType.custom,
+      customText: text,
+      excuse: s.t('exc_$_excuseKey'),
+      lang: s.lang,
+      name: _name,
+      gender: a.gender,
+      age: a.age,
+    );
+    // a newer tone was written meanwhile: its own answer is on the way
+    if (!mounted || a.personalityCustom != text) return;
+    AnalyticsService.logEvent('onb_tone_custom', parameters: {'ok': reply == null ? 0 : 1, 'excuse': _excuseKey});
+    setState(() {
+      _customThinking = false;
+      _customReply = reply ?? s.t('tone_custom_fallback');
+    });
+  }
+
   CoachPersonalityType _personalityType(String key) =>
       CoachPersonalityType.values.firstWhere((t) => t.name == key, orElse: () => CoachPersonalityType.friendly);
 
@@ -575,7 +651,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
   Widget _buildStep(_Step step) {
     if (step.card) {
       final n = step.id.substring(2);
-      return ChapterCard(number: '0$n', title: s.t('ch${n}_title'), subtitle: s.t('ch${n}_sub'), onDone: _next);
+      // « Aucun clavier » n'est vrai que si le compte a déjà donné le prénom
+      final asksName = n == '1' && _visible.any((i) => _steps[i].id == 'name');
+      return ChapterCard(number: '0$n', title: s.t('ch${n}_title'), subtitle: s.t(asksName ? 'ch1_sub_name' : 'ch${n}_sub'), onDone: _next);
     }
     switch (step.id) {
       case 'planner':
@@ -876,8 +954,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
         );
 
       case 'target':
-        if (a.goal == 'lose' && a.targetKg >= a.weightKg) a.targetKg = (a.weightKg - 8).clamp(35.0, 200.0);
-        if (a.goal == 'gain' && a.targetKg <= a.weightKg) a.targetKg = (a.weightKg + 6).clamp(35.0, 200.0);
+        final wrongWay = (a.goal == 'lose' && a.targetKg >= a.weightKg) || (a.goal == 'gain' && a.targetKg <= a.weightKg);
+        if (!a.targetTouched || wrongWay) a.suggestTarget();
         final delta = a.targetKg - a.weightKg;
         final rate = a.goal == 'lose' ? 0.6 : 0.3;
         final weeks = (delta.abs() / rate).ceil();
@@ -891,7 +969,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
             valueMetric: a.targetKg,
             isMetric: a.isMetric,
             decimal: _decimal,
-            onChanged: (v) => setState(() => a.targetKg = v),
+            onChanged: (v) => setState(() {
+              a.targetKg = v;
+              a.targetTouched = true;
+            }),
             onUnitChanged: (m) => setState(() => a.isMetric = m),
             footer: delta == 0
                 ? Text(s.t('delta_same'), textAlign: TextAlign.center, style: OnbText.body(context, 3.7, color: OnbColors.mute))
@@ -1140,23 +1221,47 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
         );
 
       case 'personality':
-        final options = [
-          for (final t in [
-            CoachPersonalityType.friendly,
-            CoachPersonalityType.strict,
-            CoachPersonalityType.supportive,
-            CoachPersonalityType.sassy,
-            CoachPersonalityType.direct
-          ])
-            OnbPersonalityOption(
-                key: t.name,
-                emoji: CoachPersonalityService.getEmoji(t),
-                label: CoachPersonalityService.getLocalizedLabel(t, s.lang),
-                sample: s.t('pers_${t.name}', {'n': _name ?? ''}).replaceAll(' ,', ',').replaceAll('  ', ' ')),
+        final tones = [
+          for (final t in CoachPersonalityType.values)
+            OnbToneOption(key: t.name, emoji: CoachPersonalityService.getEmoji(t), label: CoachPersonalityService.getLocalizedLabel(t, s.lang)),
         ];
         return _shell(
           step,
-          body: OnbPersonalityGrid(options: options, value: a.personality, hint: s.t('pers_hint'), onChanged: (k) => setState(() => a.personality = k)),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              OnbTonePills(
+                options: tones,
+                value: a.personality,
+                onChanged: (k) {
+                  if (k == 'custom') {
+                    _openCustomTone();
+                    return;
+                  }
+                  setState(() => a.personality = k);
+                },
+              ),
+              SizedBox(height: context.vh(2.2)),
+              PopIn(
+                delay: const Duration(milliseconds: 560),
+                child: OnbToneCard(
+                  label: s.t('tone_you'),
+                  excuse: OnbToneScript.quoted(s.t('exc_$_excuseKey'), s.lang),
+                  idle: s.t('tone_idle'),
+                  reply: _toneReply,
+                  thinking: a.personality == 'custom' && _customThinking,
+                ),
+              ),
+              SizedBox(height: context.vh(2.2)),
+              // seuls le chat, le bilan et l'avis sur la journée suivent le
+              // ton : les rappels ne le suivent pas, on ne les promet pas
+              AnimatedOpacity(
+                opacity: a.personality == null ? 0 : 1,
+                duration: const Duration(milliseconds: 300),
+                child: Text(s.t('tone_where'), textAlign: TextAlign.center, style: OnbText.body(context, 3.2, color: OnbColors.mute)),
+              ),
+            ],
+          ),
           cta: OnbButton(label: s.t('cta_tone'), onPressed: a.personality == null ? null : _next),
         );
 
