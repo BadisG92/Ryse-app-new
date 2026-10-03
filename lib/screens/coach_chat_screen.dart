@@ -4,25 +4,55 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import '../ai/dossier.dart';
 import '../ai/ryze_events.dart';
 import '../ai/ryze_tools/ryze_tool.dart';
 import '../components/weekly_planner/proposal_group.dart';
 import '../models/weekly_planner_models.dart';
 import '../models/coach_chat_models.dart';
+import '../services/analytics_service.dart';
 import '../services/coach_chat_service.dart';
 import '../design/design.dart';
 import '../services/localization_service.dart';
+import '../services/paywall_service.dart';
 import '../services/translations.dart';
 import '../services/weekly_bilan_service.dart';
+import '../settings/sheets/coach_memory_sheet.dart';
 
 /// Main chat screen for conversation with Coach Ryze
 class CoachChatScreen extends StatefulWidget {
   final CoachConversation conversation;
 
+  /// Une phrase envoyée dès l'ouverture, comme si l'utilisateur l'avait
+  /// tapée : c'est ainsi que la feuille Mémoire demande le dossier.
+  final String? initialMessage;
+
   const CoachChatScreen({
     super.key,
     required this.conversation,
+    this.initialMessage,
   });
+
+  /// Ouvre la conversation depuis n'importe où, avec les mêmes portes que la
+  /// pilule de la barre : l'offre si l'accès manque, puis la conversation
+  /// unique de l'utilisateur.
+  static Future<void> open(BuildContext context, {String? initialMessage}) async {
+    final canUse = await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.coachChat,
+    );
+    if (!canUse || !context.mounted) return;
+
+    await CoachChatService.instance.initialize();
+    final conversation = await CoachChatService.instance.getOrCreateConversation();
+    if (conversation == null || !context.mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CoachChatScreen(conversation: conversation, initialMessage: initialMessage),
+      ),
+    );
+  }
 
   @override
   State<CoachChatScreen> createState() => _CoachChatScreenState();
@@ -52,14 +82,20 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   /// groupe se met en scène comme là-bas.
   final List<List<RyzePending>> _pendingGroups = [];
 
-
-  // Speech to text
+  /// Les dossiers arrivés pendant cette ouverture : eux seuls retombent avec
+  /// leur tampon. Un dossier relu dans l'historique est déjà posé.
+  final Set<String> _freshDossiers = {};
 
   @override
   void initState() {
     super.initState();
     _initLocale();
-    _loadConversation();
+    _loadConversation().then((_) {
+      final first = widget.initialMessage?.trim();
+      if (first == null || first.isEmpty || !mounted) return;
+      _textController.text = first;
+      _sendMessage();
+    });
     _checkBilanBanner();
 
     // Scroll to bottom when keyboard opens
@@ -232,23 +268,28 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             });
             _scrollToBottom();
 
-          case CoachAction(:final summary, :final ok, :final toolName, :final undo):
+          case CoachAction(:final summary, :final ok, :final toolName, :final undo, :final payload):
             closeBubble();
             RyzeFeedback.confirm();
-            setState(() {
-              _messages.add(CoachMessage.temporary(
-                conversationId: widget.conversation.id,
-                userId: '',
-                content: summary,
-              ).copyWith(
-                role: MessageRole.assistant,
-                metadata: {
-                  'kind': 'tool',
-                  'name': toolName,
-                  'status': ok ? 'done' : 'failed',
-                },
-              ));
-            });
+
+            // Un dossier n'est pas une ligne : il arrive en carte, avec ses
+            // lignes et son tampon, et la carte se garde telle quelle.
+            final dossier = ok && payload is RyzeDossier ? payload : null;
+            final line = CoachMessage.temporary(
+              conversationId: widget.conversation.id,
+              userId: '',
+              content: summary,
+            ).copyWith(
+              role: MessageRole.assistant,
+              metadata: dossier?.toMetadata() ??
+                  {
+                    'kind': 'tool',
+                    'name': toolName,
+                    'status': ok ? 'done' : 'failed',
+                  },
+            );
+            if (dossier != null) _freshDossiers.add(line.id);
+            setState(() => _messages.add(line));
             _scrollToBottom();
 
             // Ce qui s'est fait sans demander se reprend d'un geste : la barre
@@ -327,6 +368,22 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
                   // barre du bas.
                   avatars: const [RyzeAssets.sportAvatar, RyzeAssets.nutriAvatar],
                   onBack: () => Navigator.pop(context),
+                  // Le dossier a sa porte dans l'en-tête : les amorces ne
+                  // s'affichent que sur une conversation vide, et c'est
+                  // justement quand il y a de l'histoire qu'on le demande.
+                  trailing: Semantics(
+                    button: true,
+                    label: 'dossier_entry'.tr(lang),
+                    child: Pressable(
+                      onTap: _isSending ? null : _askDossier,
+                      child: Container(
+                        width: context.vw(9.7),
+                        height: context.vw(9.7),
+                        decoration: BoxDecoration(color: RyzeColors.paper2, shape: BoxShape.circle),
+                        child: Icon(LucideIcons.fileText, size: context.vw(4.6), color: _isSending ? RyzeColors.mute2 : RyzeColors.ink),
+                      ),
+                    ),
+                  ),
                 ),
                 if (_showBilanBanner) _buildBilanBanner(),
                 Expanded(
@@ -531,6 +588,28 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
         final message = _messages[at];
 
+        // Le dossier : une carte, pas une bulle ni une ligne. Il se relit
+        // tel qu'il a été compilé, et se partage encore depuis l'historique.
+        if (message.isDossier) {
+          final dossier = RyzeDossier.fromMetadata(message.metadata);
+          if (dossier != null) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_needsDaySeparator(at)) _buildDaySeparator(message.createdAt, lang),
+                RyzeDossierCard(
+                  key: ValueKey('dossier-${message.id}'),
+                  dossier: dossier,
+                  strings: _dossierStrings(dossier, lang),
+                  animate: _freshDossiers.contains(message.id),
+                  onShare: () => _shareDossier(dossier, lang),
+                  onFix: () => CoachMemorySheet.show(context, lang: lang, dossierEntry: false),
+                ),
+              ],
+            );
+          }
+        }
+
         // Une action faite se lit d'un coup d'œil : elle n'a pas besoin d'une
         // bulle, qui la ferait passer pour une phrase.
         if (message.isAction) {
@@ -689,6 +768,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         'coach_chat_suggestion_dinner'.tr(lang),
         'coach_chat_suggestion_leg_workout'.tr(lang),
         'coach_chat_suggestion_macros'.tr(lang),
+        'coach_chat_suggestion_dossier'.tr(lang),
         'coach_chat_suggestion_snack'.tr(lang),
       ],
       onTap: (text) {
@@ -696,6 +776,41 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         _sendMessage();
       },
     );
+  }
+
+  /// Demande le dossier, comme si la phrase avait été tapée.
+  void _askDossier() {
+    if (_isSending) return;
+    final lang = LocalizationService.instance.currentLanguageCode;
+    RyzeFeedback.select();
+    _textController.text = 'coach_chat_suggestion_dossier'.tr(lang);
+    _sendMessage();
+  }
+
+  RyzeDossierStrings _dossierStrings(RyzeDossier d, String lang) => RyzeDossierStrings(
+        kicker: 'dossier_kicker'.tr(lang),
+        title: 'dossier_title'.tr(lang),
+        of: d.name.isEmpty ? '' : 'dossier_of'.tr(lang).replaceAll('{name}', d.name),
+        facts: (d.count == 1 ? 'dossier_facts_one' : 'dossier_facts').tr(lang),
+        share: 'dossier_share'.tr(lang),
+        fix: 'dossier_fix'.tr(lang),
+      );
+
+  /// La carte 9:16 part dans la feuille de partage du téléphone.
+  Future<void> _shareDossier(RyzeDossier d, String lang) async {
+    RyzeFeedback.confirm();
+    final ok = await RyzeShare.share(
+      context,
+      card: RyzeDossierPoster(dossier: d, strings: _dossierStrings(d, lang)),
+      fileName: 'ryze-dossier.png',
+      text: 'dossier_share_text'.tr(lang),
+    );
+    if (!mounted) return;
+    if (!ok) {
+      RyzeUndo.failed(context, message: 'dossier_share_failed'.tr(lang));
+      return;
+    }
+    unawaited(AnalyticsService.logEvent('dossier_shared', parameters: {'stamp': d.stampId, 'lines': d.lines.length}));
   }
 
   Widget _buildInputBar() {

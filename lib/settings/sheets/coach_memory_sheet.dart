@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'package:intl/intl.dart';
+
 import '../../ai/ryze_context.dart';
 import '../../ai/ryze_memory.dart';
 import '../../design/design.dart';
 import '../../models/coach_chat_models.dart';
+import '../../screens/coach_chat_screen.dart';
 import '../../services/translations.dart';
 
 /// Ce que Ryze retient de toi, et de quoi l'effacer.
@@ -20,20 +23,23 @@ import '../../services/translations.dart';
 class CoachMemorySheet {
   CoachMemorySheet._();
 
-  static Future<void> show(BuildContext context, {required String lang}) {
+  /// [dossierEntry] faux quand la feuille s'ouvre depuis la conversation
+  /// elle-même : on n'ouvre pas une conversation par-dessus la conversation.
+  static Future<void> show(BuildContext context, {required String lang, bool dossierEntry = true}) {
     return showRyzeSheet<void>(
       context,
       title: 'coach_memory_title'.tr(lang),
       subtitle: 'coach_memory_subtitle'.tr(lang),
-      builder: (sheet) => _MemoryBody(lang: lang),
+      builder: (sheet) => _MemoryBody(lang: lang, dossierEntry: dossierEntry),
     );
   }
 }
 
 class _MemoryBody extends StatefulWidget {
-  const _MemoryBody({required this.lang});
+  const _MemoryBody({required this.lang, required this.dossierEntry});
 
   final String lang;
+  final bool dossierEntry;
 
   @override
   State<_MemoryBody> createState() => _MemoryBodyState();
@@ -90,6 +96,7 @@ class _MemoryBodyState extends State<_MemoryBody> {
     const keys = {
       MemoryCategory.allergy: 'coach_memory_cat_allergies',
       MemoryCategory.fitnessConstraint: 'coach_memory_cat_fitness',
+      MemoryCategory.promise: 'coach_memory_cat_promises',
       MemoryCategory.dietaryRestriction: 'coach_memory_cat_dietary',
       MemoryCategory.foodPreference: 'coach_memory_cat_food',
       MemoryCategory.workoutTime: 'coach_memory_cat_times',
@@ -101,11 +108,57 @@ class _MemoryBodyState extends State<_MemoryBody> {
   IconData _categoryIcon(MemoryCategory c) => switch (c) {
         MemoryCategory.allergy => LucideIcons.triangleAlert,
         MemoryCategory.fitnessConstraint => LucideIcons.heartPulse,
+        MemoryCategory.promise => LucideIcons.handshake,
         MemoryCategory.dietaryRestriction => LucideIcons.salad,
         MemoryCategory.foodPreference => LucideIcons.heart,
         MemoryCategory.workoutTime => LucideIcons.clock,
         MemoryCategory.note => LucideIcons.stickyNote,
       };
+
+  /// Le jour où le fait a été retenu, court, dans la langue du compte ; la
+  /// date ISO si les données de locale manquent.
+  String _since(DateTime d) {
+    final lang = widget.lang;
+    try {
+      final locale = lang == 'fr' ? 'fr_FR' : (lang == 'de' ? 'de_DE' : 'en_US');
+      return DateFormat.MMMd(locale).format(d);
+    } catch (_) {
+      return RyzeMemory.isoDay(d);
+    }
+  }
+
+  String _rowHint(MemoryItem item) {
+    final forget = 'coach_memory_forget'.tr(widget.lang);
+    final d = item.date;
+    if (d == null) return forget;
+    return '${'coach_memory_since'.tr(widget.lang).replaceAll('{date}', _since(d))} · $forget';
+  }
+
+  /// Le dossier se demande au coach : la conversation s'ouvre par-dessus la
+  /// feuille, la question déjà envoyée. La feuille attend derrière, on la
+  /// retrouve en revenant.
+  Future<void> _openDossier() async {
+    final lang = widget.lang;
+    await CoachChatScreen.open(context, initialMessage: 'coach_chat_suggestion_dossier'.tr(lang));
+  }
+
+  Widget _dossierRow(BuildContext context) {
+    if (!widget.dossierEntry) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.vw(1.0)),
+      child: RyzeSheetGroup(
+        children: [
+          RyzeSheetRow(
+            first: true,
+            leading: RyzeMark(size: context.vw(4.6), color: RyzeColors.ink),
+            label: 'dossier_entry'.tr(widget.lang),
+            hint: 'dossier_entry_hint'.tr(widget.lang),
+            onTap: _openDossier,
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,13 +175,20 @@ class _MemoryBodyState extends State<_MemoryBody> {
     final insights = _prefs?.onboardingInsights?.trim() ?? '';
 
     if (items.isEmpty && insights.isEmpty) {
-      return Padding(
-        padding: EdgeInsets.symmetric(vertical: context.vw(6)),
-        child: Text(
-          'coach_memory_empty'.tr(lang),
-          textAlign: TextAlign.center,
-          style: RyzeText.body(context, 3.7, color: RyzeColors.mute, height: 1.5),
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: context.vw(6)),
+            child: Text(
+              'coach_memory_empty'.tr(lang),
+              textAlign: TextAlign.center,
+              style: RyzeText.body(context, 3.7, color: RyzeColors.mute, height: 1.5),
+            ),
+          ),
+          _dossierRow(context),
+          SizedBox(height: context.vw(2.1)),
+        ],
       );
     }
 
@@ -142,6 +202,9 @@ class _MemoryBodyState extends State<_MemoryBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Le dossier d'abord : c'est ce que tout ça devient quand le coach
+        // le raconte.
+        _dossierRow(context),
         for (final entry in byCategory.entries) ...[
           Padding(
             padding: EdgeInsets.fromLTRB(context.vw(1), context.vw(3.1), 0, context.vw(1.6)),
@@ -157,7 +220,7 @@ class _MemoryBodyState extends State<_MemoryBody> {
                   first: item == entry.value.first,
                   icon: _categoryIcon(entry.key),
                   label: item.text,
-                  hint: 'coach_memory_forget'.tr(lang),
+                  hint: _rowHint(item),
                   danger: true,
                   onTap: () => _forget(item),
                 ),

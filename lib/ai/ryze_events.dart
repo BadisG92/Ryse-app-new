@@ -18,11 +18,15 @@ class CoachText extends CoachEvent {
 
 /// Une action déjà faite, à afficher en une ligne.
 class CoachAction extends CoachEvent {
-  const CoachAction(this.summary, {this.ok = true, this.toolName, this.undo});
+  const CoachAction(this.summary, {this.ok = true, this.toolName, this.undo, this.payload});
 
   final String summary;
   final bool ok;
   final String? toolName;
+
+  /// Ce que l'action a produit pour la surface, quand ce n'est pas qu'une
+  /// ligne : un dossier devient une carte, pas une phrase.
+  final Object? payload;
 
   /// De quoi la défaire, quand elle se défait proprement.
   ///

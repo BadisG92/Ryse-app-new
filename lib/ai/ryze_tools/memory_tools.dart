@@ -19,19 +19,21 @@ class MemoryTools {
       name: 'memory.remember',
       description:
           'Remember something lasting about the user: an allergy, an injury or physical '
-          'limitation, a diet, a food they love or hate, when they prefer to train. '
+          'limitation, a diet, a food they love or hate, when they prefer to train, or a '
+          'promise they make you ("no more tacos after midnight", "three sessions a week"). '
           'Only for what stays true beyond today. Never for a passing mood, a one-off '
           'meal, or something you inferred rather than heard.',
       properties: {
         'category': {
           'type': 'string',
-          'description': 'Which kind of fact this is.',
+          'description': 'Which kind of fact this is. A commitment the user states is a promise.',
           'enum': [
             'allergy',
             'dietary_restriction',
             'food_preference',
             'fitness_constraint',
             'workout_time',
+            'promise',
             'note',
           ],
         },
@@ -39,7 +41,8 @@ class MemoryTools {
           'type': 'string',
           'description':
               'The fact itself, short and in the user\'s language. Two to five words: '
-              '"allergic to nuts", "bad right knee", "trains in the morning".',
+              '"allergic to nuts", "bad right knee", "trains in the morning", '
+              '"no tacos after midnight".',
         },
       },
       required: ['category', 'fact'],

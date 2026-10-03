@@ -287,11 +287,14 @@ void main() {
       }
     });
 
-    test('la mémoire n\'accepte que ses six tiroirs', () {
+    test('la mémoire n\'accepte que ses sept tiroirs', () {
+      // Six à l'origine ; la promesse est venue avec le dossier, parce qu'une
+      // promesse se ressort autrement qu'un goût.
       final categories = List<String>.from(props('memory.remember')['category']['enum'] as List);
-      expect(categories, hasLength(6));
+      expect(categories, hasLength(7));
       expect(categories, contains('allergy'));
       expect(categories, contains('fitness_constraint'));
+      expect(categories, contains('promise'));
     });
 
     test('le planificateur s\'ouvre sur un côté ou l\'autre', () {

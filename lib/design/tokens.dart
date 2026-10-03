@@ -88,6 +88,14 @@ class RyzeColors {
   /// fait que 2,7 sur du noir, ou il devient un rouge clair.
   static Color get danger => _palette.danger;
 
+  /// L'encre du tampon : le rouge de correction des copies d'école.
+  ///
+  /// Deuxième exception assumée à la règle des deux couleurs, après la flamme
+  /// de glace du Winter Arc. Ce n'est pas un état de l'interface, c'est la
+  /// main du coach qui tombe sur une carte, et elle ne porte jamais de texte
+  /// courant. Sur un sol sombre elle s'éclaircit pour rester lisible.
+  static Color get stamp => _palette.dark ? const Color(0xFFE2584B) : const Color(0xFFB5281E);
+
   /// Reserved for confirmation controls ("Valider"); never a state colour.
   static const Color confirm = Color(0xFF10B981);
   static const Color green = Color(0xFF17B26A);

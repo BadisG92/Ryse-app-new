@@ -12,6 +12,7 @@ enum MemoryCategory {
   foodPreference('food_preferences'),
   fitnessConstraint('fitness_constraints'),
   workoutTime('preferred_workout_times'),
+  promise('promises'),
   note('custom_notes');
 
   const MemoryCategory(this.jsonKey);
@@ -29,10 +30,13 @@ enum MemoryCategory {
 
 /// Un fait retenu, et son tiroir.
 class MemoryItem {
-  const MemoryItem(this.category, this.text);
+  const MemoryItem(this.category, this.text, {this.date});
 
   final MemoryCategory category;
   final String text;
+
+  /// Le jour où il a été retenu. Nul pour un fait d'avant les dates.
+  final DateTime? date;
 
   /// La forme sur laquelle deux faits se comparent.
   String get key => CoachPreferenceExtractor.normalizeFact(text);
@@ -108,18 +112,27 @@ class RyzeMemory {
     void add(MemoryCategory c, List<String> values) {
       for (final v in values) {
         final text = v.trim();
-        if (text.isNotEmpty) out.add(MemoryItem(c, text));
+        if (text.isEmpty) continue;
+        final iso = prefs.factDates[CoachPreferenceExtractor.normalizeFact(text)];
+        out.add(MemoryItem(c, text, date: iso == null ? null : DateTime.tryParse(iso)));
       }
     }
 
     add(MemoryCategory.allergy, prefs.allergies);
     add(MemoryCategory.fitnessConstraint, prefs.fitnessConstraints);
+    add(MemoryCategory.promise, prefs.promises);
     add(MemoryCategory.dietaryRestriction, prefs.dietaryRestrictions);
     add(MemoryCategory.foodPreference, prefs.foodPreferences);
     add(MemoryCategory.workoutTime, prefs.preferredWorkoutTimes);
     add(MemoryCategory.note, prefs.customNotes);
     return out;
   }
+
+  /// Un jour en ISO (`yyyy-MM-dd`), la forme sous laquelle les dates des
+  /// faits se gardent et se donnent au modèle : sans ambiguïté dans les trois
+  /// langues, et sans dépendre des données de locale.
+  static String isoDay(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   /// Les lignes prêtes pour le bloc de contexte, dans la langue voulue.
   static List<String> promptLines(UserCoachPreferences? prefs, PersonaStrings s) {
@@ -132,8 +145,11 @@ class RyzeMemory {
       lines.addAll(insights.split('\n').map((l) => l.replaceFirst(RegExp(r'^[-•]\s*'), '').trim()).where((l) => l.isNotEmpty));
     }
 
+    // La date suit le fait quand on la connaît : « promis le 12 septembre »
+    // est une tout autre phrase que « promis ».
     for (final item in itemsOf(prefs)) {
-      lines.add('${_categoryLabel(item.category, s)} : ${item.text}');
+      final when = item.date == null ? '' : ' (${isoDay(item.date!)})';
+      lines.add('${_categoryLabel(item.category, s)} : ${item.text}$when');
     }
     return lines;
   }
@@ -145,6 +161,7 @@ class RyzeMemory {
             MemoryCategory.dietaryRestriction => 'Régime',
             MemoryCategory.foodPreference => 'Goût',
             MemoryCategory.workoutTime => 'Horaire',
+            MemoryCategory.promise => 'Promesse',
             MemoryCategory.note => 'Note',
           },
         'de' => switch (c) {
@@ -153,6 +170,7 @@ class RyzeMemory {
             MemoryCategory.dietaryRestriction => 'Ernährungsweise',
             MemoryCategory.foodPreference => 'Vorliebe',
             MemoryCategory.workoutTime => 'Trainingszeit',
+            MemoryCategory.promise => 'Versprechen',
             MemoryCategory.note => 'Notiz',
           },
         _ => switch (c) {
@@ -161,6 +179,7 @@ class RyzeMemory {
             MemoryCategory.dietaryRestriction => 'Diet',
             MemoryCategory.foodPreference => 'Preference',
             MemoryCategory.workoutTime => 'Training time',
+            MemoryCategory.promise => 'Promise',
             MemoryCategory.note => 'Note',
           },
       };
@@ -180,7 +199,11 @@ class RyzeMemory {
     final merged = CoachPreferenceExtractor.mergeList(current, [text]);
     if (merged.length == current.length) return false;
 
-    return save({category.jsonKey: capped(merged)});
+    // Le jour où c'est retenu part avec le fait.
+    final dates = Map<String, String>.from(prefs?.factDates ?? const {})
+      ..[CoachPreferenceExtractor.normalizeFact(text)] = isoDay(DateTime.now());
+
+    return save({category.jsonKey: capped(merged), 'fact_dates': dates});
   }
 
   /// Oublier un fait. Rend faux s'il n'était pas là.
@@ -194,7 +217,27 @@ class RyzeMemory {
         .toList();
     if (kept.length == current.length) return false;
 
-    return save({category.jsonKey: kept});
+    final dates = Map<String, String>.from(prefs?.factDates ?? const {})..remove(key);
+    return save({category.jsonKey: kept, 'fact_dates': dates});
+  }
+
+  /// Les dates des faits après une extraction : ce qui est nouveau prend la
+  /// date du jour, ce qui était déjà là garde la sienne.
+  static Map<String, String> datedAfterExtraction({
+    required UserCoachPreferences? before,
+    required UserCoachPreferences extracted,
+    required DateTime now,
+  }) {
+    final dates = Map<String, String>.from(before?.factDates ?? const {});
+    final today = isoDay(now);
+    for (final c in MemoryCategory.values) {
+      final known = _listOf(before, c).map(CoachPreferenceExtractor.normalizeFact).toSet();
+      for (final f in _listOf(extracted, c)) {
+        final k = CoachPreferenceExtractor.normalizeFact(f);
+        if (!known.contains(k)) dates.putIfAbsent(k, () => today);
+      }
+    }
+    return dates;
   }
 
   /// Écrit dans `preferences` sans jamais perdre ce qu'on n'a pas relu.
@@ -245,6 +288,7 @@ class RyzeMemory {
         MemoryCategory.foodPreference => p?.foodPreferences ?? const [],
         MemoryCategory.fitnessConstraint => p?.fitnessConstraints ?? const [],
         MemoryCategory.workoutTime => p?.preferredWorkoutTimes ?? const [],
+        MemoryCategory.promise => p?.promises ?? const [],
         MemoryCategory.note => p?.customNotes ?? const [],
       };
 
@@ -298,6 +342,7 @@ class RyzeMemory {
 
       final patch = <String, dynamic>{
         for (final c in MemoryCategory.values) c.jsonKey: capped(_listOf(extracted, c)),
+        'fact_dates': datedAfterExtraction(before: prefs, extracted: extracted, now: DateTime.now()),
       };
       final ok = await save(patch);
 

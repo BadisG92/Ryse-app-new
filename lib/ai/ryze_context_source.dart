@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../arc/arc_service.dart';
 import '../services/ai_workout_generation_service.dart';
 import '../services/coach_context_builder.dart';
 import '../services/global_state_manager.dart';
+import '../services/unit_service.dart';
 import '../services/weight_service.dart';
 import 'prompts/persona_strings.dart';
 import 'ryze_context.dart';
@@ -184,7 +186,57 @@ class RyzeContextSource {
       ...'${c['recentWorkouts'] ?? ''}'.split('\n'),
       ...'${c['recentCardio'] ?? ''}'.split('\n'),
     ].map((l) => l.replaceFirst(RegExp(r'^[-•*]\s*'), '').trim()).where((l) => l.isNotEmpty).toList();
+    lignes.addAll(await _records(s));
     return RyzeContext.renderSessions(s, lignes);
+  }
+
+  /// Les records personnels : le plus lourd jamais soulevé, par exercice.
+  ///
+  /// La séance les calcule pour sa pastille, mais le coach ne les voyait pas :
+  /// il ne pouvait ni féliciter un record ni le rappeler dans un dossier. Les
+  /// quatre plus lourds, avec leur date, dans l'unité de l'utilisateur.
+  static const int maxRecords = 4;
+
+  Future<List<String>> _records(PersonaStrings s) async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return const [];
+
+      final rows = await client
+          .from('workout_set_history')
+          .select('exercise_name, weight, reps, performed_at')
+          .eq('user_id', userId)
+          .gt('weight', 0)
+          .order('weight', ascending: false)
+          .limit(80)
+          .timeout(const Duration(seconds: 4));
+
+      // Trié du plus lourd au plus léger : la première ligne d'un exercice
+      // est son record.
+      final best = <String, Map<String, dynamic>>{};
+      for (final row in rows) {
+        final name = ('${row['exercise_name'] ?? ''}').trim();
+        if (name.isEmpty) continue;
+        best.putIfAbsent(name.toLowerCase(), () => Map<String, dynamic>.from(row)..['name'] = name);
+        if (best.length == maxRecords) break;
+      }
+
+      final units = UnitService.instance;
+      final out = <String>[];
+      for (final r in best.values) {
+        final kg = (r['weight'] as num).toDouble();
+        final reps = (r['reps'] as num?)?.round() ?? 0;
+        final when = DateTime.tryParse('${r['performed_at'] ?? ''}');
+        final date = when == null ? '' : ' (${RyzeMemory.isoDay(when.toLocal())})';
+        out.add('${s.label('record')} : ${r['name']} ${units.weightText(kg, s.lang)} ${units.weightUnit}'
+            '${reps > 0 ? ' × $reps' : ''}$date');
+      }
+      return out;
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ RyzeContextSource: records illisibles : $e');
+      return const [];
+    }
   }
 
   /// La tendance du poids, que le prompt ne portait pas.

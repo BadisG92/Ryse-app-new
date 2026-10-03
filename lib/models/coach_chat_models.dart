@@ -162,6 +162,9 @@ class CoachMessage {
   /// Cette ligne est-elle une action plutôt qu'une phrase ?
   bool get isAction => metadata['kind'] == 'tool';
 
+  /// Cette ligne porte-t-elle un dossier compilé, à montrer en carte ?
+  bool get isDossier => metadata['kind'] == 'dossier';
+
   /// Le nom de l'outil, pour une ligne d'action.
   String? get toolName => isAction ? metadata['name'] as String? : null;
 
@@ -289,6 +292,15 @@ class UserCoachPreferences {
   final List<String> fitnessConstraints;
   final List<String> preferredWorkoutTimes;
   final List<String> customNotes;
+
+  /// Ce que l'utilisateur a promis : « plus de tacos après minuit », « trois
+  /// séances par semaine ». Un tiroir à part, parce qu'une promesse se ressort
+  /// autrement qu'un goût.
+  final List<String> promises;
+
+  /// Quand chaque fait a été retenu, par forme normalisée du fait, en date
+  /// ISO (`yyyy-MM-dd`). Les faits d'avant cette colonne n'ont pas de date.
+  final Map<String, String> factDates;
   final String? onboardingInsights; // Insights from onboarding chat
   final DateTime? lastExtractionAt;
   final int extractionCount;
@@ -304,6 +316,8 @@ class UserCoachPreferences {
     this.fitnessConstraints = const [],
     this.preferredWorkoutTimes = const [],
     this.customNotes = const [],
+    this.promises = const [],
+    this.factDates = const {},
     this.onboardingInsights,
     this.lastExtractionAt,
     this.extractionCount = 0,
@@ -319,6 +333,7 @@ class UserCoachPreferences {
       fitnessConstraints.isEmpty &&
       preferredWorkoutTimes.isEmpty &&
       customNotes.isEmpty &&
+      promises.isEmpty &&
       (onboardingInsights == null || onboardingInsights!.isEmpty);
 
   /// Get all preferences as a formatted string for prompt injection
@@ -344,6 +359,9 @@ class UserCoachPreferences {
     if (preferredWorkoutTimes.isNotEmpty) {
       parts.add('Horaires préférés: ${preferredWorkoutTimes.join(", ")}');
     }
+    if (promises.isNotEmpty) {
+      parts.add('Promesses: ${promises.join(", ")}');
+    }
     if (customNotes.isNotEmpty) {
       parts.add('Notes: ${customNotes.join(", ")}');
     }
@@ -364,6 +382,8 @@ class UserCoachPreferences {
       fitnessConstraints: List<String>.from(prefs['fitness_constraints'] ?? []),
       preferredWorkoutTimes: List<String>.from(prefs['preferred_workout_times'] ?? []),
       customNotes: List<String>.from(prefs['custom_notes'] ?? []),
+      promises: List<String>.from(prefs['promises'] ?? []),
+      factDates: (prefs['fact_dates'] as Map?)?.map((k, v) => MapEntry('$k', '$v')) ?? const {},
       onboardingInsights: prefs['onboarding_insights'] as String?,
       lastExtractionAt: json['last_extraction_at'] != null
           ? DateTime.parse(json['last_extraction_at'] as String)
@@ -391,6 +411,8 @@ class UserCoachPreferences {
       'fitness_constraints': fitnessConstraints,
       'preferred_workout_times': preferredWorkoutTimes,
       'custom_notes': customNotes,
+      'promises': promises,
+      if (factDates.isNotEmpty) 'fact_dates': factDates,
       if (onboardingInsights != null) 'onboarding_insights': onboardingInsights,
     };
   }
@@ -443,6 +465,8 @@ class UserCoachPreferences {
     List<String>? fitnessConstraints,
     List<String>? preferredWorkoutTimes,
     List<String>? customNotes,
+    List<String>? promises,
+    Map<String, String>? factDates,
     String? onboardingInsights,
     DateTime? lastExtractionAt,
     int? extractionCount,
@@ -458,6 +482,8 @@ class UserCoachPreferences {
       fitnessConstraints: fitnessConstraints ?? this.fitnessConstraints,
       preferredWorkoutTimes: preferredWorkoutTimes ?? this.preferredWorkoutTimes,
       customNotes: customNotes ?? this.customNotes,
+      promises: promises ?? this.promises,
+      factDates: factDates ?? this.factDates,
       onboardingInsights: onboardingInsights ?? this.onboardingInsights,
       lastExtractionAt: lastExtractionAt ?? this.lastExtractionAt,
       extractionCount: extractionCount ?? this.extractionCount,

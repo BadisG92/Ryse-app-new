@@ -94,6 +94,7 @@ Préférences déjà connues:
 - Préférences alimentaires: ${existing.foodPreferences.join(', ')}
 - Contraintes fitness: ${existing.fitnessConstraints.join(', ')}
 - Horaires préférés: ${existing.preferredWorkoutTimes.join(', ')}
+- Promesses: ${existing.promises.join(', ')}
 - Notes: ${existing.customNotes.join(', ')}
 '''
         : 'Aucune préférence connue.';
@@ -116,6 +117,7 @@ Réponds en JSON avec ce format exact:
   "food_preferences": ["ex: préfère le poulet, n'aime pas les brocolis"],
   "fitness_constraints": ["ex: blessure au genou, problème de dos"],
   "preferred_workout_times": ["ex: matin, après le travail"],
+  "promises": ["ce que l'utilisateur s'engage à faire ou ne plus faire, ex: plus de tacos après minuit, 3 séances par semaine"],
   "custom_notes": ["autres informations importantes"]
 }
 
@@ -136,6 +138,7 @@ IMPORTANT:
         'food_preferences': List<String>.from(json['food_preferences'] ?? []),
         'fitness_constraints': List<String>.from(json['fitness_constraints'] ?? []),
         'preferred_workout_times': List<String>.from(json['preferred_workout_times'] ?? []),
+        'promises': List<String>.from(json['promises'] ?? []),
         'custom_notes': List<String>.from(json['custom_notes'] ?? []),
       };
     } catch (e) {
@@ -159,7 +162,9 @@ IMPORTANT:
       foodPreferences: mergeList(existing?.foodPreferences, extracted['food_preferences']),
       fitnessConstraints: mergeList(existing?.fitnessConstraints, extracted['fitness_constraints']),
       preferredWorkoutTimes: mergeList(existing?.preferredWorkoutTimes, extracted['preferred_workout_times']),
+      promises: mergeList(existing?.promises, extracted['promises']),
       customNotes: mergeList(existing?.customNotes, extracted['custom_notes']),
+      factDates: existing?.factDates ?? const {},
       onboardingInsights: existing?.onboardingInsights,
       lastExtractionAt: DateTime.now(),
       extractionCount: (existing?.extractionCount ?? 0) + 1,

@@ -81,6 +81,7 @@ const List<String> personaLabelKeys = [
   'no_history',
   'no_sessions',
   'no_cardio',
+  'record',
   'nothing_planned',
   'unavailable',
   'breakfast',

@@ -50,6 +50,8 @@ Tu as des outils. Sers-t'en au lieu d'expliquer où aller dans l'application.
 - Quand une action a besoin d'un oui, l'application pose une carte avec deux boutons sous ta réponse. Tu ne redemandes jamais par écrit, ni avant, ni après : tu dis en une phrase ce que tu proposes, et tu t'arrêtes.
 - Après un résultat, une phrase courte suffit. Ne récite pas ce que tu viens de faire.
 - Les limites de longueur ne valent que pour ce que tu écris à l'écran. Ce que tu passes à un outil est une donnée, pas un message : une recette y va entière, avec ses ingrédients et sa préparation, même si ta phrase tient en dix mots.
+- Il te fait une promesse (« plus de tacos après minuit », « trois séances par semaine ») → tu la retiens, dans le tiroir promesse.
+- Il demande ce que tu sais ou as retenu de lui, son dossier, ou pourquoi il n'avance pas alors que la réponse est dans son propre journal → tu compiles son dossier avec l'outil prévu : quatre à huit faits tirés de ta mémoire et du contexte (promesses, matériel, habitudes, records, poids, prévu contre fait, l'arc), rien de médical, un tampon pris dans la liste, un verdict d'une phrase dans ton ton. Ensuite une phrase, sans redire les lignes.
 - Si aucun outil ne convient, dis-le simplement plutôt que d'inventer une manipulation.''';
 
   @override
@@ -104,6 +106,7 @@ Tu as des outils. Sers-t'en au lieu d'expliquer où aller dans l'application.
         'no_meals_today' => 'Rien de noté aujourd\'hui',
         'no_history' => 'Pas encore d\'historique',
         'no_sessions' => 'Aucune séance récente',
+        'record' => 'Record',
         'no_cardio' => 'Aucun cardio récent',
         'nothing_planned' => 'Rien de planifié cette semaine',
         'unavailable' => 'Indisponible',

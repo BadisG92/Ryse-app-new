@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../ai/dossier.dart';
 import '../ai/ryze_agent.dart';
 import '../ai/ryze_context.dart';
 import '../ai/ryze_context_source.dart';
@@ -432,7 +433,7 @@ class CoachChatService {
     final result = await tool.execute(call.args);
     _agent!.addToolResults([(name: call.name, response: result.toResponse())]);
     await _saveAction(call.name, result);
-    yield CoachAction(result.summary, ok: result.ok, toolName: call.name, undo: result.undo);
+    yield CoachAction(result.summary, ok: result.ok, toolName: call.name, undo: result.undo, payload: result.payload);
   }
 
   /// Les actions proposées et pas encore tranchées.
@@ -465,15 +466,24 @@ class CoachChatService {
   }
 
   /// Écrit une action dans la transcription.
-  Future<void> _saveAction(String toolName, RyzeToolResult result) => _saveMessage(
-        role: 'assistant',
-        content: result.summary,
-        metadata: {
-          'kind': 'tool',
-          'name': toolName,
-          'status': result.ok ? 'done' : 'failed',
-        },
-      );
+  ///
+  /// Un dossier n'est pas une ligne d'action : il garde ses lignes, son
+  /// tampon et son verdict dans la métadonnée, pour que la carte se relise
+  /// telle quelle en rouvrant la conversation, et se partage encore.
+  Future<void> _saveAction(String toolName, RyzeToolResult result) {
+    final payload = result.payload;
+    return _saveMessage(
+      role: 'assistant',
+      content: result.summary,
+      metadata: payload is RyzeDossier && result.ok
+          ? payload.toMetadata()
+          : {
+              'kind': 'tool',
+              'name': toolName,
+              'status': result.ok ? 'done' : 'failed',
+            },
+    );
+  }
 
   Future<void> _saveMessage({
     required String role,

@@ -12630,6 +12630,88 @@ class AppTranslations {
       'en': 'If yesterday isn\'t complete, log what\'s missing before noon to keep it.',
       'de': 'Wenn gestern nicht vollständig ist, trag vor 12 Uhr ein, was fehlt, um sie zu behalten.',
     },
+    // Le dossier : ce que Ryze a retenu, écrit dans sa voix, avec son tampon.
+    // La première chose de l'application faite pour sortir d'elle.
+    'coach_chat_suggestion_dossier': {
+      'fr': 'Qu\'est-ce que tu as retenu de moi ?',
+      'en': 'What have you remembered about me?',
+      'de': 'Was hast du dir über mich gemerkt?',
+    },
+    'dossier_entry': {
+      'fr': 'Mon dossier',
+      'en': 'My file',
+      'de': 'Meine Akte',
+    },
+    'dossier_entry_hint': {
+      'fr': 'Ce qu\'il dirait de toi, dans sa voix',
+      'en': 'What he would say about you, in his voice',
+      'de': 'Was er über dich sagen würde, in seiner Stimme',
+    },
+    'dossier_compiled': {
+      'fr': 'Dossier compilé',
+      'en': 'File compiled',
+      'de': 'Akte erstellt',
+    },
+    'ryze_dossier_failed': {
+      'fr': 'Le dossier n\'a pas pu être compilé',
+      'en': 'The file could not be compiled',
+      'de': 'Die Akte konnte nicht erstellt werden',
+    },
+    'dossier_kicker': {
+      'fr': 'Dossier',
+      'en': 'File',
+      'de': 'Akte',
+    },
+    'dossier_title': {
+      'fr': 'Ce que Ryze a retenu',
+      'en': 'What Ryze remembers',
+      'de': 'Was Ryze behalten hat',
+    },
+    'dossier_of': {
+      'fr': 'de {name}',
+      'en': 'about {name}',
+      'de': 'über {name}',
+    },
+    'dossier_facts_one': {
+      'fr': 'fait retenu.',
+      'en': 'fact on file.',
+      'de': 'Fakt gemerkt.',
+    },
+    'dossier_facts': {
+      'fr': 'faits retenus.',
+      'en': 'facts on file.',
+      'de': 'Fakten gemerkt.',
+    },
+    'dossier_share': {
+      'fr': 'Partager',
+      'en': 'Share',
+      'de': 'Teilen',
+    },
+    'dossier_fix': {
+      'fr': 'Corriger',
+      'en': 'Fix',
+      'de': 'Korrigieren',
+    },
+    'dossier_share_text': {
+      'fr': 'Ce que mon coach a retenu de moi. coach-ryze.com',
+      'en': 'What my coach remembers about me. coach-ryze.com',
+      'de': 'Was mein Coach sich über mich gemerkt hat. coach-ryze.com',
+    },
+    'dossier_share_failed': {
+      'fr': 'La carte n\'a pas pu être préparée',
+      'en': 'The card could not be prepared',
+      'de': 'Die Karte konnte nicht vorbereitet werden',
+    },
+    'coach_memory_cat_promises': {
+      'fr': 'Promesses',
+      'en': 'Promises',
+      'de': 'Versprechen',
+    },
+    'coach_memory_since': {
+      'fr': 'Retenu le {date}',
+      'en': 'Noted on {date}',
+      'de': 'Gemerkt am {date}',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

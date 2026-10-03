@@ -97,6 +97,13 @@ appareil.
 - `ios/RyseMealWidget/` - Swift (jetons dans `RyzeTokens.swift`)
 - `android/app/src/main/kotlin/com/ryze/app/widget/` - Kotlin (jetons dans `res/values/colors_ryze.xml`)
 
+## 📇 Le dossier (le coach compile ce qu'il a retenu, avec un tampon)
+
+La première chose de l'app faite pour être partagée : outil `memory.dossier`,
+carte dans le chat, tampon rouge à vocabulaire fermé, carte 9:16 via
+`share_plus`. Tout est dans [`DOSSIER.md`](DOSSIER.md) : les règles (rien de
+médical, nombre vrai, tampon fermé), les fichiers, la check-list appareil.
+
 ## Key Features & Functionality
 
 ### 1. Nutrition Management

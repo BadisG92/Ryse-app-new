@@ -22,6 +22,13 @@ signature of the ground and stays; the blurred gym scene behind it was dropped.
   is decorative only, never text. Amber text uses `accInk #9A5F0C`.
 - **Green `#10B981`** is reserved for confirmation buttons. It is never a state.
 - The three macro dots (blue, amber, red) are the only place a third hue lives.
+- **The stamp** is the second deliberate exception, after the Winter Arc's ice
+  flame: one red of correction ink (`RyzeColors.stamp`), a one or two word
+  verdict in a double frame, set at nine degrees, with uneven ink. It is not a
+  state of the interface, it is the coach's hand falling on a card, and it
+  never carries running text. The words come from a closed list per tone
+  (`DossierStamps`), never written freely, so the viewer learns them. It must
+  be able to say something good as often as something to fix.
 
 ## State: one variable, the fill
 

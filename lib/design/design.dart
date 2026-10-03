@@ -20,6 +20,10 @@
 /// - day_instrument the one number of the day and its amber gauge
 /// - meal_timeline the day's meals as one line, opening in place
 /// - chat         le mobilier des conversations avec Ryze
+/// - stamp        le tampon du coach, et sa chute
+/// - share_card   ce qui sort de l'application : le rendu hors écran, le sol
+///                d'une carte partagée
+/// - dossier_card le dossier dans le fil, et sa carte 9:16
 /// - components    background grid, buttons, top bar, coach avatars, cards,
 ///                 choice cards and chips, rulers and wheels, chapter card,
 ///                 hold-to-sign, projection chart, week strip, proposal card
@@ -46,6 +50,9 @@ export 'sticky_total.dart';
 export 'meal_timeline.dart';
 export 'chat.dart';
 export 'recipe_view.dart';
+export 'stamp.dart';
+export 'share_card.dart';
+export 'dossier_card.dart';
 
 export '../onboarding/widgets/onb_widgets.dart';
 export '../onboarding/widgets/choices.dart';
