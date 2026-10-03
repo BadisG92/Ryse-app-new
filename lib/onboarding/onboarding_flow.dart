@@ -4,8 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/weekly_planner_models.dart';
+import '../pages/ryze_app.dart';
+import '../screens/auth/auth_kit.dart' show AuthSwitchLine;
+import '../screens/auth/login_screen.dart';
+import '../screens/auth/register_screen.dart';
 import '../services/coach_personality_service.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
@@ -122,9 +127,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
   String? get _name {
     final typed = (a.firstName ?? '').trim();
     if (typed.isNotEmpty) return typed;
-    final fromAccount = (widget.firstName ?? '').trim();
+    final fromAccount = (_accountName ?? '').trim();
     return fromAccount.isEmpty ? null : fromAccount;
   }
+
+  /// Le prénom donné par le compte. Le parcours commence sans compte : il
+  /// n'arrive qu'à sa création, au milieu.
+  late String? _accountName = widget.firstName;
+
+  bool get _signedIn => Supabase.instance.client.auth.currentUser != null;
+
+  /// Vrai tant que l'écran de compte est ouvert par-dessus le parcours.
+  bool _accountOpen = false;
 
   @override
   void initState() {
@@ -147,9 +161,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
         : [
             const _Step('hello'),
             const _Step('ch1', card: true),
-            // the account no longer collects a name; a coach asks for it, and
-            // only when the provider did not already give one
-            _Step('name', chapter: 1, coach: OnbCoach.sport, skip: (_) => (widget.firstName ?? '').trim().isNotEmpty),
             const _Step('goal', chapter: 1, coach: OnbCoach.sport),
             const _Step('gender', chapter: 1, coach: OnbCoach.nutri),
             const _Step('age', chapter: 1, coach: OnbCoach.nutri),
@@ -163,6 +174,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
             const _Step('motivation', chapter: 2, coach: OnbCoach.sport),
             const _Step('obstacles', chapter: 2, coach: OnbCoach.nutri),
             const _Step('answers', chapter: 2, coach: OnbCoach.duo),
+            // the account is asked here, never shown as a step: the planner
+            // demo writes the real week, and by now there is something to keep
+            _Step('account', bare: true, skip: (_) => _signedIn),
+            // the account does not collect a name; a coach asks for it, and
+            // only when the provider did not already give one
+            _Step('name', chapter: 2, coach: OnbCoach.sport, skip: (_) => !_signedIn || (_accountName ?? '').trim().isNotEmpty),
             const _Step('ch3', card: true),
             const _Step('planner', chapter: 3, bare: true),
             const _Step('ch4', card: true),
@@ -252,8 +269,48 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
       _finish();
       return;
     }
+    if (_steps[vis[pos + 1]].id == 'account') {
+      _askAccount();
+      return;
+    }
     _history.add(_idx);
     _go(vis[pos + 1]);
+  }
+
+  /// Le compte se crée ici, après les réponses et avant la démo. C'est l'écran
+  /// de compte de l'app, avec un titre qui parle de garder son plan ; il rend
+  /// la main au parcours au lieu de relancer l'app. Le refermer laisse sur
+  /// l'étape d'avant, rien n'est perdu.
+  Future<void> _askAccount() async {
+    AnalyticsService.logEvent('onb_account_asked');
+    _accountOpen = true;
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const RegisterScreen(forOnboarding: true)),
+    );
+    _accountOpen = false;
+    if (!mounted || created != true || !_signedIn) return;
+    // Apple ou Google ont reconnu un compte qui avait déjà fini : le routeur
+    // sait où l'envoyer (l'app s'il paie, le paywall sinon)
+    if (await _repo.isOnboarded()) {
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const RyzeApp()), (route) => false);
+      return;
+    }
+    if (!mounted) return;
+    AnalyticsService.logEvent('onb_account_created');
+    setState(() => _accountName = Provider.of<AuthService>(context, listen: false).currentUser?.firstName);
+    // sans compte, la boutique ne s'était pas ouverte : le prix vient maintenant
+    unawaited(_loadAnnualPrice());
+    _next();
+  }
+
+  /// « Tu as déjà un compte ? » sur le premier écran. Les réponses locales
+  /// éventuelles sont oubliées : elles n'appartiennent pas forcément à ce
+  /// compte.
+  Future<void> _openLogin() async {
+    await OnbProgressStore.clear();
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   bool get _canGoBack => _history.any((h) => !_steps[h].card && !(_steps[h].id == 'planner' && _demoPlanSaved));
@@ -371,7 +428,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
     if (state != AppLifecycleState.paused && state != AppLifecycleState.detached) return;
     if (_finishing || _idx < 0 || _idx >= _steps.length) return;
     AnalyticsService.logEvent('onb_left', parameters: {
-      'step_id': _steps[_idx].id,
+      // l'écran de compte est posé par-dessus l'étape d'avant : partir de là,
+      // c'est partir du compte, l'endroit qu'on surveille
+      'step_id': _accountOpen ? 'account' : _steps[_idx].id,
       'chapter': _steps[_idx].chapter,
       'ms_on_step': _msOnStep,
       'ms_total': _msTotal,
@@ -651,9 +710,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
   Widget _buildStep(_Step step) {
     if (step.card) {
       final n = step.id.substring(2);
-      // « Aucun clavier » n'est vrai que si le compte a déjà donné le prénom
-      final asksName = n == '1' && _visible.any((i) => _steps[i].id == 'name');
-      return ChapterCard(number: '0$n', title: s.t('ch${n}_title'), subtitle: s.t(asksName ? 'ch1_sub_name' : 'ch${n}_sub'), onDone: _next);
+      return ChapterCard(number: '0$n', title: s.t('ch${n}_title'), subtitle: s.t('ch${n}_sub'), onDone: _next);
     }
     switch (step.id) {
       case 'planner':
@@ -789,7 +846,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> with WidgetsBindingObse
   Widget _questionStep(_Step step) {
     switch (step.id) {
       case 'hello':
-        return _shell(step, body: HelloContent(s: s), cta: OnbButton(label: s.t('hello_cta'), onPressed: _next));
+        return _shell(
+          step,
+          body: HelloContent(s: s),
+          cta: OnbButton(label: s.t('hello_cta'), onPressed: _next),
+          foot: _signedIn
+              ? null
+              : AuthSwitchLine(question: s.t('have_account'), action: s.t('have_account_action'), onTap: _openLogin),
+        );
 
       case 'name':
         return _shell(

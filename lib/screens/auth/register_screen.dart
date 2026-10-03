@@ -19,7 +19,12 @@ import 'login_screen.dart';
 /// where it means something. A successful sign-up walks straight into the
 /// onboarding; it never sends the user back to a login form.
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.forOnboarding = false});
+
+  /// Opened by the onboarding just before the planner demo: the title speaks
+  /// of keeping the plan, and a new account hands back to the flow instead of
+  /// relaunching the app.
+  final bool forOnboarding;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -38,7 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    AnalyticsService.logEvent('auth_screen_view', parameters: {'screen': 'register'});
+    AnalyticsService.logEvent('auth_screen_view', parameters: {'screen': 'register', 'from': widget.forOnboarding ? 'onboarding' : 'launch'});
   }
 
   @override
@@ -92,6 +97,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_logged_in_before', true);
     if (!mounted) return;
+    if (widget.forOnboarding) {
+      Navigator.of(context).pop(true);
+      return;
+    }
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const RyzeApp()),
       (route) => false,
@@ -164,13 +173,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             SizedBox(height: context.vh(1.2)),
             const PopIn(delay: Duration(milliseconds: 120), child: AuthCoaches()),
             SizedBox(height: context.vh(2.2)),
-            AuthTitle('auth.createTitle'.tr(lang)),
+            AuthTitle((widget.forOnboarding ? 'auth.saveTitle' : 'auth.createTitle').tr(lang)),
             SizedBox(height: context.vh(1.2)),
             PopIn(
               delay: const Duration(milliseconds: 380),
               dy: 8,
               child: Text(
-                'auth.createSubtitle'.tr(lang),
+                (widget.forOnboarding ? 'auth.saveSubtitle' : 'auth.createSubtitle').tr(lang),
                 style: RyzeText.body(context, 3.9, color: RyzeColors.mute, height: 1.45),
               ),
             ),
@@ -261,7 +270,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 question: 'auth.haveAccount'.tr(lang),
                 action: 'register.signIn'.tr(lang),
                 onTap: () {
-                  if (Navigator.of(context).canPop()) {
+                  // from the onboarding, popping would only go back to the flow
+                  if (Navigator.of(context).canPop() && !widget.forOnboarding) {
                     Navigator.of(context).pop();
                   } else {
                     Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));

@@ -270,6 +270,21 @@ class OnboardingRepository {
     });
   }
 
+  /// Vrai si le compte qui vient de se connecter avait déjà fini son
+  /// onboarding : Apple ou Google reconnaissent un compte existant, et c'est
+  /// alors au routeur de décider où il va, pas au parcours de continuer.
+  Future<bool> isOnboarded() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return false;
+    try {
+      final row = await _supabase.from('users').select('is_onboarded').eq('id', user.id).maybeSingle().timeout(const Duration(seconds: 5));
+      return row?['is_onboarded'] as bool? ?? false;
+    } catch (e) {
+      debugPrint('⚠️ isOnboarded: $e');
+      return false;
+    }
+  }
+
   Future<bool> markCompleted() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_intro', true);

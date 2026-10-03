@@ -80,12 +80,9 @@ class OnbStrings {
       'en': 'A few quick questions. No typing.',
       'de': 'Ein paar schnelle Fragen. Ohne Tippen.',
     },
-    // when the account did not bring a first name, one word is typed after all
-    'ch1_sub_name': {
-      'fr': 'Quelques questions rapides. Un seul mot à taper : ton prénom.',
-      'en': 'A few quick questions. Just one word to type: your first name.',
-      'de': 'Ein paar schnelle Fragen. Nur ein Wort zum Tippen: dein Vorname.',
-    },
+    // the first screen, before any account: the door for people coming back
+    'have_account': {'fr': 'Tu as déjà un compte ?', 'en': 'Already have an account?', 'de': 'Hast du schon ein Konto?'},
+    'have_account_action': {'fr': 'Se connecter', 'en': 'Sign in', 'de': 'Anmelden'},
     'ch2_title': {'fr': 'Ton pourquoi', 'en': 'Your why', 'de': 'Dein Warum'},
     'ch2_sub': {
       'fr': 'Deux questions, et ce qu’on en fait.',

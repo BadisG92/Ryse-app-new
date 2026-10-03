@@ -13,7 +13,6 @@ import '../onboarding/onboarding_repository.dart';
 import '../onboarding/onboarding_state.dart';
 import '../screens/auth/complete_profile_screen.dart';
 import '../screens/auth/login_screen.dart';
-import '../screens/auth/register_screen.dart';
 import '../services/auth_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/unified_subscription_service.dart';
@@ -153,13 +152,18 @@ class _RyzeAppState extends State<RyzeApp> {
     }
 
     // ❌ Not logged in.
-    // No welcome screen any more: the written logo is the opening, and it is
-    // already playing over this. A device that has never signed in is showing
-    // the app to a new user, so it lands on the account screen rather than on
-    // a login form whose sign-up link sits at the bottom of the page.
+    // A device that has never signed in is showing the app to a new user. It
+    // used to open on the account screen, before anything had been shown: the
+    // onboarding now starts without an account and asks for one just before
+    // the planner demo, which writes the real week to the database. A device
+    // that has signed in before is someone coming back: the login form.
     final hasLoggedInBefore = prefs.getBool('has_logged_in_before') ?? false;
-    debugPrint('🎬 Pas de session → ${hasLoggedInBefore ? 'Login' : 'Création de compte'}');
-    _show(hasLoggedInBefore ? const LoginScreen() : const RegisterScreen());
+    debugPrint('🎬 Pas de session → ${hasLoggedInBefore ? 'Login' : 'Onboarding sans compte'}');
+    if (hasLoggedInBefore) {
+      _show(const LoginScreen());
+    } else {
+      _show(OnboardingFlow(resume: await OnbProgressStore.load(), onComplete: _goToApp));
+    }
   }
 
   /// The onboarding flow has persisted everything; just enter the app.
