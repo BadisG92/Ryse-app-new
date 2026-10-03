@@ -9986,25 +9986,30 @@ class AppTranslations {
       'en': "Hi! I'm Coach Ryze, your nutrition coach. 🥗\n\nLet's plan your meals together. Tell me what you'd like to eat this week, your preferences, or let me suggest something!",
       'de': "Hallo! Ich bin Coach Ryze, dein Ernährungscoach. 🥗\n\nLass uns deine Mahlzeiten gemeinsam planen. Sag mir, was du diese Woche essen möchtest, deine Vorlieben, oder lass mich dir etwas vorschlagen!",
     },
-    'onboarding_demo_meals_guide_click': {
-      'fr': "Tes repas sont planifiés ! 🎉 Clique sur un repas dans le calendrier au-dessus pour voir les ingrédients, la recette et les macros détaillés.",
-      'en': "Your meals are planned! 🎉 Click on a meal in the calendar above to see the ingredients, recipe, and detailed macros.",
-      'de': "Deine Mahlzeiten sind geplant! 🎉 Klicke auf eine Mahlzeit im Kalender oben, um die Zutaten, das Rezept und die detaillierten Makros zu sehen.",
+    'onboarding_demo_meals_done': {
+      'fr': "C’est noté : {n} repas sont dans ta semaine. Touche-en un dans le calendrier pour voir la recette et les macros, ou demande-moi d’en changer un.\n\nQuand tu es prêt, on passe au sport.",
+      'en': "Done: {n} meals are in your week. Tap one in the calendar for the recipe and macros, or ask me to swap one.\n\nWhen you’re ready, on to training.",
+      'de': "Erledigt: {n} Mahlzeiten sind in deiner Woche. Tipp eine im Kalender an für Rezept und Makros, oder bitte mich, eine zu tauschen.\n\nWenn du so weit bist, geht’s zum Sport.",
     },
-    'onboarding_demo_meals_guide_modify': {
-      'fr': "Tu peux aussi me demander de modifier un repas si quelque chose ne te plaît pas 😉\n\nQuand tu es prêt, on passe au sport !",
-      'en': "You can also ask me to modify a meal if something doesn't suit you 😉\n\nWhen you're ready, let's move on to sport!",
-      'de': "Du kannst mich auch bitten, eine Mahlzeit zu ändern, wenn dir etwas nicht passt 😉\n\nWenn du bereit bist, gehen wir zum Sport über!",
+    'onboarding_demo_meals_done_one': {
+      'fr': "C’est noté : ton repas est dans ta semaine. Touche-le dans le calendrier pour voir la recette et les macros, ou demande-moi de le changer.\n\nQuand tu es prêt, on passe au sport.",
+      'en': "Done: your meal is in your week. Tap it in the calendar for the recipe and macros, or ask me to swap it.\n\nWhen you’re ready, on to training.",
+      'de': "Erledigt: deine Mahlzeit ist in deiner Woche. Tipp sie im Kalender an für Rezept und Makros, oder bitte mich, sie zu tauschen.\n\nWenn du so weit bist, geht’s zum Sport.",
     },
     'onboarding_demo_sport_welcome': {
       'fr': "Super ! Passons au sport maintenant. 💪\n\nDis-moi quel type d'entraînement tu veux (musculation, cardio, full body...) et combien de fois par semaine.",
       'en': "Great! Let's move to sport now. 💪\n\nTell me what type of training you want (weight training, cardio, full body...) and how many times per week.",
       'de': "Super! Lass uns jetzt zum Sport übergehen. 💪\n\nSag mir, welche Art von Training du möchtest (Krafttraining, Cardio, Ganzkörper...) und wie oft pro Woche.",
     },
-    'onboarding_demo_sport_guide_click': {
-      'fr': "Ton programme sport est prêt ! 💪 Clique sur une séance dans le calendrier pour voir les exercices, les séries et les poids suggérés.",
-      'en': "Your sport program is ready! 💪 Click on a session in the calendar to see the exercises, sets, and suggested weights.",
-      'de': "Dein Sportprogramm ist fertig! 💪 Klicke auf eine Einheit im Kalender, um die Übungen, Sätze und vorgeschlagenen Gewichte zu sehen.",
+    'onboarding_demo_sessions_done': {
+      'fr': "C’est noté : {n} séances sont dans ta semaine. Touche-en une dans le calendrier pour voir les exercices et les séries, ou demande-moi d’en déplacer une.",
+      'en': "Done: {n} workouts are in your week. Tap one in the calendar for the exercises and sets, or ask me to move one.",
+      'de': "Erledigt: {n} Einheiten sind in deiner Woche. Tipp eine im Kalender an für Übungen und Sätze, oder bitte mich, eine zu verschieben.",
+    },
+    'onboarding_demo_sessions_done_one': {
+      'fr': "C’est noté : ta séance est dans ta semaine. Touche-la dans le calendrier pour voir les exercices et les séries, ou demande-moi de la déplacer.",
+      'en': "Done: your workout is in your week. Tap it in the calendar for the exercises and sets, or ask me to move it.",
+      'de': "Erledigt: deine Einheit ist in deiner Woche. Tipp sie im Kalender an für Übungen und Sätze, oder bitte mich, sie zu verschieben.",
     },
     'onboarding_demo_complete': {
       'fr': "Voilà ta première semaine complète ! 🚀\n\nAbonne-toi pour sauvegarder ton plan et continuer avec Coach Ryze.",

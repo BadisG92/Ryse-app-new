@@ -67,10 +67,12 @@ class OnbStrings {
       'en': 'Your weight, your progress, and a weekly check-in together',
       'de': 'Dein Gewicht, dein Fortschritt und jede Woche eine gemeinsame Bilanz'
     },
+    // the result, not the effort: the chapter card right after already says
+    // "a few quick questions", and it echoes "Save your plan" at the account
     'hello_cta': {
-      'fr': 'Quelques questions, puis ta semaine',
-      'en': 'A few questions, then your week',
-      'de': 'Ein paar Fragen, dann deine Woche',
+      'fr': 'Créer mon plan',
+      'en': 'Build my plan',
+      'de': 'Meinen Plan erstellen',
     },
 
     // ---------- Chapters ----------

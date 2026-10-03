@@ -147,8 +147,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
   final ValueNotifier<int> _proposalVersion = ValueNotifier<int>(0); // bumped on every setState: the detail sheets rebuild with the screen
   final List<PendingMeal> _demoConfirmedMeals = [];
   final List<PendingSession> _demoConfirmedSessions = [];
-  bool _demoMealsGuided = false;
-  bool _demoSportGuided = false;
 
   @override
   void initState() {
@@ -700,7 +698,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
 
         if (remainingMeals.isEmpty) {
           final langCode = LocalizationService.instance.currentLanguageCode;
-          final successMsg = 'planner_all_meals_planned'.tr(langCode);
+          final successMsg = _demoDoneMessage('meals', _demoConfirmedMeals.length, langCode);
           _addBotMessage(successMsg);
           _session.note(successMsg);
           setState(() {
@@ -711,8 +709,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
             _mealsPageController = null;
           });
 
-          // Send demo guidance message
-          _sendDemoMealsGuidance();
         } else {
           // keep every other day (validating Wednesday must not discard Monday and Tuesday)
           final remainingDays = _mealsDays.where((d) => !d.isAtSameMomentAs(currentDay)).toList();
@@ -869,35 +865,16 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
     );
   }
 
-  /// Demo mode: send guidance messages after meals are confirmed
-  void _sendDemoMealsGuidance() {
-    if (_demoMealsGuided) return;
-    _demoMealsGuided = true;
-    final langCode = LocalizationService.instance.currentLanguageCode;
-
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) {
-        _addBotMessage('onboarding_demo_meals_guide_click'.tr(langCode));
-      }
-    });
-    Future.delayed(const Duration(milliseconds: 3000), () {
-      if (mounted) {
-        _addBotMessage('onboarding_demo_meals_guide_modify'.tr(langCode));
-      }
-    });
-  }
-
-  /// Demo mode: send guidance messages after sport sessions are confirmed
-  void _sendDemoSportGuidance() {
-    if (_demoSportGuided) return;
-    _demoSportGuided = true;
-    final langCode = LocalizationService.instance.currentLanguageCode;
-
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) {
-        _addBotMessage('onboarding_demo_sport_guide_click'.tr(langCode));
-      }
-    });
+  /// Demo mode: one message once a proposal is fully validated.
+  ///
+  /// There were three in a row: « Tous tes repas sont planifiés », even when a
+  /// single breakfast had been, then the same news again with the tip, then a
+  /// second tip. One bubble now says the true count, what can be tapped and
+  /// what can be asked. The sport one no longer promises suggested weights: a
+  /// session carries exercises, sets and reps, not loads.
+  String _demoDoneMessage(String kind, int count, String langCode) {
+    final key = count == 1 ? 'onboarding_demo_${kind}_done_one' : 'onboarding_demo_${kind}_done';
+    return key.tr(langCode).replaceAll('{n}', '$count');
   }
 
   /// Demo mode: collect all data and call callback
@@ -1910,7 +1887,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
 
         if (remaining.isEmpty) {
           final langCode = LocalizationService.instance.currentLanguageCode;
-          final successMessage = 'planner_all_sessions_planned'.tr(langCode);
+          final successMessage = _demoDoneMessage('sessions', _demoConfirmedSessions.length, langCode);
           _addBotMessage(successMessage);
           _session.note(successMessage);
 
@@ -1920,28 +1897,15 @@ class _PlannerChatScreenState extends State<PlannerChatScreen>
             _sessionsPageController?.dispose();
             _sessionsPageController = null;
           });
-
-          // Send demo guidance
-          if (widget.initialMode == 'meals') {
-            _sendDemoMealsGuidance();
-          } else {
-            _sendDemoSportGuidance();
-          }
         } else {
+          // the next card slides in on its own: a "confirmed, next one" bubble
+          // between each would only push the week out of view
           setState(() {
             _pendingSessions = remaining;
             if (_currentSessionIndex >= remaining.length) {
               _currentSessionIndex = remaining.length - 1;
             }
           });
-
-          final langCode = LocalizationService.instance.currentLanguageCode;
-          final partialMsg = {
-            'fr': 'Session confirmée ! Passons à la suivante.',
-            'en': 'Session confirmed! Let\'s move to the next one.',
-            'de': 'Einheit bestätigt! Weiter zur nächsten.',
-          };
-          _addBotMessage(partialMsg[langCode] ?? partialMsg['en']!);
         }
         return;
       }
