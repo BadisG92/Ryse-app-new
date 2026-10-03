@@ -260,76 +260,92 @@ class RyzeDossierPoster extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = dossier;
     final s = strings;
-    return RyzeShareFrame(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    // Le contenu se pose en haut et, s'il est trop haut pour la story, se
+    // réduit d'un bloc plutôt que de déborder : six faits longs faisaient
+    // descendre le verdict sous la marque du pied de carte.
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(s.kicker.toUpperCase(), style: RyzeShareText.label(11)),
+        const SizedBox(height: 10),
+        Text.rich(
+          TextSpan(
             children: [
-              Text(s.kicker.toUpperCase(), style: RyzeShareText.label(11)),
-              const SizedBox(height: 10),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(text: s.title),
-                    if (s.of.isNotEmpty) TextSpan(text: ' ${s.of}', style: TextStyle(color: RyzeColors.accInk)),
-                  ],
-                ),
-                style: RyzeShareText.display(30),
-              ),
-              const SizedBox(height: 24),
-              for (final line in d.lines)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        margin: const EdgeInsets.only(top: 6),
-                        decoration: BoxDecoration(color: RyzeColors.acc, borderRadius: BorderRadius.circular(1)),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(line, style: RyzeShareText.body(15.5, height: 1.35))),
-                    ],
-                  ),
-                ),
-              const Spacer(),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${d.count}',
-                          style: RyzeShareText.display(56, height: 0.95).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(s.facts, style: RyzeShareText.body(13, weight: FontWeight.w600, color: RyzeColors.mute)),
-                        if (d.verdict.trim().isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          if (d.personaLabel.trim().isNotEmpty) Text(d.personaLabel.toUpperCase(), style: RyzeShareText.label(10.5)),
-                          const SizedBox(height: 3),
-                          Text(d.verdict, style: RyzeShareText.body(15, height: 1.4)),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 112),
-                ],
-              ),
+              TextSpan(text: s.title),
+              if (s.of.isNotEmpty) TextSpan(text: ' ${s.of}', style: TextStyle(color: RyzeColors.accInk)),
             ],
           ),
-          Positioned(
-            right: 6,
-            bottom: 86,
-            child: RyzeStamp(word: d.stampWord, height: 56),
+          style: RyzeShareText.display(30),
+        ),
+        const SizedBox(height: 24),
+        for (final line in d.lines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  margin: const EdgeInsets.only(top: 6),
+                  decoration: BoxDecoration(color: RyzeColors.acc, borderRadius: BorderRadius.circular(1)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(line, style: RyzeShareText.body(15.5, height: 1.35))),
+              ],
+            ),
           ),
-        ],
+        const SizedBox(height: 22),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${d.count}',
+                    style: RyzeShareText.display(56, height: 0.95).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(s.facts, style: RyzeShareText.body(13, weight: FontWeight.w600, color: RyzeColors.mute)),
+                  if (d.verdict.trim().isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    if (d.personaLabel.trim().isNotEmpty) Text(d.personaLabel.toUpperCase(), style: RyzeShareText.label(10.5)),
+                    const SizedBox(height: 3),
+                    Text(d.verdict, style: RyzeShareText.body(15, height: 1.4)),
+                  ],
+                ],
+              ),
+            ),
+            // La place du tampon.
+            const SizedBox(width: 112),
+          ],
+        ),
+      ],
+    );
+
+    return RyzeShareFrame(
+      child: LayoutBuilder(
+        builder: (context, box) => Stack(
+          fit: StackFit.expand,
+          children: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.topLeft,
+                child: SizedBox(width: box.maxWidth, child: content),
+              ),
+            ),
+            Positioned(
+              right: 6,
+              bottom: 86,
+              child: RyzeStamp(word: d.stampWord, height: 56),
+            ),
+          ],
+        ),
       ),
     );
   }

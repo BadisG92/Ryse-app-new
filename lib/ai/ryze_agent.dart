@@ -122,6 +122,12 @@ class RyzeAgent {
   /// Combien de tours d'outils au maximum pour un seul message.
   static const int maxToolRounds = 4;
 
+  /// Ce que le modèle lit quand son appel d'outil n'a pas pu être décodé.
+  static const String malformedCallNote =
+      '[Your previous function call could not be parsed. Call the tool again with '
+      'valid JSON arguments: strings in double quotes, lists as JSON arrays, no '
+      'trailing commas. Do not describe the call in prose.]';
+
   /// Combien de tours l'historique garde.
   ///
   /// L'écran en seme trente à l'ouverture, mais rien ne les rognait ensuite :
@@ -236,6 +242,7 @@ class RyzeAgent {
       final parts = <Map<String, dynamic>>[];
       final calls = <RyzeToolCall>[];
       var truncated = false;
+      var malformed = false;
 
       try {
         final payload = await _payload();
@@ -243,6 +250,7 @@ class RyzeAgent {
         await for (final chunk in _transport.stream(payload, model: model, surface: surface.name)) {
           if (chunk.usage != null) _sessionUsage = _sessionUsage + chunk.usage!;
           if (chunk.finishReason == 'MAX_TOKENS') truncated = true;
+          if (chunk.finishReason == 'MALFORMED_FUNCTION_CALL') malformed = true;
 
           if (chunk.text != null && chunk.text!.isNotEmpty) {
             parts.add({'text': chunk.text});
@@ -278,6 +286,16 @@ class RyzeAgent {
       addModelParts(parts);
 
       if (calls.isEmpty) {
+        // Un appel d'outil que Google n'a pas su lire arrive sans part du
+        // tout : rien à l'écran, et le modèle ne saurait pas qu'il a échoué.
+        // Un long tableau de chaînes accentuées, comme les lignes d'un
+        // dossier, suffit à le provoquer. On le lui dit et on lui laisse un
+        // tour pour recommencer, plutôt que de rendre une réponse vide.
+        if (malformed && rounds < maxToolRounds) {
+          if (kDebugMode) debugPrint('⚠️ RyzeAgent: appel d\'outil mal formé, on redemande');
+          addUserText(malformedCallNote);
+          continue;
+        }
         yield RyzeDone(_sessionUsage, truncated: truncated);
         return;
       }

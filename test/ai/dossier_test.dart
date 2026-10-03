@@ -226,6 +226,36 @@ void main() {
       expect(registry.validate(), isEmpty);
     });
 
+    test('un nom approximatif retrouve son outil', () {
+      // Le premier dossier sur appareil : « j'ai fait une erreur avec
+      // l'outil », pour un nom qui ne collait pas au caractère près.
+      expect(registry.resolve('memory.dossier')?.name, 'memory.dossier');
+      expect(registry.resolve('memory_dossier')?.name, 'memory.dossier');
+      expect(registry.resolve('default_api.memory.dossier')?.name, 'memory.dossier');
+      expect(registry.resolve('dossier')?.name, 'memory.dossier');
+      expect(registry.resolve(' Memory.Dossier ')?.name, 'memory.dossier');
+      expect(registry.resolve('journal_log_water')?.name, 'journal.log_water');
+      expect(registry.resolve('log_water')?.name, 'journal.log_water');
+      expect(registry.resolve('functions.plan.create_meal')?.name, 'plan.create_meal');
+    });
+
+    test('un nom qui ne désigne rien, ou plusieurs choses, reste inconnu', () {
+      expect(registry.resolve('outil.magique'), isNull);
+      expect(registry.resolve(''), isNull);
+      // « create » finit plusieurs outils : trop ambigu pour deviner.
+      expect(registry.resolve('create'), isNull);
+    });
+
+    test('les lignes passent en tableau, en JSON écrit, ou en texte', () {
+      expect(DossierTools.linesArg(['a', 'b']), ['a', 'b']);
+      expect(DossierTools.linesArg('["a", "b c"]'), ['a', 'b c']);
+      expect(DossierTools.linesArg('a\nb\n\nc'), ['a', 'b', 'c']);
+      expect(DossierTools.linesArg('• a • b'), ['a', 'b']);
+      expect(DossierTools.linesArg(null), isEmpty);
+      expect(DossierTools.linesArg(42), isEmpty);
+      expect(DossierTools.linesArg('   '), isEmpty);
+    });
+
     test('le schéma du tampon est la liste fermée', () {
       final decl = registry.byName('memory.dossier')!.declaration;
       final stamp = (decl['parameters'] as Map)['properties']['stamp'] as Map;

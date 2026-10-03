@@ -44,6 +44,25 @@ vault growth, dossier 06 Expériences) et du prototype validé par Badis.
 - **Le nombre est vrai** : les lignes de la mémoire plus celles de
   l'onboarding, jamais les faits mesurés, jamais inventé. Le premier jour il
   vaut six ou sept ; c'est ce qui donne envie de redemander plus tard.
+- **Tout ce qui est sur la carte est dans le ton du coach**, ton libre
+  compris. C'est l'exception à la règle « ce qu'on passe à un outil est une
+  donnée » : la persona le dit, la description de l'outil aussi. Les lignes
+  sont des faits dits comme il les dirait ; le verdict est la phrase qu'on
+  cite, une vanne qui résume, jamais une leçon (quatorze mots au plus). Le
+  premier dossier sur appareil était plat parce que le modèle appliquait la
+  règle des données ; vérifier ce point à chaque changement de prompt.
+- **Trois filets sous l'appel d'outil**, posés après le premier essai sur
+  appareil (« j'ai fait une erreur avec l'outil », sans carte ni ligne) : un
+  nom approximatif retrouve son outil (`RyzeToolRegistry.resolve`), un nom
+  inconnu renvoie au modèle la liste des vrais noms pour qu'il se reprenne
+  dans le même tour, et un appel que Google n'a pas su décoder
+  (`MALFORMED_FUNCTION_CALL`, rien à l'écran) est redemandé une fois
+  (`RyzeAgent.malformedCallNote`). Les lignes acceptent aussi un tableau écrit
+  en texte.
+- **Le rendu hors écran est sous un Material** avec un style de texte sans
+  soulignement : sans ça la carte sort avec les deux traits jaunes du style de
+  secours de Flutter. Le contenu se réduit d'un bloc s'il dépasse la story,
+  au lieu de passer sous la marque.
 - **Les faits sont datés** depuis ce chantier (`fact_dates` dans le document
   `preferences`, par forme normalisée du fait). Le prompt porte la date en ISO
   (« Promesse : plus de tacos après minuit (2026-09-12) »), la feuille Mémoire

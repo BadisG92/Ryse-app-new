@@ -156,6 +156,44 @@ class RyzeToolRegistry {
     return null;
   }
 
+  /// Retrouve un outil malgré un nom approximatif.
+  ///
+  /// Le modèle écrit parfois `memory_dossier`, `default_api.memory.dossier`
+  /// ou simplement `dossier`. Le premier dossier demandé sur appareil a fini
+  /// en « j'ai fait une erreur avec l'outil » pour un nom qui ne collait pas
+  /// au caractère près. On accepte le nom exact, les séparateurs échangés,
+  /// un préfixe d'API en trop, et le dernier segment quand il est unique.
+  RyzeTool? resolve(String raw) {
+    final exact = byName(raw);
+    if (exact != null) return exact;
+
+    var n = raw.trim().toLowerCase();
+    n = n.replaceFirst(RegExp(r'^(default_api|functions?|tools?|api)[._:/]'), '');
+    n = n.replaceAll(RegExp(r'[\s()\-]+'), '');
+    if (n.isEmpty) return null;
+
+    final shapes = <String>{
+      n,
+      n.replaceFirst('_', '.'),
+      n.replaceAll('.', '_'),
+      n.replaceAll('_', '.'),
+    };
+    for (final s in shapes) {
+      final t = byName(s);
+      if (t != null) return t;
+    }
+
+    final last = n.split(RegExp(r'[._]')).last;
+    final matches = _tools.where((t) {
+      final flat = t.name.replaceAll('.', '_');
+      return t.name.split('.').last == last || flat == n || t.name.endsWith('.$n') || flat.endsWith('_$n');
+    }).toList();
+    return matches.length == 1 ? matches.first : null;
+  }
+
+  /// Les noms exacts, pour les rendre au modèle quand il s'est trompé.
+  List<String> namesFor(RyzeSurface surface) => forSurface(surface).map((t) => t.name).toList();
+
   /// Tous les outils, quelle que soit la surface.
   List<RyzeTool> get all => List.unmodifiable(_tools);
 

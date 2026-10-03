@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import '../../models/coach_chat_models.dart';
 import '../../services/analytics_service.dart';
@@ -38,25 +39,31 @@ class DossierTools {
       name: 'memory.dossier',
       description:
           "Compile the user's file: what you have remembered about them and what their "
-          'own log shows, written in your tone, with one stamp on it. Call it when they '
-          'ask what you know or remember about them, ask for their file or dossier, or '
-          'ask why they are not getting anywhere when the honest answer sits in their '
-          'own record. Between 4 and 8 lines, each one fact in the user\'s language, at '
-          'most 70 characters, written in the third person or as a note ("Promised: no '
-          'tacos after midnight", "Trains in a garage, two dumbbells", "Bench press '
-          'record: 80 kg on 28 Sept", "3 dinners out of 7 logged after 10 pm"). Draw '
-          'them from the memory block and the context: promises, preferences, '
+          'own log shows, with one stamp on it. Call it when they ask what you know or '
+          'remember about them, ask for their file or dossier, or ask why they are not '
+          'getting anywhere when the honest answer sits in their own record. '
+          'Unlike other tools, everything you pass here is shown to the user word for '
+          'word on a card, so write it in your tone, the exact personality you were '
+          'given at the top of your instructions (a custom one included), not as '
+          'neutral data. Between 4 and 8 lines, each one fact in the user\'s language, '
+          'at most 70 characters, written the way you would say it: short, concrete, '
+          'with your tone\'s edge, never invented ("Promised: no tacos after midnight. '
+          'Twice.", "Trains in a garage with two dumbbells and big dreams", "Bench '
+          'press record: 80 kg on 28 Sept", "3 dinners out of 7 logged after 10 pm"). '
+          'Draw them from the memory block and the context: promises, preferences, '
           'equipment, habits, records, weight trend, planned versus done, the arc. '
           'Never an allergy, a diet, an injury or anything medical, even if it is in '
           'memory. The stamp is a one or two word verdict picked from the list, in the '
-          'user\'s language, matching your tone and the file. The verdict is one short '
-          'sentence in your tone, at most 12 words. The card is shown to the user with '
-          'the lines and the stamp: after it, reply with one short sentence and do not '
-          'repeat the lines.',
+          'user\'s language, matching your tone and the file. The verdict is the '
+          'closing line, the one people quote: it sums the file up with a wink, in '
+          'your tone, a jab rather than a lecture, at most 14 words, and it may turn '
+          'one of the user\'s own words against them. The card is shown with the lines '
+          'and the stamp: after it, reply with one short sentence and do not repeat '
+          'the lines.',
       properties: {
         'lines': {
           'type': 'array',
-          'description': '4 to 8 facts, one per item, in the user\'s language, at most 70 characters each.',
+          'description': '4 to 8 facts, one per item, in the user\'s language and in your tone, at most 70 characters each.',
           'items': {'type': 'string'},
         },
         'stamp': {
@@ -66,14 +73,14 @@ class DossierTools {
         },
         'verdict': {
           'type': 'string',
-          'description': 'One short sentence in your tone, at most 12 words.',
+          'description': 'The closing punchline in your tone: a wink or a jab that sums the file up, at most 14 words.',
         },
       },
       required: ['lines', 'stamp', 'verdict'],
     ),
     execute: (args) async {
       final lang = _lang;
-      final raw = (args['lines'] as List?)?.map((e) => '$e').toList() ?? const <String>[];
+      final raw = linesArg(args['lines']);
 
       final prefs = await RyzeMemory.instance.load();
       final health = <String>[
@@ -133,6 +140,25 @@ class DossierTools {
       );
     },
   );
+
+  /// Les lignes telles que le modèle les a envoyées : un tableau, d'ordinaire,
+  /// mais parfois une seule chaîne, soit un tableau JSON écrit en texte, soit
+  /// des lignes séparées par des retours ou des puces.
+  static List<String> linesArg(Object? v) {
+    if (v is List) return v.map((e) => '$e').toList();
+    if (v is! String) return const [];
+    final s = v.trim();
+    if (s.isEmpty) return const [];
+    if (s.startsWith('[')) {
+      try {
+        final decoded = jsonDecode(s);
+        if (decoded is List) return decoded.map((e) => '$e').toList();
+      } catch (_) {
+        // pas du JSON : on découpe comme du texte
+      }
+    }
+    return s.split(RegExp(r'\n+|\s*[•▪]\s*')).map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+  }
 
   /// Les lignes telles que la carte les gardera : nettoyées, bornées, et
   /// sans rien de ce que [exclude] porte.

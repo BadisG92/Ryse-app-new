@@ -52,6 +52,11 @@ class RyzeShare {
 
     // Hors champ, jamais invisible : un `Opacity(0)` ne peint pas son enfant,
     // et il n'y aurait rien à capturer.
+    //
+    // Sous un Material, sinon le texte prend le style de secours de Flutter :
+    // la première carte partagée est sortie soulignée de jaune, deux traits
+    // sous chaque ligne, parce que l'overlay n'a pas de Material au-dessus
+    // de lui et qu'aucun style n'avait dit « pas de soulignement ».
     final entry = OverlayEntry(
       builder: (_) => Positioned(
         left: -size.width * 3,
@@ -59,9 +64,20 @@ class RyzeShare {
         child: IgnorePointer(
           child: MediaQuery(
             data: media,
-            child: RepaintBoundary(
-              key: key,
-              child: SizedBox.fromSize(size: size, child: card),
+            child: Material(
+              type: MaterialType.transparency,
+              child: DefaultTextStyle(
+                style: TextStyle(
+                  fontFamily: 'InstrumentSans',
+                  fontSize: 14,
+                  color: RyzeColors.text,
+                  decoration: TextDecoration.none,
+                ),
+                child: RepaintBoundary(
+                  key: key,
+                  child: SizedBox.fromSize(size: size, child: card),
+                ),
+              ),
             ),
           ),
         ),
@@ -258,6 +274,7 @@ class RyzeShareText {
         color: color ?? RyzeColors.text,
         height: height,
         letterSpacing: size * -0.028,
+        decoration: TextDecoration.none,
       );
 
   static TextStyle body(double size, {FontWeight weight = FontWeight.w400, Color? color, double height = 1.4}) =>
@@ -268,6 +285,7 @@ class RyzeShareText {
         fontVariations: [FontVariation('wght', (weight.index + 1) * 100.0), const FontVariation('wdth', 100)],
         color: color ?? RyzeColors.text,
         height: height,
+        decoration: TextDecoration.none,
       );
 
   /// Une étiquette en capitales espacées.

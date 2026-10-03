@@ -374,13 +374,23 @@ class CoachChatService {
 
   /// Exécute l'outil demandé, ou demande d'abord la permission.
   Stream<CoachEvent> _runTool(RyzeToolCall call, String lang) async* {
-    final tool = ryzeTools.byName(call.name);
+    final tool = ryzeTools.resolve(call.name);
 
     if (tool == null) {
-      // Le modèle a inventé un outil. On le lui dit, plutôt que de le laisser
-      // croire que c'est passé.
+      // Le modèle a inventé un outil. On le lui dit, avec la liste des vrais
+      // noms, pour qu'il se reprenne dans le même tour au lieu de s'excuser
+      // et de faire le travail à la main.
+      if (kDebugMode) debugPrint('⚠️ CoachChatService: outil inconnu « ${call.name} »');
       _agent!.addToolResults([
-        (name: call.name, response: {'ok': false, 'error': 'unknown tool'})
+        (
+          name: call.name,
+          response: {
+            'ok': false,
+            'error': 'unknown tool "${call.name}"',
+            'available_tools': ryzeTools.namesFor(RyzeSurface.coach),
+            'note': 'Call again using one of these exact names, with the same arguments.',
+          }
+        )
       ]);
       return;
     }
