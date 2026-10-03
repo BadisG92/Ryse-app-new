@@ -31,7 +31,6 @@ class DossierTools {
 
   /// Une ligne est un fait, pas un paragraphe.
   static const int maxLineLength = 90;
-  static const int maxVerdictLength = 140;
 
   static final dossier = RyzeTool(
     name: 'memory.dossier',
@@ -54,12 +53,12 @@ class DossierTools {
           'equipment, habits, records, weight trend, planned versus done, the arc. '
           'Never an allergy, a diet, an injury or anything medical, even if it is in '
           'memory. The stamp is a one or two word verdict picked from the list, in the '
-          'user\'s language, matching your tone and the file. The verdict is the '
-          'closing line, the one people quote: it sums the file up with a wink, in '
-          'your tone, a jab rather than a lecture, at most 14 words, and it may turn '
-          'one of the user\'s own words against them. The card is shown with the lines '
-          'and the stamp: after it, reply with one short sentence and do not repeat '
-          'the lines.',
+          'user\'s language, matching your tone and the file. Then the card is on '
+          'screen with the lines and the stamp, and the ONE sentence you say next is '
+          'printed on the card under your name as the verdict: the line people quote, '
+          'a jab that sums the file up in your tone, at most 14 words, which may turn '
+          'one of the user\'s own words against them. Say that sentence and nothing '
+          'else: no greeting, no recap of the lines, no question.',
       properties: {
         'lines': {
           'type': 'array',
@@ -71,12 +70,8 @@ class DossierTools {
           'description': 'The stamp word, exactly as listed, in the user\'s language.',
           'enum': DossierStamps.enumWords(),
         },
-        'verdict': {
-          'type': 'string',
-          'description': 'The closing punchline in your tone: a wink or a jab that sums the file up, at most 14 words.',
-        },
       },
-      required: ['lines', 'stamp', 'verdict'],
+      required: ['lines', 'stamp'],
     ),
     execute: (args) async {
       final lang = _lang;
@@ -102,7 +97,6 @@ class DossierTools {
       }
 
       final stamp = pickStamp('${args['stamp'] ?? ''}');
-      final verdict = clip('${args['verdict'] ?? ''}'.trim(), maxVerdictLength);
 
       final personality = await CoachPersonalityService.instance.getPersonality();
       final personaLabel = personality.type == CoachPersonalityType.custom
@@ -114,7 +108,9 @@ class DossierTools {
         lines: lines,
         stampId: stamp.id,
         stampWord: stamp.word(lang),
-        verdict: verdict,
+        // Le verdict est la phrase que le coach dira après la carte : la
+        // surface l'y posera. Demandé ici, il sortait plat.
+        verdict: '',
         count: countFacts(prefs),
         personaLabel: personaLabel,
         lang: lang,
@@ -133,8 +129,9 @@ class DossierTools {
           'shown_lines': lines.length,
           'stamp': d.stampWord,
           'facts_on_file': d.count,
-          'note': 'The card with the lines and the stamp is on screen. Reply with one '
-              'short sentence in your tone; do not repeat the lines or the stamp.',
+          'note': 'The card with the lines and the stamp is on screen. The one '
+              'sentence you say now is printed on it as the verdict: a jab that sums '
+              'the file up in your tone, at most 14 words, nothing else.',
         },
         payload: d,
       );

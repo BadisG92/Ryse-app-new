@@ -329,6 +329,9 @@ class CoachChatService {
       return;
     }
 
+    // Un nouveau message : plus aucune carte n'attend sa phrase.
+    _dossierAwaitingVerdict = null;
+
     try {
       await _saveMessage(role: 'user', content: userMessage);
     } catch (e) {
@@ -472,7 +475,36 @@ class CoachChatService {
     final text = buffer.toString().trim();
     buffer.clear();
     if (text.isEmpty) return;
+
+    // La phrase qui suit un dossier n'est pas une bulle : c'est le verdict,
+    // imprimé sur la carte sous le nom du coach. Demandé en argument d'outil,
+    // le verdict sortait plat, écrit comme une donnée, et recopié d'une fois
+    // sur l'autre ; dit en parole, il est dans le ton, toujours.
+    final dossierId = _dossierAwaitingVerdict;
+    if (dossierId != null) {
+      _dossierAwaitingVerdict = null;
+      if (await _attachVerdict(dossierId, text)) return;
+    }
     await _saveMessage(role: 'assistant', content: text);
+  }
+
+  /// La ligne du dossier qui attend sa phrase, pendant le tour en cours.
+  String? _dossierAwaitingVerdict;
+
+  /// Pose la phrase sur la carte, en base et en mémoire. Rend faux si la
+  /// carte n'a pas été retrouvée : la phrase redevient alors une bulle.
+  Future<bool> _attachVerdict(String messageId, String text) async {
+    final at = _currentMessages.indexWhere((m) => m.id == messageId);
+    if (at < 0) return false;
+    final verdict = RyzeDossier.tidyVerdict(text);
+    final metadata = {..._currentMessages[at].metadata, 'verdict': verdict};
+    try {
+      await _supabase.from('coach_messages').update({'metadata': metadata}).eq('id', messageId);
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ CoachChatService: verdict non écrit : $e');
+    }
+    _currentMessages[at] = _currentMessages[at].copyWith(metadata: metadata);
+    return true;
   }
 
   /// Écrit une action dans la transcription.
@@ -480,12 +512,13 @@ class CoachChatService {
   /// Un dossier n'est pas une ligne d'action : il garde ses lignes, son
   /// tampon et son verdict dans la métadonnée, pour que la carte se relise
   /// telle quelle en rouvrant la conversation, et se partage encore.
-  Future<void> _saveAction(String toolName, RyzeToolResult result) {
+  Future<void> _saveAction(String toolName, RyzeToolResult result) async {
     final payload = result.payload;
-    return _saveMessage(
+    final dossier = payload is RyzeDossier && result.ok;
+    final saved = await _saveMessage(
       role: 'assistant',
       content: result.summary,
-      metadata: payload is RyzeDossier && result.ok
+      metadata: dossier
           ? payload.toMetadata()
           : {
               'kind': 'tool',
@@ -493,15 +526,16 @@ class CoachChatService {
               'status': result.ok ? 'done' : 'failed',
             },
     );
+    _dossierAwaitingVerdict = dossier ? saved?.id : null;
   }
 
-  Future<void> _saveMessage({
+  Future<CoachMessage?> _saveMessage({
     required String role,
     required String content,
     Map<String, dynamic> metadata = const {},
   }) async {
     final user = _supabase.auth.currentUser;
-    if (user == null || _currentConversation == null) return;
+    if (user == null || _currentConversation == null) return null;
 
     final row = await _supabase
         .from('coach_messages')
@@ -516,7 +550,9 @@ class CoachChatService {
         .select()
         .single();
 
-    _currentMessages.add(CoachMessage.fromJson(row));
+    final message = CoachMessage.fromJson(row);
+    _currentMessages.add(message);
+    return message;
   }
 
   /// Stream weekly bilan response from Coach Ryze

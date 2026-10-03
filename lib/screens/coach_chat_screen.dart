@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -226,6 +227,14 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       /// une seconde fois, en ambre, à la place de ce que l'outil avait fait.
       int bubbleAt = -1;
 
+      /// La carte du dossier arrivée pendant ce tour, qui attend sa phrase.
+      ///
+      /// Ce que le coach dit juste après la carte n'est pas une bulle : c'est
+      /// le verdict, et il s'écrit dans la carte, sous son nom, au rythme où
+      /// il arrive. Le service le pose en base de la même façon.
+      int dossierAt = -1;
+      var verdict = '';
+
       /// Ouvre une bulle de frappe si aucune n'attend le texte.
       void openBubble() {
         if (typing) return;
@@ -254,6 +263,16 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
         switch (event) {
           case CoachText(:final text):
+            if (dossierAt >= 0 && dossierAt < _messages.length && _messages[dossierAt].isDossier) {
+              verdict += text;
+              final tidy = RyzeDossier.tidyVerdict(verdict);
+              setState(() {
+                final m = _messages[dossierAt];
+                _messages[dossierAt] = m.copyWith(metadata: {...m.metadata, 'verdict': tidy});
+              });
+              _scrollToBottom();
+              break;
+            }
             openBubble();
             fullResponse += text;
 
@@ -290,6 +309,8 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             );
             if (dossier != null) _freshDossiers.add(line.id);
             setState(() => _messages.add(line));
+            dossierAt = dossier != null ? _messages.length - 1 : -1;
+            verdict = '';
             _scrollToBottom();
 
             // Ce qui s'est fait sans demander se reprend d'un geste : la barre
@@ -308,6 +329,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
           case CoachAsk(:final pending):
             // Elle se posera sous la phrase, pas avant.
+            dossierAt = -1;
             held.add(pending);
 
           case CoachProposals():
@@ -318,6 +340,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
           case CoachFailure(:final message):
             closeBubble();
+            dossierAt = -1;
             setState(() {
               _messages.add(CoachMessage.temporary(
                 conversationId: widget.conversation.id,
@@ -806,6 +829,8 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         facts: (d.count == 1 ? 'dossier_facts_one' : 'dossier_facts').tr(lang),
         share: 'dossier_share'.tr(lang),
         fix: 'dossier_fix'.tr(lang),
+        appName: 'share_app_name'.tr(lang),
+        storeCta: (Platform.isIOS ? 'share_store_ios' : 'share_store_android').tr(lang),
       );
 
   /// La carte 9:16 part dans la feuille de partage du téléphone.

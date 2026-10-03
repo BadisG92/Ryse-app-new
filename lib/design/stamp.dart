@@ -204,18 +204,24 @@ class _StampPainter extends CustomPainter {
 /// l'animation seule. Trois dixièmes de seconde, puis une image fixe.
 ///
 /// [play] faux montre le tampon posé : un dossier relu dans l'historique ne
-/// retombe pas.
+/// retombe pas. [hidden] le retient hors de vue tant que [play] ne passe pas
+/// à vrai : la carte attend la phrase du coach avant de tamponner.
 class RyzeStampSlam extends StatefulWidget {
   const RyzeStampSlam({
     super.key,
     required this.play,
     required this.child,
+    this.hidden = false,
     this.delay = Duration.zero,
     this.onImpact,
     this.restAngle = -9,
   });
 
   final bool play;
+
+  /// Rien à l'écran tant que la chute n'est pas lancée. Sans effet si
+  /// [play] est déjà vrai.
+  final bool hidden;
   final Widget child;
 
   /// Le temps avant la chute, pour laisser la carte arriver d'abord.
@@ -243,21 +249,40 @@ class _RyzeStampSlamState extends State<RyzeStampSlam> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _c.addListener(_onTick);
-    if (!widget.play) {
-      _c.value = 1;
+    // Posé d'emblée (un dossier relu) : l'impact est déjà passé. Il faut le
+    // dire AVANT de régler la valeur, sinon l'écouteur croit à une chute, fait
+    // vibrer le téléphone et secoue la carte en pleine construction.
+    if (!widget.play && !widget.hidden) {
       _hit = true;
+      _c.value = 1;
     }
+    _c.addListener(_onTick);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started || !widget.play) return;
+    if (widget.play) _start();
+  }
+
+  @override
+  void didUpdateWidget(RyzeStampSlam old) {
+    super.didUpdateWidget(old);
+    if (widget.play && !old.play) {
+      _start();
+    } else if (!widget.play && !widget.hidden && !_started) {
+      // Plus rien à attendre et pas de chute : il se pose, sans impact.
+      _hit = true;
+      _c.value = 1;
+    }
+  }
+
+  void _start() {
+    if (_started) return;
     _started = true;
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-      _c.value = 1;
       _hit = true;
+      _c.value = 1;
       return;
     }
     Future<void>.delayed(widget.delay, () {
@@ -288,7 +313,10 @@ class _RyzeStampSlamState extends State<RyzeStampSlam> with SingleTickerProvider
       builder: (context, child) {
         final t = _c.value;
         if (t >= 1) return child!;
-        if (t == 0) return Opacity(opacity: 0, child: child);
+        if (t == 0) {
+          // Retenu ou pas encore parti : invisible, mais il garde sa place.
+          return Visibility(visible: false, maintainSize: true, maintainAnimation: true, maintainState: true, child: child!);
+        }
 
         double scale, extraAngle, opacity, blur;
         if (t < RyzeStampSlam.impactAt) {

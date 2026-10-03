@@ -148,15 +148,16 @@ class RyzeShareFrame extends StatelessWidget {
   const RyzeShareFrame({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(28, 34, 28, 26),
-    this.footer = true,
+    this.padding = const EdgeInsets.fromLTRB(28, 34, 28, 24),
+    this.footer,
   });
 
   final Widget child;
   final EdgeInsets padding;
 
-  /// La marque et le site en bas de carte.
-  final bool footer;
+  /// Ce qui ferme la carte, d'un bord à l'autre, hors des marges : le
+  /// bandeau de la marque, d'ordinaire ([RyzeShareBrand]).
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -195,40 +196,74 @@ class RyzeShareFrame extends StatelessWidget {
                   painter: RyzeGridPainter(spacing: w * 0.08, color: RyzeColors.text.withValues(alpha: 0.055)),
                 ),
               ),
-              Padding(
-                padding: padding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: child),
-                    if (footer) ...[
-                      const SizedBox(height: 18),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          RyzeLogoStill(height: 20, color: RyzeColors.ink),
-                          const Spacer(),
-                          Text(
-                            RyzeShare.site,
-                            style: TextStyle(
-                              fontFamily: 'InstrumentSans',
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              fontVariations: const [FontVariation('wght', 600), FontVariation('wdth', 100)],
-                              color: RyzeColors.mute2,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: Padding(padding: padding, child: child)),
+                  if (footer != null) footer!,
+                ],
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// Le bandeau qui signe une carte partagée, d'un bord à l'autre : la marque
+/// en grand sur l'encre, le nom de la fiche telle qu'on la cherche sur le
+/// store, et où la trouver.
+///
+/// La première version signait d'une marque de vingt points et du site en
+/// gris : on ne voyait pas de quoi la carte parlait. Une carte qui circule
+/// sans son auteur ne ramène personne ; celle-ci dit son nom.
+class RyzeShareBrand extends StatelessWidget {
+  const RyzeShareBrand({super.key, required this.title, required this.cta});
+
+  /// « Ryze : Compteur Calories IA », le nom exact de la fiche.
+  final String title;
+
+  /// « Sur l'App Store ».
+  final String cta;
+
+  @override
+  Widget build(BuildContext context) {
+    final onInk = RyzeColors.isDark ? RyzeColors.paper : Colors.white;
+    return Container(
+      color: RyzeColors.ink,
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          RyzeLogoStill(height: 50, color: onInk),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (title.isNotEmpty)
+                  Text(
+                    title,
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: RyzeShareText.display(16, weight: FontWeight.w700, color: onInk, height: 1.15),
+                  ),
+                if (cta.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    cta,
+                    textAlign: TextAlign.right,
+                    style: RyzeShareText.body(13, weight: FontWeight.w600, color: RyzeColors.acc, height: 1.2),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

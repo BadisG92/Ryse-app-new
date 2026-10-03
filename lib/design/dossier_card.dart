@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../ai/dossier.dart';
@@ -19,7 +21,16 @@ class RyzeDossierStrings {
     required this.facts,
     required this.share,
     required this.fix,
+    this.appName = '',
+    this.storeCta = '',
   });
+
+  /// Le nom de la fiche sur le store, celui qu'on tape pour la trouver :
+  /// « Ryze : Compteur Calories IA ». Sur la carte partagée seulement.
+  final String appName;
+
+  /// « Sur l'App Store », « On Google Play ». Sur la carte partagée seulement.
+  final String storeCta;
 
   /// « Dossier », en petites capitales au-dessus du titre.
   final String kicker;
@@ -70,8 +81,27 @@ class _RyzeDossierCardState extends State<RyzeDossierCard> with SingleTickerProv
   /// Le choc encaissé par la carte quand le tampon touche.
   late final AnimationController _jolt = AnimationController(vsync: this, duration: const Duration(milliseconds: 170));
 
+  /// Le tampon attend la phrase du coach pour tomber dessus. S'il ne dit
+  /// rien, il tombe quand même, un peu plus tard.
+  Timer? _patience;
+  bool _patienceOver = false;
+
+  /// Combien de temps on attend la phrase avant de tamponner sans elle.
+  static const Duration patience = Duration(seconds: 5);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animate && widget.dossier.verdict.trim().isEmpty) {
+      _patience = Timer(patience, () {
+        if (mounted) setState(() => _patienceOver = true);
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _patience?.cancel();
     _jolt.dispose();
     super.dispose();
   }
@@ -80,6 +110,9 @@ class _RyzeDossierCardState extends State<RyzeDossierCard> with SingleTickerProv
   Widget build(BuildContext context) {
     final d = widget.dossier;
     final s = widget.strings;
+
+    // Le tampon tombe sur la phrase, pas avant elle.
+    final waiting = widget.animate && d.verdict.trim().isEmpty && !_patienceOver;
 
     final card = AnimatedBuilder(
       animation: _jolt,
@@ -109,6 +142,7 @@ class _RyzeDossierCardState extends State<RyzeDossierCard> with SingleTickerProv
             Padding(
               padding: EdgeInsets.all(context.vw(4.1)),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
@@ -150,34 +184,38 @@ class _RyzeDossierCardState extends State<RyzeDossierCard> with SingleTickerProv
                         ],
                       ),
                     ),
-                  SizedBox(height: context.vw(2.1)),
+                  SizedBox(height: context.vw(1.6)),
+                  // Le chiffre à gauche, le tampon à droite, sur leur ligne à
+                  // eux : posé sur la vanne, le tampon la rendait illisible.
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _Count(count: d.count, label: s.facts, animate: widget.animate),
-                            if (d.verdict.trim().isNotEmpty) ...[
-                              SizedBox(height: context.vw(2.1)),
-                              if (d.personaLabel.trim().isNotEmpty)
-                                Text(
-                                  d.personaLabel.toUpperCase(),
-                                  style: RyzeText.body(context, 2.7, weight: FontWeight.w600, color: RyzeColors.mute, height: 1.2)
-                                      .copyWith(letterSpacing: context.vw(0.2)),
-                                ),
-                              SizedBox(height: context.vw(0.5)),
-                              Text(d.verdict, style: RyzeText.body(context, 3.5, height: 1.4)),
-                            ],
-                          ],
-                        ),
+                      Expanded(child: _Count(count: d.count, label: s.facts, animate: widget.animate)),
+                      RyzeStampSlam(
+                        play: widget.animate && !waiting,
+                        hidden: waiting,
+                        delay: const Duration(milliseconds: 450),
+                        onImpact: () {
+                          if (mounted) _jolt.forward(from: 0);
+                        },
+                        child: RyzeStamp(word: d.stampWord, height: context.vw(10.2), angle: -7),
                       ),
-                      // La place du tampon, pour que le verdict ne passe pas dessous.
-                      SizedBox(width: context.vw(27)),
                     ],
                   ),
-                  SizedBox(height: context.vw(3.6)),
+                  // La vanne : la phrase qu'on cite, en grand, sur toute la
+                  // largeur, signée du ton du coach.
+                  if (d.verdict.trim().isNotEmpty) ...[
+                    SizedBox(height: context.vw(2.6)),
+                    if (d.personaLabel.trim().isNotEmpty)
+                      Text(
+                        d.personaLabel.toUpperCase(),
+                        style: RyzeText.body(context, 2.7, weight: FontWeight.w600, color: RyzeColors.mute, height: 1.2)
+                            .copyWith(letterSpacing: context.vw(0.2)),
+                      ),
+                    SizedBox(height: context.vw(1.0)),
+                    Text(d.verdict, style: RyzeText.display(context, 4.9, weight: FontWeight.w700, height: 1.18)),
+                  ],
+                  SizedBox(height: context.vw(4.1)),
                   Row(
                     children: [
                       Expanded(child: OnbButton(label: s.share, onPressed: widget.onShare)),
@@ -186,18 +224,6 @@ class _RyzeDossierCardState extends State<RyzeDossierCard> with SingleTickerProv
                     ],
                   ),
                 ],
-              ),
-            ),
-            Positioned(
-              right: context.vw(3.6),
-              bottom: context.vw(19.5),
-              child: RyzeStampSlam(
-                play: widget.animate,
-                delay: const Duration(milliseconds: 700),
-                onImpact: () {
-                  if (mounted) _jolt.forward(from: 0);
-                },
-                child: RyzeStamp(word: d.stampWord, height: context.vw(10.8)),
               ),
             ),
           ],
@@ -249,103 +275,132 @@ class _Count extends StatelessWidget {
 }
 
 /// Le dossier en carte à partager : la story 9:16, même papier, même tampon,
-/// la marque et le site en bas. Rendu hors écran par [RyzeShare].
+/// et le bandeau de la marque en bas. Rendu hors écran par [RyzeShare].
+///
+/// Trois étages : les faits, puis le chiffre et le tampon sur une même ligne,
+/// puis la vanne en grand, la phrase qu'on cite. Le tampon ne se pose jamais
+/// sur la vanne : sur la première version il la recouvrait.
 class RyzeDossierPoster extends StatelessWidget {
   const RyzeDossierPoster({super.key, required this.dossier, required this.strings});
 
   final RyzeDossier dossier;
   final RyzeDossierStrings strings;
 
+  /// Une story se lit en trois secondes : au-delà, les faits ne sont plus lus.
+  static const int maxLines = 6;
+
+  /// Le corps des faits : plus petit quand ils sont longs, pour que la vanne
+  /// garde sa place.
+  static double factSize(List<String> lines) {
+    final longest = lines.fold<int>(0, (m, l) => l.length > m ? l.length : m);
+    final total = lines.fold<int>(0, (m, l) => m + l.length);
+    if (total > 240 || longest > 52) return 14;
+    if (total > 170 || longest > 40) return 15;
+    return 16;
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = dossier;
     final s = strings;
-    // Le contenu se pose en haut et, s'il est trop haut pour la story, se
-    // réduit d'un bloc plutôt que de déborder : six faits longs faisaient
-    // descendre le verdict sous la marque du pied de carte.
-    final content = Column(
+    final lines = d.lines.take(maxLines).toList();
+    final size = factSize(lines);
+
+    final facts = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(s.kicker.toUpperCase(), style: RyzeShareText.label(11)),
-        const SizedBox(height: 10),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: s.title),
-              if (s.of.isNotEmpty) TextSpan(text: ' ${s.of}', style: TextStyle(color: RyzeColors.accInk)),
-            ],
-          ),
-          style: RyzeShareText.display(30),
-        ),
-        const SizedBox(height: 24),
-        for (final line in d.lines)
+        for (final line in lines)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: size * 0.62),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 10,
-                  height: 10,
-                  margin: const EdgeInsets.only(top: 6),
+                  width: 9,
+                  height: 9,
+                  margin: EdgeInsets.only(top: size * 0.42),
                   decoration: BoxDecoration(color: RyzeColors.acc, borderRadius: BorderRadius.circular(1)),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: Text(line, style: RyzeShareText.body(15.5, height: 1.35))),
+                Expanded(child: Text(line, style: RyzeShareText.body(size, height: 1.32))),
               ],
             ),
           ),
-        const SizedBox(height: 22),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${d.count}',
-                    style: RyzeShareText.display(56, height: 0.95).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(s.facts, style: RyzeShareText.body(13, weight: FontWeight.w600, color: RyzeColors.mute)),
-                  if (d.verdict.trim().isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    if (d.personaLabel.trim().isNotEmpty) Text(d.personaLabel.toUpperCase(), style: RyzeShareText.label(10.5)),
-                    const SizedBox(height: 3),
-                    Text(d.verdict, style: RyzeShareText.body(15, height: 1.4)),
-                  ],
-                ],
-              ),
-            ),
-            // La place du tampon.
-            const SizedBox(width: 112),
-          ],
-        ),
       ],
     );
 
     return RyzeShareFrame(
-      child: LayoutBuilder(
-        builder: (context, box) => Stack(
-          fit: StackFit.expand,
-          children: [
-            Align(
-              alignment: Alignment.topLeft,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.topLeft,
-                child: SizedBox(width: box.maxWidth, child: content),
-              ),
+      padding: const EdgeInsets.fromLTRB(28, 32, 28, 22),
+      footer: RyzeShareBrand(title: s.appName, cta: s.storeCta),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Le haut prend la place libre : un dossier court laisse son vide
+          // au milieu, et la vanne reste ancrée au-dessus du bandeau.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(s.kicker.toUpperCase(), style: RyzeShareText.label(11)),
+                const SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: s.title),
+                      if (s.of.isNotEmpty) TextSpan(text: ' ${s.of}', style: TextStyle(color: RyzeColors.accInk)),
+                    ],
+                  ),
+                  style: RyzeShareText.display(29),
+                ),
+                const SizedBox(height: 20),
+                // Les faits prennent ce qui reste ; s'ils débordent malgré
+                // tout, ils se réduisent seuls, jamais la vanne ni le tampon.
+                Flexible(
+                  child: LayoutBuilder(
+                    builder: (context, box) => FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(width: box.maxWidth, child: facts),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Positioned(
-              right: 6,
-              bottom: 86,
-              child: RyzeStamp(word: d.stampWord, height: 56),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${d.count}',
+                      style: RyzeShareText.display(54, height: 0.95).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(s.facts, style: RyzeShareText.body(13, weight: FontWeight.w600, color: RyzeColors.mute)),
+                  ],
+                ),
+              ),
+              RyzeStamp(word: d.stampWord, height: 52, angle: -7),
+            ],
+          ),
+          if (d.verdict.trim().isNotEmpty) ...[
+            const SizedBox(height: 18),
+            if (d.personaLabel.trim().isNotEmpty) Text(d.personaLabel.toUpperCase(), style: RyzeShareText.label(10.5)),
+            const SizedBox(height: 5),
+            Text(
+              d.verdict,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: RyzeShareText.display(d.verdict.length > 90 ? 19 : 22, weight: FontWeight.w700, height: 1.16),
             ),
           ],
-        ),
+        ],
       ),
     );
   }

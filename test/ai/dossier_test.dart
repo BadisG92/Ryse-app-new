@@ -246,6 +246,23 @@ void main() {
       expect(registry.resolve('create'), isNull);
     });
 
+    test('le verdict est la phrase dite, mise au propre', () {
+      expect(RyzeDossier.tidyVerdict('  « Tu te mens mieux que tu ne t\'entraînes. »  '), 'Tu te mens mieux que tu ne t\'entraînes.');
+      expect(RyzeDossier.tidyVerdict('"Four excuses. One gym."'), 'Four excuses. One gym.');
+      expect(RyzeDossier.tidyVerdict('- Noté.\n'), 'Noté.');
+      expect(RyzeDossier.tidyVerdict('Pas\n\nde retour à la ligne'), 'Pas de retour à la ligne');
+      final long = RyzeDossier.tidyVerdict(List.filled(60, 'mot').join(' '));
+      expect(long.length, lessThanOrEqualTo(RyzeDossier.maxVerdictLength));
+      expect(long, endsWith('…'));
+    });
+
+    test('l\'outil ne demande plus de verdict : il vient de la parole', () {
+      final decl = registry.byName('memory.dossier')!.declaration;
+      final params = decl['parameters'] as Map;
+      expect((params['properties'] as Map).keys, isNot(contains('verdict')));
+      expect(params['required'], ['lines', 'stamp']);
+    });
+
     test('les lignes passent en tableau, en JSON écrit, ou en texte', () {
       expect(DossierTools.linesArg(['a', 'b']), ['a', 'b']);
       expect(DossierTools.linesArg('["a", "b c"]'), ['a', 'b c']);

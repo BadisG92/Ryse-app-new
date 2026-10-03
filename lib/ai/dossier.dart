@@ -155,6 +155,23 @@ class RyzeDossier {
   /// La clé du genre de ligne dans `coach_messages.metadata`.
   static const String kind = 'dossier';
 
+  /// Au-delà, ce n'est plus une vanne, c'est un paragraphe.
+  static const int maxVerdictLength = 160;
+
+  /// La phrase dite par le coach, prête à être imprimée : sans guillemets
+  /// d'encadrement, sans puces, sur une ligne, bornée.
+  static String tidyVerdict(String spoken) {
+    var v = spoken.replaceAll(RegExp(r'\s+'), ' ').trim();
+    v = v.replaceFirst(RegExp(r'^[-•*]\s*'), '');
+    if (v.length >= 2 && RegExp(r'^[«"“]').hasMatch(v) && RegExp(r'[»"”]$').hasMatch(v)) {
+      v = v.substring(1, v.length - 1).trim();
+    }
+    if (v.length <= maxVerdictLength) return v;
+    final cut = v.substring(0, maxVerdictLength - 1);
+    final space = cut.lastIndexOf(' ');
+    return '${space > maxVerdictLength * 0.6 ? cut.substring(0, space) : cut}…';
+  }
+
   Map<String, dynamic> toMetadata() => {
         'kind': kind,
         'name': name,

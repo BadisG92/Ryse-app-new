@@ -45,12 +45,22 @@ vault growth, dossier 06 Expériences) et du prototype validé par Badis.
   l'onboarding, jamais les faits mesurés, jamais inventé. Le premier jour il
   vaut six ou sept ; c'est ce qui donne envie de redemander plus tard.
 - **Tout ce qui est sur la carte est dans le ton du coach**, ton libre
-  compris. C'est l'exception à la règle « ce qu'on passe à un outil est une
-  donnée » : la persona le dit, la description de l'outil aussi. Les lignes
-  sont des faits dits comme il les dirait ; le verdict est la phrase qu'on
-  cite, une vanne qui résume, jamais une leçon (quatorze mots au plus). Le
-  premier dossier sur appareil était plat parce que le modèle appliquait la
-  règle des données ; vérifier ce point à chaque changement de prompt.
+  compris. Les lignes sont l'exception à la règle « ce qu'on passe à un outil
+  est une donnée » : la persona le dit, la description de l'outil aussi.
+- **Le verdict n'est pas un argument d'outil : c'est la phrase que le coach
+  dit après la carte.** Demandé en argument, il sortait plat et recopié d'une
+  fois sur l'autre depuis l'historique ; dit en parole, il est toujours dans
+  le ton (le premier essai le montrait : bulle juste, carte plate). Le
+  service pose cette phrase dans la métadonnée de la carte au lieu d'écrire
+  une bulle (`CoachChatService._attachVerdict`), l'écran l'y fait couler au
+  rythme où elle arrive, et le tampon claque quand elle est là (cinq secondes
+  de patience au plus, puis il tombe sans elle). Une vanne qui résume dans le
+  ton, quatorze mots au plus, rien après.
+- **La carte partagée dit son nom** : un bandeau marine d'un bord à l'autre
+  avec la marque en grand, le nom exact de la fiche (« Ryze : Compteur
+  Calories IA », celui qu'on tape pour la trouver) et « Sur l'App Store » ou
+  « Sur Google Play » selon l'appareil (`RyzeShareBrand`). La signature
+  discrète d'origine ne disait pas de quoi la carte parlait.
 - **Trois filets sous l'appel d'outil**, posés après le premier essai sur
   appareil (« j'ai fait une erreur avec l'outil », sans carte ni ligne) : un
   nom approximatif retrouve son outil (`RyzeToolRegistry.resolve`), un nom

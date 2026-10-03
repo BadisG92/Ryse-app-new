@@ -6742,6 +6742,18 @@ class AppTranslations {
       'en': 'Shall we start?',
       'de': 'Fangen wir an?',
     },
+    // Le compte demandé au milieu de l'onboarding, juste avant la démo du
+    // planificateur : ce qu'on garde, pas ce qui commence.
+    'auth.saveTitle': {
+      'fr': 'Garde ton plan.',
+      'en': 'Save your plan.',
+      'de': 'Sichere deinen Plan.',
+    },
+    'auth.saveSubtitle': {
+      'fr': 'Ton compte garde tes réponses et la semaine qu’on va construire ensemble.',
+      'en': 'Your account keeps your answers and the week we’re about to build together.',
+      'de': 'Dein Konto speichert deine Antworten und die Woche, die wir gleich zusammen planen.',
+    },
     'auth.createSubtitle': {
       'fr': 'Crée ton compte, les deux coachs prennent la suite : quelques questions, puis ta semaine.',
       'en': 'Create your account, the two coaches take it from there: a few questions, then your week.',
@@ -12735,6 +12747,23 @@ class AppTranslations {
       'fr': 'Retenu le {date}',
       'en': 'Noted on {date}',
       'de': 'Gemerkt am {date}',
+    },
+    // Le bandeau d'une carte partagée : le nom exact de la fiche, celui
+    // qu'on tape pour la trouver, et où elle est.
+    'share_app_name': {
+      'fr': 'Ryze : Compteur Calories IA',
+      'en': 'Ryze: AI Calorie Counter',
+      'de': 'Ryze: KI Kalorienzähler',
+    },
+    'share_store_ios': {
+      'fr': 'Sur l\'App Store',
+      'en': 'On the App Store',
+      'de': 'Im App Store',
+    },
+    'share_store_android': {
+      'fr': 'Sur Google Play',
+      'en': 'On Google Play',
+      'de': 'Bei Google Play',
     },
   };
 
